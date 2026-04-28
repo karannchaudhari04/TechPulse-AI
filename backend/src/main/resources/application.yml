@@ -26,7 +26,7 @@ spring:
     defer-datasource-initialization: true
     hibernate:
       ddl-auto: ${DDL_AUTO:update}    # 'update' locally, 'validate' in prod after first run
-    show-sql: ${SHOW_SQL:false}       # Set true locally only
+    show-sql: false
     properties:
       hibernate:
         format_sql: false
