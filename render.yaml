@@ -1,0 +1,29 @@
+# render.yaml — Render Blueprint
+# Render reads this file automatically from your GitHub repo
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: techbite-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DDL_AUTO
+        value: update          # Change to 'validate' after first successful deploy
+      - key: SQL_INIT_MODE
+        value: always          # Change to 'never' after first successful deploy
+      - key: SHOW_SQL
+        value: "false"
+      - key: DATABASE_URL
+        sync: false            # You fill this in Render dashboard
+      - key: DATABASE_USER
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

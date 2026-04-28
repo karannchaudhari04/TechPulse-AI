@@ -1,0 +1,8 @@
+target/
+*.log
+.git/
+.gitignore
+README.md
+*.md
+android/
+.mvn/wrapper/maven-wrapper.jar

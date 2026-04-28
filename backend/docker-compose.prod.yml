@@ -1,0 +1,76 @@
+# ============================================================
+# docker-compose.prod.yml — ORACLE CLOUD PRODUCTION
+# Usage on Oracle VM:
+#   docker compose -f docker-compose.prod.yml up -d
+# ============================================================
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: techbite-mysql-prod
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: techbite
+      MYSQL_USER: techbite_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    # NOT exposed to host — only accessible within Docker network
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    # MySQL tuning for 1GB RAM Oracle VM
+    command: >
+      --innodb-buffer-pool-size=128M
+      --max-connections=50
+      --query-cache-size=0
+      --thread-cache-size=4
+
+  backend:
+    image: ${DOCKER_IMAGE:-techbite-backend:latest}
+    container_name: techbite-backend-prod
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:mysql://mysql:3306/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DATABASE_USER: techbite_user
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    # Limits prevent OOM kill on 1GB VM
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 200M
+
+  # Nginx reverse proxy — handles HTTPS + port 80 forwarding
+  nginx:
+    image: nginx:alpine
+    container_name: techbite-nginx
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    profiles:
+      - with-nginx   # Only starts when: docker compose --profile with-nginx up
+
+volumes:
+  mysql_prod_data:
+    driver: local

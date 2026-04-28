@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: techbite
+
+  datasource:
+    # ── Local dev: uses your local MySQL on port 3309 ──────────────────────────
+    # ── Production: set DATABASE_URL in Render dashboard ──────────────────────
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3309/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DATABASE_USER:root}
+    password: ${DATABASE_PASSWORD:karan}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 5      # Keep low — TiDB free tier has connection limits
+      minimum-idle: 1
+      idle-timeout: 300000
+      connection-test-query: SELECT 1
+
+  sql:
+    init:
+      # 'always'  → runs data.sql every startup (local dev)
+      # 'never'   → skips data.sql (production — data already seeded)
+      mode: ${SQL_INIT_MODE:always}
+
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: ${DDL_AUTO:update}    # 'update' locally, 'validate' in prod after first run
+    show-sql: ${SHOW_SQL:false}       # Set true locally only
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  ai:
+    openai:
+      api-key: ${GEMINI_API_KEY:AIzaSyDqKY5uqt84jpyWRdpS4_HAWq2_sextjMY}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
+      chat:
+        options:
+          model: gemini-2.0-flash-lite   # Free tier: 1500 req/day, 30 req/min
+
+  task:
+    scheduling:
+      pool:
+        size: 2
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:local_dev_secret_key_not_for_production}
+    expiration-ms: 86400000
+  firebase:
+    config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-adminsdk.json}
+  news:
+    ingestion:
+      enabled: true
+      feeds-per-run: 5
+
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}     # Render injects PORT automatically
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

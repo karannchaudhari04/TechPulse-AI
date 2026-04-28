@@ -1,0 +1,42 @@
+# ============================================================
+# docker-compose.yml — LOCAL DEVELOPMENT
+# Replaces your local MySQL (port 3309) with a Docker container
+# Usage: docker compose up -d
+# ============================================================
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: techbite-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: karan
+      MYSQL_DATABASE: techbite
+    ports:
+      - "3309:3306"      # keeps your existing local port mapping
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pkaran"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: techbite-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:mysql://mysql:3306/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DATABASE_USER: root
+      DATABASE_PASSWORD: karan
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-AIzaSyDqKY5uqt84jpyWRdpS4_HAWq2_sextjMY}
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:

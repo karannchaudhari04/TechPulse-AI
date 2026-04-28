@@ -1,0 +1,29 @@
+# ── Java/Maven ────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+
+# ── Secrets (NEVER commit these) ──────────────────────────────
+.env
+.env.production
+backend/src/main/resources/firebase-adminsdk.json
+*.p12
+*.jks
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ── Node / Expo ───────────────────────────────────────────────
+mobile/node_modules/
+mobile/.expo/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
