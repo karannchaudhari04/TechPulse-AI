@@ -69,7 +69,7 @@
       <version>9.3.0</version>
     </dependency>
 
-    <!-- Spring AI -->
+    <!-- Spring AI (OpenAI starter used for Gemini OpenAI shim) -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-openai-spring-boot-starter</artifactId>

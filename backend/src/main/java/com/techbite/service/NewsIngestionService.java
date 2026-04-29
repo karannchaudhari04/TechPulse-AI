@@ -12,6 +12,9 @@ import com.techbite.repository.CategoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.web.client.RestClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +77,11 @@ public class NewsIngestionService {
         this.chatClient = chatClientBuilder.build();
     }
 
+    @Value("${spring.ai.openai.api-key}")
+    private String geminiApiKey;
+
+    private final RestClient restClient = RestClient.builder().build();
+
     public Map<String, Object> getStatus() {
         return Map.of(
             "lastRun", lastRunTime != null ? lastRunTime.toString() : "Never",
@@ -96,9 +104,15 @@ public class NewsIngestionService {
         ingestAllFeeds();
     }
 
-    @Transactional
+    private final java.util.concurrent.atomic.AtomicBoolean isIngesting = new java.util.concurrent.atomic.AtomicBoolean(false);
+
     public Map<String, Object> ingestAllFeeds() {
-        log.info("[NewsIngestion] Starting ingestion engine...");
+        if (!isIngesting.compareAndSet(false, true)) {
+            log.warn("[NewsIngestion] Ingestion already in progress. Ignoring trigger.");
+            return Map.of("status", "Error", "message", "Ingestion already in progress");
+        }
+        try {
+            log.info("[NewsIngestion] Starting ingestion engine...");
         int savedCount = 0;
         int skippedCount = 0;
         List<String> errors = new ArrayList<>();
@@ -122,8 +136,8 @@ public class NewsIngestionService {
                         log.error("[NewsIngestion] Failure on entry '{}': {}", entry.getTitle(), t.getMessage());
                         skippedCount++;
                     }
-                    // Wait 2s between AI calls to stay within Gemini Free Tier limits
-                    Thread.sleep(2000); 
+                    // Wait 30s between AI calls — extreme measures for heavy rate limiting
+                    Thread.sleep(30000); 
                 }
             } catch (Throwable t) {
                 log.error("[NewsIngestion] Failed to process feed {}: {}", feedUrl, t.getMessage());
@@ -135,6 +149,9 @@ public class NewsIngestionService {
         this.lastRunTime = LocalDateTime.now();
         log.info("[NewsIngestion] Completed. Total Saved: {}, Skipped: {}", savedCount, skippedCount);
         return Map.of("saved", savedCount, "skipped", skippedCount, "errors", errors);
+        } finally {
+            isIngesting.set(false);
+        }
     }
 
     private List<SyndEntry> fetchRssFeed(String feedUrl) throws Exception {
@@ -176,11 +193,57 @@ public class NewsIngestionService {
         if (rawTitle.isBlank() || rawDescription.isBlank()) return false;
 
         String aiPrompt = buildPrompt(rawTitle, rawDescription);
-        String aiResponse;
+        String aiResponse = null;
         try {
-            aiResponse = chatClient.prompt().user(aiPrompt).call().content();
+            // Direct call to Gemini API to avoid Spring AI Milestone/OpenAI shim issues
+            Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                    Map.of("parts", List.of(Map.of("text", aiPrompt)))
+                )
+            );
+
+        int retryCount = 0;
+        List<String> modelsToTry = List.of(
+            "gemini-2.5-flash", "gemini-2.0-flash", 
+            "gemini-1.5-flash", "gemini-pro"
+        );
+        
+        while (retryCount < modelsToTry.size()) {
+            String currentModel = modelsToTry.get(retryCount);
+            try {
+                // Flash 1.5 often needs v1beta, Pro and 2.0+ use v1
+                String apiVersion = currentModel.contains("1.5") ? "v1beta" : "v1";
+                String url = "https://generativelanguage.googleapis.com/" + apiVersion + "/models/" + currentModel + ":generateContent?key=" + geminiApiKey;
+                
+                Map response = restClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("User-Agent", "TechBite-News-Aggregator/3.0")
+                    .body(requestBody)
+                    .retrieve()
+                    .body(Map.class);
+
+                List candidates = (List) response.get("candidates");
+                if (candidates == null || candidates.isEmpty()) throw new RuntimeException("Empty AI response");
+                
+                Map firstCandidate = (Map) candidates.get(0);
+                Map content = (Map) firstCandidate.get("content");
+                List parts = (List) content.get("parts");
+                aiResponse = (String) ((Map) parts.get(0)).get("text");
+                break; // Success!
+
+            } catch (Exception e) {
+                String errorMsg = e.getMessage();
+                log.warn("[NewsIngestion] Model '{}' failed. Details: {}. Trying fallback... (Attempt {}/{})", 
+                    currentModel, errorMsg, retryCount + 1, modelsToTry.size());
+                
+                try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+                retryCount++;
+            }
+            if (retryCount == modelsToTry.size()) return false;
+        }
         } catch (Exception e) {
-            log.error("[NewsIngestion] Gemini AI failed for '{}': {}", rawTitle, e.getMessage());
+            log.error("[NewsIngestion] Direct Gemini API failed for '{}': {}", rawTitle, e.getMessage());
             return false;
         }
 
@@ -208,7 +271,7 @@ public class NewsIngestionService {
                 ? entry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
                 : LocalDateTime.now());
 
-        biteRepository.save(bite);
+        biteRepository.saveAndFlush(bite);
         log.info("[NewsIngestion] ✅ Saved: '{}'", bite.getTitle());
         return true;
     }

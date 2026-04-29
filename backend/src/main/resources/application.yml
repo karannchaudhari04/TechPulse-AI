@@ -20,7 +20,7 @@ spring:
     init:
       # 'always'  → runs data.sql every startup (local dev)
       # 'never'   → skips data.sql (production — data already seeded)
-      mode: ${SQL_INIT_MODE:always}
+      mode: ${SQL_INIT_MODE:never}
 
   jpa:
     defer-datasource-initialization: true
@@ -33,11 +33,11 @@ spring:
 
   ai:
     openai:
-      api-key: ${GEMINI_API_KEY:AIzaSyDqKY5uqt84jpyWRdpS4_HAWq2_sextjMY}
-      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
+      api-key: ${GEMINI_API_KEY:AIzaSyD1uik4xJNGVk37d44gUs7SJCdMlO7B7FM}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
       chat:
         options:
-          model: gemini-2.0-flash-lite   # Free tier: 1500 req/day, 30 req/min
+          model: gemini-1.5-flash
 
   task:
     scheduling:

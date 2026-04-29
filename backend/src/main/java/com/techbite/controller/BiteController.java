@@ -3,6 +3,7 @@ package com.techbite.controller;
 import com.techbite.dto.ApiResponse;
 import com.techbite.dto.BiteResponseDTO;
 import com.techbite.model.User;
+import com.techbite.repository.BiteRepository;
 import com.techbite.repository.UserRepository;
 import com.techbite.service.BiteService;
 import com.techbite.service.NewsIngestionService;
@@ -25,13 +26,21 @@ public class BiteController {
     private final BiteService biteService;
     private final NewsIngestionService newsIngestionService;
     private final UserRepository userRepository;
+    private final BiteRepository biteRepository;
 
     public BiteController(BiteService biteService, 
                           NewsIngestionService newsIngestionService,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          BiteRepository biteRepository) {
         this.biteService = biteService;
         this.newsIngestionService = newsIngestionService;
         this.userRepository = userRepository;
+        this.biteRepository = biteRepository;
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> getBiteCount() {
+        return ResponseEntity.ok(ApiResponse.success(biteRepository.count(), "Total bites in DB"));
     }
 
     @GetMapping
@@ -73,7 +82,7 @@ public class BiteController {
 
     @GetMapping("/admin/news/ingest/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getIngestionStatus() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getIngestStatus() {
         return ResponseEntity.ok(ApiResponse.success(newsIngestionService.getStatus(), "Status retrieved"));
     }
 }

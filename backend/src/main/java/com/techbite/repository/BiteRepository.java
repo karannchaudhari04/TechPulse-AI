@@ -13,10 +13,11 @@ import java.util.Set;
 public interface BiteRepository extends JpaRepository<Bite, Long> {
 
     Page<Bite> findByStatusOrderByPublishedAtDesc(Bite.Status status, Pageable pageable);
+    Page<Bite> findAllByStatusOrderByIdDesc(Bite.Status status, Pageable pageable);
 
     Page<Bite> findByCategoryIdAndStatusOrderByPublishedAtDesc(Long categoryId, Bite.Status status, Pageable pageable);
 
-    @Query("SELECT b FROM Bite b WHERE b.category IN (SELECT p FROM User u JOIN u.preferences p WHERE u.id = :userId) AND b.status = :status ORDER BY b.publishedAt DESC")
+    @Query("SELECT b FROM Bite b WHERE b.category IN (SELECT p FROM User u JOIN u.preferences p WHERE u.id = :userId) AND b.status = :status ORDER BY b.id DESC")
     Page<Bite> findForYouFeedByUserId(
             @Param("userId") Long userId, 
             @Param("status") Bite.Status status, 

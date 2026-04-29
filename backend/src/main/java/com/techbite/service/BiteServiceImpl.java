@@ -26,7 +26,7 @@ public class BiteServiceImpl implements BiteService {
 
     @Override
     public Page<BiteResponseDTO> getAllBites(Pageable pageable) {
-        return biteRepository.findByStatusOrderByPublishedAtDesc(Bite.Status.PUBLISHED, pageable)
+        return biteRepository.findAllByStatusOrderByIdDesc(Bite.Status.PUBLISHED, pageable)
                 .map(this::mapToDTO);
     }
 
