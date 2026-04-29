@@ -2,6 +2,7 @@ package com.techbite.service;
 
 import com.techbite.dto.BiteResponseDTO;
 import com.techbite.model.Bite;
+import com.techbite.model.User;
 import com.techbite.repository.BiteRepository;
 import com.techbite.repository.UserRepository;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,57 +19,52 @@ public class BiteServiceImpl implements BiteService {
     private final UserRepository userRepository;
     private final ChatClient chatClient;
 
-    public BiteServiceImpl(BiteRepository biteRepository, UserRepository userRepository, ChatClient.Builder chatClientBuilder) {
+    public BiteServiceImpl(BiteRepository biteRepository, 
+                           UserRepository userRepository, 
+                           ChatClient.Builder chatClientBuilder) {
         this.biteRepository = biteRepository;
         this.userRepository = userRepository;
         this.chatClient = chatClientBuilder.build();
     }
 
     @Override
-    public Page<BiteResponseDTO> getFeed(Pageable pageable, Long categoryId) {
-        Page<Bite> bites;
-        if (categoryId != null) {
-            bites = biteRepository.findByCategoryIdAndStatusOrderByPublishedAtDesc(categoryId, Bite.Status.PUBLISHED, pageable);
-        } else {
-            bites = biteRepository.findByStatusOrderByPublishedAtDesc(Bite.Status.PUBLISHED, pageable);
-        }
-        return bites.map(this::mapToDTO);
+    public Page<BiteResponseDTO> getAllBites(Pageable pageable) {
+        return biteRepository.findByStatusOrderByPublishedAtDesc(Bite.Status.PUBLISHED, pageable)
+                .map(this::mapToDTO);
     }
 
     @Override
-    public Page<BiteResponseDTO> getForYouFeed(Long userId, Pageable pageable) {
-        Page<Bite> bites = biteRepository.findForYouFeedByUserId(userId, Bite.Status.PUBLISHED, pageable);
+    public Page<BiteResponseDTO> getPersonalizedFeed(User user, Pageable pageable) {
+        if (user == null || user.getPreferences() == null || user.getPreferences().isEmpty()) {
+            return getAllBites(pageable);
+        }
+        Page<Bite> bites = biteRepository.findForYouFeedByUserId(user.getId(), Bite.Status.PUBLISHED, pageable);
         if (bites.isEmpty()) {
-            return getFeed(pageable, null); 
+            return getAllBites(pageable);
         }
         return bites.map(this::mapToDTO);
     }
 
     @Override
-    public String summarizeContent(String biteIdStr) {
+    public String getDetailedExplanation(Long biteId) {
         try {
-            Long biteId = Long.parseLong(biteIdStr);
             Optional<Bite> biteOpt = biteRepository.findById(biteId);
+            if (biteOpt.isEmpty()) return "Bite not found.";
             
-            String textToSummarize = biteOpt.map(b -> b.getTitle() + ": " + b.getContentSummary())
-                                            .orElse("General tech news update.");
-
-            System.out.println("[AI] Starting explanation for: " + textToSummarize);
+            Bite bite = biteOpt.get();
+            String textToSummarize = bite.getTitle() + ": " + bite.getContentSummary();
 
             String prompt = "You are an expert tech mentor for CS students. " +
-                            "Explain the following tech concept simply in 80-120 words. " +
-                            "Use bullet points if needed. Focus on 'Why it matters' for developers:\n\n" + textToSummarize;
+                            "Explain the following tech concept simply in 100-150 words. " +
+                            "Use bullet points if needed. Focus on 'Why it matters' for developers " +
+                            "and mention any related concepts like System Design, DSA, or Operating Systems:\n\n" + textToSummarize;
 
-            String result = chatClient.prompt()
+            return chatClient.prompt()
                 .user(prompt)
                 .call()
                 .content();
-                
-            System.out.println("[AI] Success! Response generated.");
-            return result;
         } catch (Exception e) {
-            System.err.println("[AI] Error generating explanation: " + e.getMessage());
-            return "Oops! The AI is having trouble simplifying this right now. Please try again in a moment.";
+            return "Oops! The AI is having trouble simplifying this right now. Please try again later.";
         }
     }
 

@@ -7,22 +7,22 @@
       "policy": "appVersion"
     },
     "orientation": "portrait",
-    "icon": "./assets/icon.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
-    "backgroundColor": "#0F0A1E",
+    "backgroundColor": "#0F172A",
     "primaryColor": "#7C3AED",
     "scheme": "techbite",
     "splash": {
-      "image": "./assets/splash-icon.jpg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F0A1E"
+      "backgroundColor": "#0F172A"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.techbite.app",
       "buildNumber": "1",
       "infoPlist": {

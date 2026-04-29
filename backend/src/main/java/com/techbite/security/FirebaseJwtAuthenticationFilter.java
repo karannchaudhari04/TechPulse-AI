@@ -30,11 +30,26 @@ public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 // Verify the JWT token cryptographically via Firebase Admin
                 FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
-                
                 String uid = decodedToken.getUid();
                 
-                // Assuming standard USER role for mobile users
-                List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+                logger.debug("Firebase token verified for UID: " + uid);
+                
+                // Assign Roles: Everyone gets ROLE_USER
+                String userEmail = decodedToken.getEmail();
+                List<SimpleGrantedAuthority> authorities;
+                
+                // DEVELOPER: Designated Admin Accounts
+                List<String> adminEmails = List.of("karanchaudhari722@gmail.com", "karanchaudhari34804@gmail.com");
+                
+                if (userEmail != null && adminEmails.contains(userEmail)) {
+                    authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_USER"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                    );
+                    logger.info("Admin access granted to: " + userEmail);
+                } else {
+                    authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+                }
                 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         uid, null, authorities);
@@ -42,8 +57,7 @@ public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (Exception e) {
-                logger.error("Failed to authenticate Firebase token", e);
-                // We don't throw - we let Spring Security reject it downstream based on access rules
+                logger.warn("Firebase token verification failed: " + e.getMessage());
             }
         }
         

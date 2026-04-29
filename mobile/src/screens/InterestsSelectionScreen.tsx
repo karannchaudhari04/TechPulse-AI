@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, SafeAreaView
+  View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, SafeAreaView, Dimensions
 } from 'react-native';
 import { apiClient } from '../api/client';
 
-// These names must EXACTLY match the category `name` column in the DB
-// These names must EXACTLY match the category `name` column in the DB
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const CATEGORIES = [
   'Artificial Intelligence', 
   'Web Development', 
@@ -35,115 +35,124 @@ export default function InterestsSelectionScreen({ onComplete }: InterestsSelect
     if (selected.length === 0) return;
     setIsSaving(true);
     try {
-      // Send categories to backend
       await apiClient.post('/users/preferences', { categories: selected });
-      
-      // Successfully saved!
       onComplete();
     } catch (error: any) {
       console.error('Failed to save preferences:', error);
-      Alert.alert(
-        'Preferences Not Set',
-        'We could not save your topics right now. Your experience might be limited.',
-        [{ text: 'Try Again', style: 'default' }, { text: 'Continue Anyway', onPress: onComplete }]
-      );
+      Alert.alert('Error', 'Could not save preferences. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>What interests you?</Text>
-        <Text style={styles.subtitle}>
-          Pick topics to curate your personalised{' '}
-          <Text style={styles.accent}>For You</Text> feed.
-        </Text>
-      </View>
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safeArea}>
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Pick your{"\n"}<Text style={styles.accent}>Topics.</Text></Text>
+          <Text style={styles.subtitle}>Select the tech areas you want to master.</Text>
+        </View>
 
-      <ScrollView
-        contentContainerStyle={styles.grid}
-        showsVerticalScrollIndicator={false}
-      >
-        {CATEGORIES.map(cat => {
-          const isSelected = selected.includes(cat);
-          return (
-            <TouchableOpacity
-              key={cat}
-              onPress={() => toggle(cat)}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Text style={styles.selectionCount}>
-          {selected.length} topic{selected.length !== 1 ? 's' : ''} selected
-        </Text>
-        <TouchableOpacity
-          onPress={handleContinue}
-          disabled={selected.length === 0 || isSaving}
-          style={[styles.continueBtn, (selected.length === 0 || isSaving) && styles.continueBtnDisabled]}
-          activeOpacity={0.85}
+        {/* Categories Grid */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          {isSaving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.continueBtnText}>Continue to Feed →</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+          <View style={styles.grid}>
+            {CATEGORIES.map(cat => {
+              const isSelected = selected.includes(cat);
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => toggle(cat)}
+                  activeOpacity={0.8}
+                  style={[styles.chip, isSelected && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                    {cat}
+                  </Text>
+                  {isSelected && <View style={styles.checkDot} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        {/* Footer Action */}
+        <View style={styles.footer}>
+          <View style={styles.counterRow}>
+            <Text style={styles.counterText}>
+              <Text style={styles.counterValue}>{selected.length}</Text> topics selected
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleContinue}
+            disabled={selected.length === 0 || isSaving}
+            style={[styles.continueBtn, selected.length === 0 && styles.continueBtnDisabled]}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueBtnText}>Continue to Feed</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#0F172A' },
-  header: { paddingHorizontal: 28, paddingTop: 60, paddingBottom: 24 },
-  title: {
-    fontSize: 40, fontWeight: '900', color: '#F8FAFC',
-    letterSpacing: -1.5, marginBottom: 12, lineHeight: 46
-  },
-  subtitle: { color: '#94A3B8', fontSize: 17, lineHeight: 26, fontWeight: '500' },
-  accent: { color: '#7C3AED', fontWeight: '800' },
-  grid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 14,
-    paddingHorizontal: 28, paddingBottom: 40,
-  },
+  root: { flex: 1, backgroundColor: '#020617' },
+  safeArea: { flex: 1 },
+  header: { paddingHorizontal: 32, paddingTop: 40, paddingBottom: 32 },
+  title: { color: '#FFFFFF', fontSize: 48, fontWeight: '900', letterSpacing: -2, lineHeight: 52 },
+  accent: { color: '#6366F1' },
+  subtitle: { color: '#64748B', fontSize: 16, marginTop: 12, fontWeight: '500' },
+  scrollContent: { paddingBottom: 40 },
+  grid: { paddingHorizontal: 32, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   chip: {
-    paddingHorizontal: 22, paddingVertical: 14,
-    borderRadius: 20, borderWidth: 1.5, borderColor: '#1E293B',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  chipSelected: {
-    backgroundColor: '#7C3AED', borderColor: '#7C3AED',
-    shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 4
+  chipActive: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderColor: '#6366F1',
   },
-  chipText: { color: '#64748B', fontWeight: '700', fontSize: 15 },
-  chipTextSelected: { color: '#FFFFFF', fontWeight: '800' },
-  footer: {
-    padding: 28, paddingBottom: 40,
-    borderTopWidth: 1, borderTopColor: '#1E293B',
-    gap: 16,
-  },
-  selectionCount: {
-    color: '#64748B', fontSize: 14, fontWeight: '700',
-    textAlign: 'center', letterSpacing: 0.5,
-  },
+  chipText: { color: '#94A3B8', fontSize: 16, fontWeight: '700' },
+  chipTextActive: { color: '#FFFFFF' },
+  checkDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6366F1', marginLeft: 10 },
+  footer: { padding: 32, borderTopWidth: 1, borderTopColor: '#0F172A', backgroundColor: '#020617' },
+  counterRow: { marginBottom: 20, alignItems: 'center' },
+  counterText: { color: '#475569', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  counterValue: { color: '#6366F1' },
   continueBtn: {
-    backgroundColor: '#7C3AED', paddingVertical: 20,
-    borderRadius: 22, alignItems: 'center',
-    shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4, shadowRadius: 15, elevation: 8,
+    backgroundColor: '#6366F1',
+    height: 72,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  continueBtnDisabled: { backgroundColor: '#1E293B', shadowOpacity: 0, elevation: 0 },
-  continueBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 18, letterSpacing: 0.5 },
+  continueBtnDisabled: {
+    backgroundColor: '#1E293B',
+    shadowOpacity: 0,
+    elevation: 0,
+    opacity: 0.5
+  },
+  continueBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' }
 });

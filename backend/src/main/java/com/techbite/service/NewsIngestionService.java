@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URL;
+import java.net.URLConnection;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -27,23 +28,25 @@ import java.util.regex.Pattern;
  * Fetches tech news from free RSS feeds, uses Gemini AI to summarize and
  * categorize each article, then saves them as Bites in the database.
  *
- * Runs automatically every 6 hours. Can also be triggered manually via
- * POST /api/v1/admin/news/ingest
+ * Runs automatically every 2 hours. Can also be triggered manually via
+ * POST /api/v1/bites/admin/news/ingest
  */
 @Service
 public class NewsIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(NewsIngestionService.class);
 
-    // ── Free RSS feeds — no API key required ────────────────────────────────
+    // ── High-Value Tech Feeds for CS Students ──────────────────────────────
     private static final List<String> RSS_FEEDS = List.of(
         "https://techcrunch.com/feed/",
         "https://www.theverge.com/rss/index.xml",
         "https://feeds.arstechnica.com/arstechnica/index",
-        "https://hnrss.org/frontpage",                    // Hacker News top stories
+        "https://hnrss.org/frontpage", // Fast-moving frontpage news
+        "https://hnrss.org/newest",    // Absolute newest from HN
         "https://dev.to/feed",
         "https://www.wired.com/feed/rss",
-        "https://feeds.feedburner.com/TheHackersNews"
+        "https://www.freecodecamp.org/news/rss/",
+        "https://www.thehindu.com/sci-tech/technology/feeder/default.rss" // Localized tech news
     );
 
     // ── Category names must match what's in the DB `categories` table ───────
@@ -58,6 +61,9 @@ public class NewsIngestionService {
     private final BookmarkRepository bookmarkRepository;
     private final ChatClient chatClient;
 
+    private LocalDateTime lastRunTime;
+    private int lastSavedCount = 0;
+
     public NewsIngestionService(BiteRepository biteRepository,
                                 CategoryRepository categoryRepository,
                                 BookmarkRepository bookmarkRepository,
@@ -68,9 +74,13 @@ public class NewsIngestionService {
         this.chatClient = chatClientBuilder.build();
     }
 
-    /**
-     * Runs every midnight to delete bookmarks older than 7 days.
-     */
+    public Map<String, Object> getStatus() {
+        return Map.of(
+            "lastRun", lastRunTime != null ? lastRunTime.toString() : "Never",
+            "lastSavedCount", lastSavedCount
+        );
+    }
+
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void cleanupOldBookmarks() {
@@ -80,16 +90,15 @@ public class NewsIngestionService {
         log.info("[System] Cleaned up bookmarks older than {}", expiryDate);
     }
 
-    // ── Scheduled: runs every 6 hours ────────────────────────────────────────
-    @Scheduled(cron = "0 0 */6 * * *")
+    @Scheduled(cron = "0 0 */2 * * *")
     public void scheduledIngest() {
         log.info("[NewsIngestion] Scheduled run started at {}", LocalDateTime.now());
         ingestAllFeeds();
     }
 
-    // ── Manual trigger ────────────────────────────────────────────────────────
     @Transactional
     public Map<String, Object> ingestAllFeeds() {
+        log.info("[NewsIngestion] Starting ingestion engine...");
         int savedCount = 0;
         int skippedCount = 0;
         List<String> errors = new ArrayList<>();
@@ -109,36 +118,54 @@ public class NewsIngestionService {
                         } else {
                             skippedCount++;
                         }
-                    } catch (Exception e) {
-                        log.warn("[NewsIngestion] Failed entry '{}': {}", entry.getTitle(), e.getMessage());
+                    } catch (Throwable t) {
+                        log.error("[NewsIngestion] Failure on entry '{}': {}", entry.getTitle(), t.getMessage());
                         skippedCount++;
                     }
-                    Thread.sleep(1000); // Wait 1s between AI calls
+                    // Wait 2s between AI calls to stay within Gemini Free Tier limits
+                    Thread.sleep(2000); 
                 }
-            } catch (Exception e) {
-                log.error("[NewsIngestion] Feed failed {}: {}", feedUrl, e.getMessage());
-                errors.add(feedUrl + ": " + e.getMessage());
+            } catch (Throwable t) {
+                log.error("[NewsIngestion] Failed to process feed {}: {}", feedUrl, t.getMessage());
+                errors.add(feedUrl + ": " + t.getMessage());
             }
         }
 
+        this.lastSavedCount = savedCount;
+        this.lastRunTime = LocalDateTime.now();
         log.info("[NewsIngestion] Completed. Total Saved: {}, Skipped: {}", savedCount, skippedCount);
         return Map.of("saved", savedCount, "skipped", skippedCount, "errors", errors);
     }
 
-    // ── Fetch + parse a single RSS/Atom feed ─────────────────────────────────
     private List<SyndEntry> fetchRssFeed(String feedUrl) throws Exception {
         URL url = new URL(feedUrl);
-        try (XmlReader reader = new XmlReader(url)) {
-            SyndFeed feed = new SyndFeedInput().build(reader);
-            // Take at most 5 entries per feed per run to stay within Gemini free limits
-            return feed.getEntries().stream().limit(5).toList();
+        URLConnection connection = url.openConnection();
+        connection.setConnectTimeout(10000); // 10s timeout
+        connection.setReadTimeout(10000);
+        connection.setRequestProperty("User-Agent", "TechBite-News-Bot/1.0");
+
+        SyndFeedInput input = new SyndFeedInput();
+        try (XmlReader reader = new XmlReader(connection)) {
+            SyndFeed feed = input.build(reader);
+            // Increase limit to 15 to catch more fresh items
+            return feed.getEntries().stream().limit(15).toList();
         }
     }
 
-    // ── Process one RSS entry: deduplicate → AI summarize → save ─────────────
     private boolean processAndSaveEntry(SyndEntry entry) {
         String sourceUrl = entry.getLink();
         if (sourceUrl == null || sourceUrl.isBlank()) return false;
+
+        // Skip articles older than 48 hours to ensure "Fresh News"
+        Date pubDate = entry.getPublishedDate();
+        if (pubDate != null) {
+            long ageInMillis = System.currentTimeMillis() - pubDate.getTime();
+            long maxAge = 2L * 24 * 60 * 60 * 1000; // 48 hours
+            if (ageInMillis > maxAge) {
+                log.info("[NewsIngestion] Skipping old article ({}h old): {}", ageInMillis / 3600000, entry.getTitle());
+                return false;
+            }
+        }
 
         if (biteRepository.existsByOriginalSourceUrl(sourceUrl)) return false;
 
@@ -160,7 +187,6 @@ public class NewsIngestionService {
         ParsedBite parsed = parseAiResponse(aiResponse, rawTitle, sourceUrl);
         if (parsed == null) return false;
 
-        // Find the matching category in DB (case-insensitive)
         Optional<Category> categoryOpt = categoryRepository.findByNameIgnoreCaseIn(
                 Set.of(parsed.categoryName().toLowerCase())
         ).stream().findFirst();
@@ -183,7 +209,7 @@ public class NewsIngestionService {
                 : LocalDateTime.now());
 
         biteRepository.save(bite);
-        log.info("[NewsIngestion] ✅ Saved: '{}' with image", bite.getTitle());
+        log.info("[NewsIngestion] ✅ Saved: '{}'", bite.getTitle());
         return true;
     }
 
@@ -202,32 +228,32 @@ public class NewsIngestionService {
         return null;
     }
 
-    // ── Build the Gemini prompt ───────────────────────────────────────────────
     private String buildPrompt(String title, String description) {
         String categories = String.join(", ", KNOWN_CATEGORIES);
         return """
-            You are a tech editor creating bite-sized news for CS students and software engineering freshers.
+            You are a Senior Tech Lead and Career Mentor at a top tech company (like Google or Microsoft).
+            Your goal is to explain this news to a Computer Science student or a fresher preparing for interviews.
             
-            Given this article:
+            Article:
             TITLE: %s
-            DESCRIPTION: %s
+            CONTENT: %s
             
-            Respond ONLY in this exact format (no extra text):
-            TITLE: <A punchy, engaging title, max 80 characters>
-            CATEGORY: <Pick exactly one from: %s>
-            SUMMARY: <A 100-120 word explanation in simple English. Start with what happened. Then explain why it matters for a CS student or developer. Use at most one bullet point if needed.>
+            Format your response exactly as follows:
+            TITLE: <Punchy, professional title, max 80 characters>
+            CATEGORY: <Choose one from: %s>
+            SUMMARY: <A 110-150 word breakdown. 
+            - Start with a clear summary of the event.
+            - Then, provide an 'Interview/Career Perspective': Explain how this relates to concepts like System Design, DSA, Operating Systems, or industry hiring trends.
+            - Use actionable, clear, and encouraging language.>
             
             Rules:
-            - If the article is NOT tech-related, respond with: SKIP
-            - Never exceed 120 words in SUMMARY
-            - TITLE must be under 80 characters
-            """.formatted(title, description.substring(0, Math.min(description.length(), 800)), categories);
+            - If this is purely gossip, politics, or not relevant to a developer's career, respond: SKIP
+            - Focus on 'The Why' behind the technology.
+            """.formatted(title, description.substring(0, Math.min(description.length(), 1000)), categories);
     }
 
-    // ── Parse the structured AI response ─────────────────────────────────────
     private ParsedBite parseAiResponse(String response, String fallbackTitle, String sourceUrl) {
         if (response == null || response.trim().equalsIgnoreCase("SKIP")) {
-            log.debug("[NewsIngestion] AI decided to skip non-tech article");
             return null;
         }
 
@@ -236,17 +262,13 @@ public class NewsIngestionService {
         String summary = extractField(response, "SUMMARY");
 
         if (title == null || category == null || summary == null) {
-            log.warn("[NewsIngestion] AI response parsing failed for: {}", fallbackTitle);
             return null;
         }
 
-        // Trim to model max lengths
         title = title.length() > 150 ? title.substring(0, 147) + "..." : title;
-
         return new ParsedBite(title, category.trim(), summary.trim());
     }
 
-    // ── Extract a labelled field from the AI response ─────────────────────────
     private String extractField(String text, String field) {
         Pattern pattern = Pattern.compile("^" + field + ":\\s*(.+?)(?=\\n[A-Z]+:|$)",
                 Pattern.MULTILINE | Pattern.DOTALL);
@@ -254,7 +276,6 @@ public class NewsIngestionService {
         return matcher.find() ? matcher.group(1).trim() : null;
     }
 
-    // ── Extract plain text from RSS entry (strips HTML) ──────────────────────
     private String extractText(SyndEntry entry) {
         String text = "";
         if (entry.getDescription() != null) {
@@ -262,7 +283,6 @@ public class NewsIngestionService {
         } else if (!entry.getContents().isEmpty()) {
             text = entry.getContents().get(0).getValue();
         }
-        // Strip HTML tags
         return text.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
     }
 
@@ -273,6 +293,5 @@ public class NewsIngestionService {
         return null;
     }
 
-    // ── Value record for parsed AI output ────────────────────────────────────
     private record ParsedBite(String title, String categoryName, String summary) {}
 }

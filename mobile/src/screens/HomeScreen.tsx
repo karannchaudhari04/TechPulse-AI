@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { View, Text, ActivityIndicator, RefreshControl, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, RefreshControl, Pressable, Dimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { FlashList } from '@shopify/flash-list';
@@ -10,14 +10,12 @@ import { Bite } from '../types';
 import { useBites } from '../hooks/useBites';
 import { useBookmarks } from '../hooks/useBookmarks';
 
-import { LinearGradient } from 'expo-linear-gradient';
-
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: any) {
-  const [activeTab, setActiveTab] = useState<'all' | 'foryou'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'foryou' | 'saved'>('foryou');
   const [user, setUser] = useState<User | null>(auth.currentUser);
-  const [headerHeight, setHeaderHeight] = useState(140);
+  const [headerHeight, setHeaderHeight] = useState(130);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -27,21 +25,15 @@ export default function HomeScreen({ navigation }: any) {
   }, []);
   
   const { 
-    data, 
-    isLoading, 
-    isError, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage,
-    refetch,
-    isRefetching
-  } = useBites(activeTab);
+    data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching 
+  } = useBites(activeTab === 'saved' ? 'all' : activeTab);
   
-  const bitesData = useMemo(() => {
-    return data ? data.pages.flatMap(page => page.content) : [];
-  }, [data]);
-
   const { bookmarks, isBookmarked, toggleBookmark } = useBookmarks();
+
+  const bitesData = useMemo(() => {
+    if (activeTab === 'saved') return bookmarks;
+    return data ? data.pages.flatMap(page => page.content) : [];
+  }, [data, activeTab, bookmarks]);
 
   const itemHeight = SCREEN_HEIGHT - headerHeight;
 
@@ -51,259 +43,110 @@ export default function HomeScreen({ navigation }: any) {
         item={item} 
         isBookmarked={isBookmarked(item.id)} 
         onToggleBookmark={toggleBookmark} 
-        fullScreen={true}
         cardHeight={itemHeight}
       />
     </View>
   ), [isBookmarked, toggleBookmark, itemHeight]);
 
-  const handleTabChange = useCallback((tab: 'all' | 'foryou') => {
-    if (tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  }, [activeTab]);
-
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         
+        {/* Sticky Header */}
         <View 
           onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
           style={styles.header}
         >
-          <View style={styles.topRow}>
-            <View>
-               <Text style={styles.logo}>TechBite<Text style={styles.dot}>.</Text></Text>
-               <Text style={styles.subtitle}>ELEVATE YOUR KNOWLEDGE</Text>
-            </View>
+          {/* Brand Row */}
+          <View style={styles.brandRow}>
+            <Text style={styles.brandText}>
+              TechBite<Text style={styles.brandDot}>.</Text>
+            </Text>
             
-            <View style={styles.actionRow}>
-              {user ? (
-                <Pressable 
-                  onPress={() => navigation.navigate('Profile')}
-                  style={({ pressed }) => [styles.profileContainer, pressed && styles.pressed]}
-                >
-                  {user.photoURL ? (
-                    <Image source={{ uri: user.photoURL }} style={styles.avatar} contentFit="cover" transition={400} />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Text style={styles.avatarText}>
-                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
+            <Pressable 
+              onPress={() => navigation.navigate(user ? 'Profile' : 'Welcome')}
+              style={styles.avatarBtn}
+            >
+              {user?.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={styles.avatar} />
               ) : (
-                <Pressable 
-                  onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] })}
-                  style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
-                >
-                  <Text style={styles.signInText}>SIGN IN</Text>
-                </Pressable>
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarInitial}>?</Text>
+                </View>
               )}
-              
-              <View style={styles.headerSpacer} />
-
-              <Pressable 
-                onPress={() => navigation.navigate('Bookmarks')}
-                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-              >
-                 <Text style={styles.iconText}>🔖</Text>
-              </Pressable>
-            </View>
+            </Pressable>
           </View>
 
-          <View style={styles.bottomRow}>
-            <View style={styles.tabContainer}>
-              <Pressable 
-                onPress={() => handleTabChange('foryou')}
-                style={[styles.tab, activeTab === 'foryou' && styles.activeTab]}
-              >
-                {activeTab === 'foryou' && (
-                  <LinearGradient
-                    colors={['#7C3AED', '#6D28D9']}
-                    style={StyleSheet.absoluteFill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  />
-                )}
-                <Text style={[styles.tabText, activeTab === 'foryou' && styles.activeTabText]}>
-                  FOR YOU
-                </Text>
-              </Pressable>
-              
-              <Pressable 
-                onPress={() => handleTabChange('all')}
-                style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-              >
-                {activeTab === 'all' && (
-                  <LinearGradient
-                    colors={['#7C3AED', '#6D28D9']}
-                    style={StyleSheet.absoluteFill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  />
-                )}
-                <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-                  DISCOVER
-                </Text>
-              </Pressable>
+          {/* Premium Tabs */}
+          <View style={styles.tabContainer}>
+            <View style={styles.tabList}>
+              <TabButton label="For You" active={activeTab === 'foryou'} onPress={() => setActiveTab('foryou')} />
+              <TabButton label="Discover" active={activeTab === 'all'} onPress={() => setActiveTab('all')} />
+              <TabButton label="Saved" active={activeTab === 'saved'} onPress={() => setActiveTab('saved')} />
             </View>
           </View>
         </View>
         
-        <View style={styles.feedContainer}>
-          {isLoading && (
+        {/* Feed Area */}
+        <View style={styles.feed}>
+          {isLoading && bitesData.length === 0 ? (
             <View style={styles.center}>
-              <ActivityIndicator size="large" color="#7C3AED" />
-              <Text style={styles.loadingText}>Fetching your bites...</Text>
+              <ActivityIndicator color="#6366F1" size="large" />
             </View>
-          )}
-
-          {isError && !isLoading && (
+          ) : activeTab === 'saved' && bitesData.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emoji}>📡</Text>
-              <Text style={styles.errorTitle}>Connection Issues</Text>
-              <Text style={styles.errorSub}>Could not reach the server. Please check your internet.</Text>
-              <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-                <Text style={styles.retryText}>Try Again</Text>
-              </Pressable>
+              <Text style={styles.emptyTitle}>Nothing saved yet.</Text>
+              <Text style={styles.emptyText}>Bites you bookmark will appear here.</Text>
             </View>
-          )}
-          
-          {!isLoading && !isError && bitesData.length === 0 && (
-            <View style={styles.center}>
-              <Text style={styles.emoji}>✨</Text>
-              <Text style={styles.emptyTitle}>
-                {activeTab === 'foryou' ? 'No interests selected' : 'All caught up!'}
-              </Text>
-              <Text style={styles.emptySub}>
-                {activeTab === 'foryou' 
-                  ? 'Set your preferences to see a personalised feed.' 
-                  : 'Check back later for more tech updates.'}
-              </Text>
-              <Pressable 
-                onPress={() => activeTab === 'foryou' ? navigation.navigate('Interests') : refetch()} 
-                style={styles.refreshBtn}
-              >
-                <Text style={styles.refreshText}>
-                  {activeTab === 'foryou' ? 'Set Preferences' : 'Refresh Feed'}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-          
-          {!isLoading && !isError && bitesData.length > 0 && (
+          ) : (
             <FlashList
               data={bitesData}
-              extraData={bookmarks}
               renderItem={renderItem}
               estimatedItemSize={itemHeight}
-              pagingEnabled={true} 
+              pagingEnabled
               snapToInterval={itemHeight}
               snapToAlignment="start"
-              decelerationRate="fast" 
-              disableIntervalMomentum={true}
+              decelerationRate="fast"
               showsVerticalScrollIndicator={false}
               keyExtractor={(item) => item.id.toString()}
-              onEndReached={() => {
-                if (hasNextPage && !isFetchingNextPage) {
-                  fetchNextPage();
-                }
-              }}
-              onEndReachedThreshold={0.5}
+              onEndReached={() => activeTab !== 'saved' && hasNextPage && !isFetchingNextPage && fetchNextPage()}
               refreshControl={
-                <RefreshControl 
-                  refreshing={isRefetching && !isLoading} 
-                  onRefresh={refetch}
-                  tintColor="#7C3AED"
-                />
+                <RefreshControl refreshing={isRefetching && !isLoading} onRefresh={refetch} tintColor="#6366F1" />
               }
             />
           )}
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
+const TabButton = ({ label, active, onPress }: { label: string, active: boolean, onPress: () => void }) => (
+  <Pressable onPress={onPress} style={styles.tabBtn}>
+    <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+    {active && <View style={styles.tabIndicator} />}
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#0F172A' },
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  header: {
-    backgroundColor: '#0F172A',
-    paddingTop: 12,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    zIndex: 10,
-  },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  logo: { fontSize: 30, fontWeight: '900', color: '#F8FAFC', letterSpacing: -1.8 },
-  dot: { color: '#7C3AED' },
-  subtitle: { color: '#64748B', fontSize: 10, fontWeight: '800', letterSpacing: 2.5, marginTop: -4 },
-  actionRow: { flexDirection: 'row', alignItems: 'center' },
-  profileContainer: { },
-  headerSpacer: { width: 16 },
-  avatar: { width: 40, height: 40, borderRadius: 14, borderWidth: 1.5, borderColor: '#334155' },
-  avatarPlaceholder: { 
-    width: 40, height: 40, borderRadius: 14, 
-    backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#6D28D9'
-  },
-  avatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
-  signInBtn: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-  },
-  signInText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  iconButton: { 
-    width: 40, height: 40, 
-    backgroundColor: '#1E293B', borderRadius: 14, 
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#334155' 
-  },
-  iconText: { fontSize: 18 },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.96 }] },
-  bottomRow: { alignItems: 'center' },
-  tabContainer: { 
-    flexDirection: 'row', 
-    backgroundColor: '#1E293B', 
-    padding: 4, 
-    borderRadius: 18,
-    width: '100%',
-  },
-  tab: { 
-    flex: 1,
-    paddingVertical: 10, 
-    borderRadius: 14,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  activeTab: { backgroundColor: '#7C3AED' },
-  tabText: { fontSize: 11, fontWeight: '900', color: '#64748B', letterSpacing: 1.5 },
-  activeTabText: { color: '#FFFFFF' },
-  feedContainer: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
-  loadingText: { color: '#64748B', marginTop: 12, fontWeight: '600', fontSize: 14 },
-  errorTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC', marginBottom: 8 },
-  errorSub: { color: '#64748B', textAlign: 'center', fontSize: 14, lineHeight: 20, marginBottom: 24 },
-  retryBtn: { backgroundColor: '#7C3AED', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 20 },
-  retryText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },
-  emoji: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '900', color: '#F8FAFC', marginBottom: 8 },
-  emptySub: { color: '#64748B', textAlign: 'center', fontSize: 14, lineHeight: 20, marginBottom: 24 },
-  refreshBtn: { 
-    borderWidth: 1.5, borderColor: '#7C3AED', 
-    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 18 
-  },
-  refreshText: { color: '#7C3AED', fontWeight: '800', fontSize: 13, letterSpacing: 0.5 }
+  root: { flex: 1, backgroundColor: '#020617' },
+  safeArea: { flex: 1 },
+  header: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 16, backgroundColor: '#020617' },
+  brandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
+  brandText: { color: '#FFFFFF', fontSize: 36, fontWeight: '900', letterSpacing: -2 },
+  brandDot: { color: '#6366F1' },
+  avatarBtn: { activeOpacity: 0.8 },
+  avatar: { width: 40, height: 40, borderRadius: 14, borderWidth: 1, borderColor: '#1E293B' },
+  avatarPlaceholder: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
+  avatarInitial: { color: '#64748B', fontWeight: '900' },
+  tabContainer: { flexDirection: 'row' },
+  tabList: { flexDirection: 'row', gap: 28 },
+  tabBtn: { paddingBottom: 10, position: 'relative' },
+  tabLabel: { color: '#475569', fontSize: 16, fontWeight: '800', letterSpacing: -0.5 },
+  tabLabelActive: { color: '#FFFFFF' },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: '#6366F1', borderRadius: 2 },
+  feed: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 60 },
+  emptyTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', marginBottom: 12 },
+  emptyText: { color: '#64748B', fontSize: 16, textAlign: 'center', lineHeight: 24, fontWeight: '500' }
 });

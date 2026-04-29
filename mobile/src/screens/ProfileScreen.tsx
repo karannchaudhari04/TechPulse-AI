@@ -47,6 +47,36 @@ export default function ProfileScreen({ navigation }: any) {
     );
   };
 
+  const isAdmin = user && ["karanchaudhari722@gmail.com", "karanchaudhari34804@gmail.com"].includes(user.email || "");
+  const [isIngesting, setIsIngesting] = React.useState(false);
+
+  const handleTriggerIngestion = async () => {
+    if (isIngesting) return;
+    
+    setIsIngesting(true);
+    try {
+      const idToken = await user?.getIdToken();
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bites/admin/news/ingest`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+        },
+      });
+
+      if (response.ok) {
+        Alert.alert("Success", "News ingestion has been triggered in the background.");
+      } else {
+        const errorData = await response.json();
+        Alert.alert("Error", errorData.message || "Failed to trigger ingestion. Are you an admin?");
+      }
+    } catch (error) {
+      console.error("Ingestion error:", error);
+      Alert.alert("Network Error", "Could not connect to the backend server.");
+    } finally {
+      setIsIngesting(false);
+    }
+  };
+
   const handleGoToLogin = () => {
     // Navigate to Welcome screen to sign in
     navigation.navigate('Welcome');
@@ -91,9 +121,32 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.email}>{user?.email || 'Login to save your bookmarks'}</Text>
           
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{user ? 'PREMIUM MEMBER' : 'GUEST MODE'}</Text>
+            <Text style={styles.badgeText}>{isAdmin ? 'SYSTEM ADMINISTRATOR' : (user ? 'PREMIUM MEMBER' : 'GUEST MODE')}</Text>
           </View>
         </View>
+
+        {/* Admin Section (Only for you) */}
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Admin Dashboard</Text>
+            
+            <Pressable 
+              onPress={handleTriggerIngestion}
+              disabled={isIngesting}
+              style={({ pressed }) => [
+                styles.adminBtn, 
+                pressed && styles.pressed,
+                isIngesting && { opacity: 0.5 }
+              ]}
+            >
+              <Text style={styles.adminEmoji}>⚡</Text>
+              <Text style={styles.adminBtnText}>
+                {isIngesting ? 'Activating Engine...' : 'Trigger News Ingestion'}
+              </Text>
+            </Pressable>
+            <Text style={styles.adminSubtext}>This will fetch RSS feeds and generate AI summaries immediately.</Text>
+          </View>
+        )}
 
         {/* Settings Section */}
         <View style={styles.section}>
@@ -130,7 +183,7 @@ export default function ProfileScreen({ navigation }: any) {
             </Pressable>
           )}
           
-          <Text style={styles.version}>TechBite v1.0.0 (Beta)</Text>
+          <Text style={styles.version}>TechBite v1.1.0 (Admin Edition)</Text>
         </View>
 
       </ScrollView>
@@ -216,6 +269,25 @@ const styles = StyleSheet.create({
   menuEmoji: { fontSize: 18, marginRight: 16 },
   menuLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#E2E8F0' },
   menuValue: { fontSize: 14, color: '#7C3AED', fontWeight: 'bold' },
+  adminBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#7C3AED',
+    marginBottom: 8,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  adminEmoji: { fontSize: 20, marginRight: 16 },
+  adminBtnText: { flex: 1, fontSize: 16, fontWeight: '900', color: '#7C3AED' },
+  adminSubtext: { fontSize: 11, color: '#64748B', fontWeight: '600', paddingHorizontal: 4, marginBottom: 20 },
   footer: { paddingHorizontal: 24, marginTop: 'auto', paddingTop: 40, alignItems: 'center' },
   signOutBtn: {
     width: '100%',

@@ -5,88 +5,81 @@ import com.techbite.dto.BiteResponseDTO;
 import com.techbite.model.User;
 import com.techbite.repository.UserRepository;
 import com.techbite.service.BiteService;
+import com.techbite.service.NewsIngestionService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/bites")
+@Validated
 public class BiteController {
 
-    private final BiteService biteService; 
+    private final BiteService biteService;
+    private final NewsIngestionService newsIngestionService;
     private final UserRepository userRepository;
 
-    public BiteController(BiteService biteService, UserRepository userRepository) {
+    public BiteController(BiteService biteService, 
+                          NewsIngestionService newsIngestionService,
+                          UserRepository userRepository) {
         this.biteService = biteService;
+        this.newsIngestionService = newsIngestionService;
         this.userRepository = userRepository;
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getFeed(
+    public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getAllBites(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(defaultValue = "publishedAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
         
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("publishedAt").descending());
-        Page<BiteResponseDTO> bites = biteService.getFeed(pageRequest, categoryId);
-        
+        Sort sort = direction.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+        Page<BiteResponseDTO> bites = biteService.getAllBites(pageRequest);
         return ResponseEntity.ok(ApiResponse.success(bites, "Feed fetched successfully"));
     }
 
     @GetMapping("/foryou")
     public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getForYouFeed(
+            @AuthenticationPrincipal String firebaseUid,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("publishedAt").descending());
-        
-        String firebaseUid = null;
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (principal instanceof String) {
-                firebaseUid = (String) principal;
-            }
-        }
-        
-        Long internalUserId = null;
-        if (firebaseUid != null) {
-            Optional<User> userOpt = userRepository.findByFirebaseUid(firebaseUid);
-            if (userOpt.isPresent()) {
-                internalUserId = userOpt.get().getId();
-            }
-        }
-        
-        if (internalUserId != null) {
-            Page<BiteResponseDTO> bites = biteService.getForYouFeed(internalUserId, pageRequest);
-            return ResponseEntity.ok(ApiResponse.success(bites, "Personalized feed fetched"));
-        } else {
-            Page<BiteResponseDTO> bites = biteService.getFeed(pageRequest, null);
-            return ResponseEntity.ok(ApiResponse.success(bites, "Generic feed fetched for guest"));
-        }
+        User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<BiteResponseDTO> bites = biteService.getPersonalizedFeed(user, pageRequest);
+        return ResponseEntity.ok(ApiResponse.success(bites, "Personalized feed fetched"));
     }
 
-    @PostMapping("/explain")
-    public ResponseEntity<ApiResponse<Map<String, String>>> explainBite(
-            @RequestBody Map<String, Object> request) { 
-        
-        Object biteIdObj = request.get("biteId");
-        String biteId = biteIdObj != null ? biteIdObj.toString() : "0";
-        
-        String summary = biteService.summarizeContent(biteId);
-        
-        return ResponseEntity.ok(ApiResponse.success(Map.of("explanation", summary), "Summary generated successfully"));
+    @GetMapping("/explain")
+    public ResponseEntity<ApiResponse<String>> getBiteExplanation(
+            @RequestParam Long biteId) {
+        String explanation = biteService.getDetailedExplanation(biteId);
+        return ResponseEntity.ok(ApiResponse.success(explanation, "Explanation generated"));
     }
 
-    @PostMapping("/admin/summarize")
+    // ── Admin Endpoints for News Ingestion ───────────────────────────────────
+
+    @PostMapping("/admin/news/ingest")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Object>> summarizeLink(
-            @RequestBody Object summaryRequestDTO) { 
-        return ResponseEntity.ok(ApiResponse.success(null, "Summary generated successfully"));
+    public ResponseEntity<ApiResponse<Object>> ingestNews() { 
+        System.out.println(">>> [BiteController] Ingest endpoint hit!");
+        // Trigger ingestion in a background thread to avoid blocking the request
+        new Thread(newsIngestionService::ingestAllFeeds).start();
+        return ResponseEntity.ok(ApiResponse.success(null, "Ingestion triggered in background"));
+    }
+
+    @GetMapping("/admin/news/ingest/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getIngestionStatus() {
+        return ResponseEntity.ok(ApiResponse.success(newsIngestionService.getStatus(), "Status retrieved"));
     }
 }

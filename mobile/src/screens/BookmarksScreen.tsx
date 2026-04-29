@@ -1,28 +1,39 @@
-import React, { useCallback } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import BiteCard from '../components/BiteCard';
 import { Bite } from '../types';
 import { useBookmarks } from '../hooks/useBookmarks';
 
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function BookmarksScreen({ navigation }: any) {
   const { bookmarks, isLoading, isBookmarked, toggleBookmark } = useBookmarks();
+  const [headerHeight, setHeaderHeight] = useState(100);
+
+  const itemHeight = SCREEN_HEIGHT - headerHeight;
 
   const renderItem = useCallback(({ item }: { item: Bite }) => (
-    <BiteCard 
-      item={item} 
-      isBookmarked={isBookmarked(item.id)} 
-      onToggleBookmark={toggleBookmark} 
-    />
-  ), [isBookmarked, toggleBookmark]);
+    <View style={{ height: itemHeight, width: SCREEN_WIDTH }}>
+      <BiteCard 
+        item={item} 
+        isBookmarked={isBookmarked(item.id)} 
+        onToggleBookmark={toggleBookmark} 
+        fullScreen={true}
+        cardHeight={itemHeight}
+      />
+    </View>
+  ), [isBookmarked, toggleBookmark, itemHeight]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         
-        {/* PURE NATIVE HEADER */}
-        <View style={styles.header}>
+        <View 
+          onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
+          style={styles.header}
+        >
           <Pressable 
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
@@ -40,7 +51,7 @@ export default function BookmarksScreen({ navigation }: any) {
 
         {isLoading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color="#7C3AED" />
           </View>
         ) : bookmarks.length === 0 ? (
           <View style={styles.center}>
@@ -60,14 +71,20 @@ export default function BookmarksScreen({ navigation }: any) {
             </Pressable>
           </View>
         ) : (
-          <FlashList
-            data={bookmarks}
-            renderItem={renderItem}
-            estimatedItemSize={400}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContent}
-          />
+          <View style={{ flex: 1 }}>
+            <FlashList
+              data={bookmarks}
+              renderItem={renderItem}
+              estimatedItemSize={itemHeight}
+              pagingEnabled={true}
+              snapToInterval={itemHeight}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              disableIntervalMomentum={true}
+              showsVerticalScrollIndicator={false}
+              keyExtractor={(item) => item.id.toString()}
+            />
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -79,19 +96,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
+    zIndex: 10,
   },
   backBtn: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     backgroundColor: '#1E293B',
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -99,9 +117,9 @@ const styles = StyleSheet.create({
   },
   backText: { fontSize: 20, color: '#F1F5F9' },
   titleContainer: { alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '900', color: '#F1F5F9', letterSpacing: -1 },
-  subtitle: { color: '#7C3AED', fontSize: 10, fontWeight: 'bold', letterSpacing: 1.5, marginTop: -2 },
-  spacer: { width: 48 },
+  title: { fontSize: 22, fontWeight: '900', color: '#F1F5F9', letterSpacing: -1 },
+  subtitle: { color: '#7C3AED', fontSize: 9, fontWeight: 'bold', letterSpacing: 2, marginTop: -2 },
+  spacer: { width: 44 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   emptyIconContainer: { backgroundColor: '#1E293B', width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#334155' },
   emptyEmoji: { fontSize: 40 },
@@ -109,6 +127,5 @@ const styles = StyleSheet.create({
   emptySub: { color: '#94A3B8', textAlign: 'center', lineHeight: 24 },
   exploreBtn: { marginTop: 32, backgroundColor: '#7C3AED', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 20 },
   exploreText: { color: '#FFFFFF', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
-  pressed: { opacity: 0.7 },
-  listContent: { paddingTop: 10, paddingBottom: 40 }
+  pressed: { opacity: 0.7 }
 });

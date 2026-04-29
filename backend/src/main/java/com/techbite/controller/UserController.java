@@ -114,8 +114,7 @@ public class UserController {
     private String getFirebaseUid() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof String uid)) {
-            // DEBUG FALLBACK: If security is disabled, use a test UID
-            return "local-dev-user-id";
+            throw new RuntimeException("Not authenticated");
         }
         return uid;
     }

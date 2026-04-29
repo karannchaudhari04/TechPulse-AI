@@ -2,16 +2,16 @@ package com.techbite.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
@@ -38,18 +38,14 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll()
                 // Public bite feed endpoints
                 .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/explain").permitAll()
-                .requestMatchers("/api/v1/bites/admin/**").hasRole("ADMIN")
-                // News ingestion — permit for manual testing via browser or Postman
-                .requestMatchers("/api/v1/admin/news/ingest").permitAll()
-                // register-or-login: token may still be fresh, allow it through
-                .requestMatchers(HttpMethod.POST, "/api/v1/users/register-or-login").permitAll()
-                // TEMPORARY: permitAll for users and bookmarks to unblock development while debugging 403
-                .requestMatchers("/api/v1/users/**").permitAll()
-                .requestMatchers("/api/v1/bookmarks/**").permitAll()
-                // NUCLEAR OPTION: permit everything for now to find the 403 source
-                .anyRequest().permitAll()
-            );
-            // .addFilterBefore(firebaseJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // Strictly lock admin ingestion and bite management
+                .requestMatchers("/api/v1/bites/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
+                // Strictly protect preferences and bookmarks
+                .requestMatchers("/api/v1/users/**").authenticated()
+                .requestMatchers("/api/v1/bookmarks/**").authenticated()
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(firebaseJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -58,9 +54,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*")); // Allow all origins
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
