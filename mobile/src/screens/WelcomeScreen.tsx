@@ -27,11 +27,17 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
       const googleCredential = GoogleAuthProvider.credential(idToken);
       await signInWithCredential(auth, googleCredential);
 
+      const user = auth.currentUser;
       try {
-        const res = await apiClient.post<{ hasPreferences: boolean }>('/users/register-or-login', {});
+        const res = await apiClient.post<{ hasPreferences: boolean }>('/users/register-or-login', {
+          email: user?.email ?? null,
+          displayName: user?.displayName ?? null,
+          photoUrl: user?.photoURL ?? null,
+        });
         onSignedIn(res.hasPreferences);
       } catch (err) {
-        onSignedIn(false);
+        console.error('register-or-login failed:', err);
+        onSignedIn(false); // continue — backend auto-provisions on next authenticated call
       }
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);

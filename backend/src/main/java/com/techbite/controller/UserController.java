@@ -71,8 +71,13 @@ public class UserController {
             @RequestBody Map<String, List<String>> request) {
 
         String firebaseUid = getFirebaseUid();
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found. Please sign in first."));
+        // Auto-provision: if the user skipped or had a failed register-or-login, create them now.
+        User user = userRepository.findByFirebaseUid(firebaseUid).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setFirebaseUid(firebaseUid);
+            newUser.setEmail(firebaseUid + "@firebase.user");
+            return userRepository.save(newUser);
+        });
 
         List<String> categoryNames = request.get("categories");
         if (categoryNames == null || categoryNames.isEmpty()) {

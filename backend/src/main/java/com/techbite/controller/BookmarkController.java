@@ -101,13 +101,24 @@ public class BookmarkController {
 
     // ─── Helpers ────────────────────────────────────────────────────────────────
 
+    /**
+     * Resolves the authenticated Firebase UID to a User entity.
+     * Auto-provisions a minimal User row on first access so that users who
+     * bypassed /register-or-login (e.g. due to a transient error) aren't
+     * permanently blocked by a "User not found" 500.
+     */
+    @Transactional
     private User resolveUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof String uid)) {
             throw new RuntimeException("Not authenticated");
         }
-        return userRepository.findByFirebaseUid(uid)
-                .orElseThrow(() -> new RuntimeException("User not found for UID: " + uid));
+        return userRepository.findByFirebaseUid(uid).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setFirebaseUid(uid);
+            newUser.setEmail(uid + "@firebase.user");
+            return userRepository.save(newUser);
+        });
     }
 
     private BiteResponseDTO mapToDTO(Bite bite) {
