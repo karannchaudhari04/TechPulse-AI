@@ -9,13 +9,22 @@ import BiteCard from '../components/BiteCard';
 import { Bite } from '../types';
 import { useBites } from '../hooks/useBites';
 import { useBookmarks } from '../hooks/useBookmarks';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function HomeScreen({ navigation }: any) {
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+interface HomeScreenProps {
+  navigation: HomeScreenNavigationProp;
+}
+
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'foryou' | 'saved'>('foryou');
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [headerHeight, setHeaderHeight] = useState(130);
+  const [streak, setStreak] = useState(2); // Simulated streak for UI demo
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -57,33 +66,40 @@ export default function HomeScreen({ navigation }: any) {
           onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
           style={styles.header}
         >
-          {/* Brand Row */}
-          <View style={styles.brandRow}>
-            <Text style={styles.brandText}>
-              TechBite<Text style={styles.brandDot}>.</Text>
-            </Text>
-            
-            <Pressable 
-              onPress={() => navigation.navigate(user ? 'Profile' : 'Welcome')}
-              style={styles.avatarBtn}
-            >
-              {user?.photoURL ? (
-                <Image source={{ uri: user.photoURL }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInitial}>?</Text>
+          {/* Top Bar: Profile | Streak | Logo | Search/Action */}
+          <View style={styles.topBar}>
+            <View style={styles.topBarLeft}>
+                <Pressable onPress={() => navigation.navigate('Profile')} style={styles.iconBtn}>
+                   <Text style={styles.topIcon}>≡</Text>
+                </Pressable>
+                <View style={styles.streakBadge}>
+                   <Text style={styles.streakEmoji}>⚡</Text>
+                   <Text style={styles.streakText}>{streak}</Text>
                 </View>
-              )}
-            </Pressable>
+            </View>
+
+            <View style={styles.topBarCenter}>
+                <Image 
+                    source={require('../../assets/logo_horizontal.png')}
+                    style={styles.headerLogo}
+                    contentFit="contain"
+                />
+            </View>
+
+            <View style={styles.topBarRight}>
+                <Pressable style={styles.iconBtn}>
+                   <Text style={styles.topIcon}>+</Text>
+                </Pressable>
+            </View>
           </View>
 
-          {/* Premium Tabs */}
-          <View style={styles.tabContainer}>
-            <View style={styles.tabList}>
-              <TabButton label="For You" active={activeTab === 'foryou'} onPress={() => setActiveTab('foryou')} />
-              <TabButton label="Discover" active={activeTab === 'all'} onPress={() => setActiveTab('all')} />
-              <TabButton label="Saved" active={activeTab === 'saved'} onPress={() => setActiveTab('saved')} />
-            </View>
+          {/* Premium Centered Tabs */}
+          <View style={styles.tabWrapper}>
+              <View style={styles.tabList}>
+                <TabButton label="My Digest" active={activeTab === 'foryou'} onPress={() => setActiveTab('foryou')} />
+                <TabButton label="Topics" active={activeTab === 'all'} onPress={() => setActiveTab('all')} />
+                <TabButton label="Bookmarks" active={activeTab === 'saved'} onPress={() => setActiveTab('saved')} />
+              </View>
           </View>
         </View>
         
@@ -131,20 +147,37 @@ const TabButton = ({ label, active, onPress }: { label: string, active: boolean,
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#020617' },
   safeArea: { flex: 1 },
-  header: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 16, backgroundColor: '#020617' },
-  brandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  brandText: { color: '#FFFFFF', fontSize: 36, fontWeight: '900', letterSpacing: -2 },
-  brandDot: { color: '#6366F1' },
-  avatarBtn: { activeOpacity: 0.8 },
-  avatar: { width: 40, height: 40, borderRadius: 14, borderWidth: 1, borderColor: '#1E293B' },
-  avatarPlaceholder: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#1E293B' },
-  avatarInitial: { color: '#64748B', fontWeight: '900' },
-  tabContainer: { flexDirection: 'row' },
-  tabList: { flexDirection: 'row', gap: 28 },
-  tabBtn: { paddingBottom: 10, position: 'relative' },
-  tabLabel: { color: '#475569', fontSize: 16, fontWeight: '800', letterSpacing: -0.5 },
+  header: { paddingBottom: 8, backgroundColor: '#020617' },
+  topBar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12 
+  },
+  topBarLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  topBarCenter: { flex: 2, alignItems: 'center' },
+  topBarRight: { flex: 1, alignItems: 'flex-end' },
+  headerLogo: { width: 120, height: 32 },
+  iconBtn: { padding: 8 },
+  topIcon: { color: '#94A3B8', fontSize: 24, fontWeight: '300' },
+  streakBadge: { 
+    flexDirection: 'row', 
+    backgroundColor: '#1E293B', 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 12,
+    alignItems: 'center',
+    marginLeft: 8
+  },
+  streakEmoji: { fontSize: 14, marginRight: 4 },
+  streakText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  tabWrapper: { alignItems: 'center', marginTop: 12 },
+  tabList: { flexDirection: 'row', gap: 32 },
+  tabBtn: { paddingBottom: 10, alignItems: 'center' },
+  tabLabel: { color: '#475569', fontSize: 14, fontWeight: '600' },
   tabLabelActive: { color: '#FFFFFF' },
-  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: '#6366F1', borderRadius: 2 },
+  tabIndicator: { width: 20, height: 3, backgroundColor: '#6366F1', borderRadius: 2, marginTop: 4 },
   feed: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 60 },
   emptyTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', marginBottom: 12 },

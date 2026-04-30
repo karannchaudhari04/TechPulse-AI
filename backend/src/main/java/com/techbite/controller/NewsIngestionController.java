@@ -3,6 +3,7 @@ package com.techbite.controller;
 import com.techbite.dto.ApiResponse;
 import com.techbite.service.NewsIngestionService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -12,13 +13,10 @@ import java.util.Map;
  * Useful for testing or on-demand refresh.
  *
  * The scheduler runs automatically every 6 hours.
- *
- * Usage:
- *   POST /api/v1/admin/news/ingest
- *   (No request body needed)
  */
 @RestController
 @RequestMapping("/api/v1/admin/news")
+@PreAuthorize("hasRole('ADMIN')")
 public class NewsIngestionController {
 
     private final NewsIngestionService newsIngestionService;
@@ -32,7 +30,7 @@ public class NewsIngestionController {
      * http://192.168.1.37:8080/api/v1/admin/news/ingest
      */
     @GetMapping("/ingest")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerIngestGet() {
+    public ResponseEntity<ApiResponse<Object>> triggerIngestGet() {
         return triggerIngest();
     }
 
@@ -40,8 +38,8 @@ public class NewsIngestionController {
      * POST version — use from Postman / curl.
      */
     @PostMapping("/ingest")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> triggerIngest() {
-        Map<String, Object> result = newsIngestionService.ingestAllFeeds();
-        return ResponseEntity.ok(ApiResponse.success(result, "News ingestion completed"));
+    public ResponseEntity<ApiResponse<Object>> triggerIngest() {
+        newsIngestionService.ingestAllFeeds();
+        return ResponseEntity.ok(ApiResponse.success(null, "News ingestion triggered in background. Check logs for progress."));
     }
 }

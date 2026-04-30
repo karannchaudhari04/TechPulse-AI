@@ -11,6 +11,20 @@ import InterestsSelectionScreen from '../screens/InterestsSelectionScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BookmarksScreen from '../screens/BookmarksScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import BiteDetailScreen from '../screens/BiteDetailScreen';
+
+const linking = {
+  prefixes: ['techbite://', 'https://techbite.app'],
+  config: {
+    screens: {
+      Home: 'home',
+      BiteDetail: 'bite/:id',
+      Profile: 'profile',
+      Bookmarks: 'bookmarks',
+      Welcome: 'welcome',
+    },
+  },
+};
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -18,6 +32,7 @@ export type RootStackParamList = {
   Home: undefined;
   Bookmarks: undefined;
   Profile: undefined;
+  BiteDetail: { id: number };
 };
 
 type AppScreen = 'Welcome' | 'Interests' | 'Home';
@@ -81,8 +96,9 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
+        <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
         {currentFlow === 'Welcome' && (
           <Stack.Screen name="Welcome">
             {(props) => (

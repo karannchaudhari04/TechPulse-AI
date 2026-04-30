@@ -3,6 +3,7 @@
     "name": "TechBite",
     "slug": "techbite",
     "version": "1.0.0",
+    "description": "Daily bite-sized technical news and interview preparation tips for CS students and developers. Powered by AI for precision and clarity.",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -41,6 +42,21 @@
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "techbite",
+              "host": "bite"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -56,8 +72,8 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 34,
             "minSdkVersion": 29,
-            "enableProguardInReleaseBuilds": false,
-            "enableShrinkResourcesInReleaseBuilds": false
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ]

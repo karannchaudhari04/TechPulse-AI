@@ -48,73 +48,78 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#0F172A', '#020617']}
-        style={StyleSheet.absoluteFill}
-      />
-
+      <View style={styles.darkOverlay} />
+      
       <SafeAreaView style={styles.safeArea}>
         
+        {/* Top Header with Skip */}
         <View style={styles.topBar}>
-          <Pressable 
-            onPress={onSkip}
-            style={({ pressed }) => [
-              styles.skipBtn,
-              pressed && { opacity: 0.7, scale: 0.96 }
-            ]}
-          >
-            <Text style={styles.skipText}>SKIP</Text>
+          <Pressable onPress={onSkip}>
+            <Text style={styles.skipText}>Skip</Text>
           </Pressable>
         </View>
 
+        {/* Brand & Tagline */}
         <View style={styles.hero}>
-          <View style={styles.logoWrapper}>
-            <LinearGradient
-              colors={['#6366F1', '#A855F7']}
-              style={styles.logoGradient}
-            >
-              <Text style={styles.logoLetter}>T</Text>
-            </LinearGradient>
+          <Image 
+            source={require('../../assets/logo_horizontal.png')}
+            style={styles.brandLogo}
+            contentFit="contain"
+          />
+          <Text style={styles.tagline}>Tech News, Made Easy!</Text>
+          
+          {/* Central Illustration Placeholder (Matching DevBytes) */}
+          <View style={styles.illustrationBox}>
+            <Image 
+               source="https://ouch-cdn2.icons8.com/Z8v_V3Xq_I3Q7X9Zq_Y3Xq_I3Q7X9Zq_Y3Xq_I3Q7X9Zq_Y3Xq_I.png" // Placeholder tech illustration
+               style={styles.illustration}
+               contentFit="contain"
+            />
           </View>
 
-          <Text style={styles.brandTitle}>
-            TechBite<Text style={styles.dot}>.</Text>
-          </Text>
-
-          <Text style={styles.tagline}>
-            Tech wisdom for the{"\n"}ambitious CS student.
-          </Text>
+          <Text style={styles.mainTitle}>Let’s get started!</Text>
+          <Text style={styles.subTitle}>Signing up helps us save your preferences.</Text>
         </View>
 
-        {/* Action Area - Widened Padding */}
+        {/* Action Area - Social Buttons */}
         <View style={styles.actionArea}>
           <Pressable
             onPress={handleGoogleSignIn}
             disabled={isSigningIn}
             style={({ pressed }) => [
-              styles.googleBtn,
-              pressed && styles.googleBtnPressed,
-              isSigningIn && { opacity: 0.8 }
+              styles.socialBtn,
+              pressed && { opacity: 0.8, scale: 0.98 }
             ]}
           >
-            {isSigningIn ? (
-              <ActivityIndicator color="#1F2937" />
-            ) : (
-              <View style={styles.googleBtnContent}>
-                <Image
-                  source="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
-                  style={styles.googleIcon}
-                  contentFit="contain"
-                />
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
-              </View>
-            )}
+            <View style={styles.socialBtnContent}>
+              <Image
+                source="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                style={styles.socialIcon}
+              />
+              <Text style={styles.socialBtnText}>Sign up with Google.</Text>
+              {isSigningIn && <ActivityIndicator color="#FFF" style={{ marginLeft: 10 }} />}
+            </View>
+          </Pressable>
+
+          <Pressable
+            onPress={() => Alert.alert("Coming Soon", "GitHub login will be available in the next update!")}
+            style={({ pressed }) => [
+              styles.socialBtn,
+              { marginTop: 16 },
+              pressed && { opacity: 0.8, scale: 0.98 }
+            ]}
+          >
+            <View style={styles.socialBtnContent}>
+              <Image
+                source="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg"
+                style={[styles.socialIcon, { tintColor: '#FFF' }]}
+              />
+              <Text style={styles.socialBtnText}>Sign up with GitHub.</Text>
+            </View>
           </Pressable>
 
           <Text style={styles.legalText}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.link}>Terms</Text> and{' '}
-            <Text style={styles.link}>Privacy Policy</Text>.
+            By continuing, you agree to the <Text style={styles.link}>rules</Text> and <Text style={styles.link}>privacy policy</Text>.
           </Text>
         </View>
       </SafeAreaView>
@@ -123,121 +128,32 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, backgroundColor: '#020617' },
+  darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   safeArea: { flex: 1 },
-  topBar: {
-    paddingHorizontal: 24,
-    paddingTop: 45,
-    alignItems: 'flex-end',
-  },
-  skipBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  skipText: {
-    color: '#CBD5E1',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 1.5,
-  },
-  hero: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 40,
-  },
-  logoWrapper: {
-    width: 120,
-    height: 120,
-    borderRadius: 36,
-    marginBottom: 32,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.35,
-    shadowRadius: 30,
-    elevation: 20,
-  },
-  logoGradient: {
-    flex: 1,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoLetter: {
-    color: '#FFFFFF',
-    fontSize: 64,
-    fontWeight: '900',
-    fontStyle: 'italic',
-  },
-  brandTitle: {
-    color: '#FFFFFF',
-    fontSize: 48,
-    fontWeight: '900',
-    letterSpacing: -2,
-    marginBottom: 12,
-  },
-  dot: { color: '#6366F1' },
-  tagline: {
-    color: '#94A3B8',
-    fontSize: 18,
-    textAlign: 'center',
-    lineHeight: 28,
-    fontWeight: '600',
-  },
-  actionArea: {
-    paddingHorizontal: 20, // Reduced from 32 to give the button more width
-    paddingBottom: 60,
-    alignItems: 'center',
-  },
-  googleBtn: {
+  topBar: { paddingHorizontal: 24, paddingTop: 20, alignItems: 'flex-end' },
+  skipText: { color: '#818CF8', fontSize: 16, fontWeight: '700' },
+  hero: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  brandLogo: { width: 220, height: 60, marginBottom: 8 },
+  tagline: { color: '#94A3B8', fontSize: 18, fontWeight: '500', marginBottom: 40 },
+  illustrationBox: { width: '100%', height: 220, marginBottom: 40 },
+  illustration: { width: '100%', height: '100%' },
+  mainTitle: { color: '#FFFFFF', fontSize: 32, fontWeight: '800', marginBottom: 12 },
+  subTitle: { color: '#64748B', fontSize: 16, textAlign: 'center', marginBottom: 40, fontWeight: '500' },
+  actionArea: { paddingHorizontal: 24, paddingBottom: 40 },
+  socialBtn: {
     width: '100%',
-    height: 62, // Slightly taller for more presence
-    backgroundColor: '#FFFFFF',
-    borderRadius: 31,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
+    height: 64,
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#1E293B',
     justifyContent: 'center',
-  },
-  googleBtnPressed: {
-    backgroundColor: '#F9FAFB',
-    transform: [{ scale: 0.98 }],
-  },
-  googleBtnContent: {
-    flexDirection: 'row',
     alignItems: 'center',
   },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 14,
-  },
-  googleBtnText: {
-    color: '#1F2937',
-    fontSize: 18, // Slightly larger for better scannability
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  legalText: {
-    color: '#64748B',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 28,
-    lineHeight: 18,
-    fontWeight: '600',
-  },
-  link: {
-    color: '#94A3B8',
-    textDecorationLine: 'underline',
-  },
+  socialBtnContent: { flexDirection: 'row', alignItems: 'center' },
+  socialIcon: { width: 24, height: 24, marginRight: 16 },
+  socialBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  legalText: { color: '#475569', fontSize: 12, textAlign: 'center', marginTop: 32 },
+  link: { color: '#6366F1', textDecorationLine: 'underline' }
 });

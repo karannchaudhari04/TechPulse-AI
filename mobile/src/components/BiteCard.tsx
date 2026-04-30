@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, Linking, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Pressable, Linking, StyleSheet, Dimensions, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { Bite } from '../types';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,55 +34,90 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
     }
   };
 
-  const categoryColor = CATEGORY_COLORS[item.categoryName] || CATEGORY_COLORS['default'];
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `🚀 TechBite: ${item.title}\n\nRead more: techbite://bite/${item.id}`,
+        url: item.originalSourceUrl,
+        title: item.title,
+      });
+    } catch (error) {
+      console.error('Sharing failed', error);
+    }
+  };
+
+  const summaryPoints = item.contentSummary.includes('•') 
+    ? item.contentSummary.split('•').filter(p => p.trim().length > 0)
+    : [item.contentSummary];
 
   return (
     <View style={[styles.root, { height: cardHeight }]}>
       <View style={styles.card}>
         
-        {/* Top Section: Hero Image (Exact 33%) */}
-        <View style={styles.imageBox}>
+        {/* Header: Hero Image + Badges + Integrated Title */}
+        <View style={styles.headerArea}>
           <Image 
             source={{ uri: item.thumbnailUrl || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800' }}
             style={styles.heroImg}
             contentFit="cover"
           />
           <LinearGradient 
-            colors={['transparent', 'rgba(2, 6, 23, 0.8)']} 
+            colors={['rgba(30, 41, 59, 0.4)', 'rgba(2, 6, 23, 0.95)']} 
             style={styles.imgOverlay} 
           />
-          <View style={[styles.pill, { backgroundColor: categoryColor }]}>
-            <Text style={styles.pillText}>{item.categoryName}</Text>
+          
+          <View style={styles.badgeRow}>
+            <View style={styles.tldrBadge}>
+                <Text style={styles.tldrText}>TL;DR</Text>
+            </View>
+            <View style={styles.topPickBadge}>
+                <Text style={styles.topPickText}>✨ Top Pick</Text>
+            </View>
           </View>
+
+          <Text style={styles.headerTitle} numberOfLines={2}>{item.title}</Text>
         </View>
 
-        {/* Bottom Section: Info & Actions */}
+        {/* Content: Bulleted List */}
         <View style={styles.contentBox}>
-          <View style={styles.textStack}>
-            <Text style={styles.title} numberOfLines={3}>{item.title}</Text>
-            <Text style={styles.summary} numberOfLines={8}>{item.contentSummary}</Text>
+          <View style={styles.summaryContainer}>
+              {summaryPoints.map((point, idx) => (
+                  <View key={idx} style={styles.bulletRow}>
+                      <Text style={styles.bullet}>•</Text>
+                      <Text style={styles.bulletText}>{point.trim()}</Text>
+                  </View>
+              ))}
           </View>
-          
-          <View style={styles.actionBar}>
-            <Pressable 
-              onPress={handleOpenSource}
-              style={({ pressed }) => [styles.readBtn, pressed && { opacity: 0.8 }]}
-            >
-              <Text style={styles.readBtnText}>Read More</Text>
-              <Text style={styles.arrow}>→</Text>
-            </Pressable>
 
-            <Pressable 
-              onPress={() => onToggleBookmark(item)}
-              style={({ pressed }) => [
-                styles.markBtn, 
-                isBookmarked && styles.markBtnActive,
-                pressed && { scale: 0.9 }
-              ]}
-            >
-              <Text style={styles.markIcon}>{isBookmarked ? '💙' : '🔖'}</Text>
-            </Pressable>
-          </View>
+          {/* Inline Source Link */}
+          <Pressable onPress={handleOpenSource} style={styles.sourceLink}>
+              <Text style={styles.sourceText}>{item.categoryName} ↗</Text>
+          </Pressable>
+        </View>
+
+        {/* Footer: Floating Actions (Streak, Bookmark, Share) */}
+        <View style={styles.footerRow}>
+            <View style={styles.leftActions}>
+               <View style={styles.actionItem}>
+                  <Text style={styles.actionEmoji}>🔥</Text>
+                  <Text style={styles.actionCount}>11</Text>
+               </View>
+            </View>
+
+            <View style={styles.rightActions}>
+                <Pressable onPress={() => onToggleBookmark(item)} style={styles.iconBtn}>
+                  <Text style={styles.icon}>{isBookmarked ? '💙' : '🔖'}</Text>
+                </Pressable>
+                
+                <Pressable onPress={handleShare} style={styles.iconBtn}>
+                  <Text style={styles.icon}>📤</Text>
+                </Pressable>
+            </View>
+        </View>
+
+        {/* Bottom Progress Indicator */}
+        <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '45%' }]} />
         </View>
 
       </View>
@@ -91,59 +126,48 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
 });
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#020617', paddingHorizontal: 16, paddingVertical: 12 },
+  root: { backgroundColor: '#020617', paddingHorizontal: 12, paddingVertical: 10 },
   card: {
     flex: 1,
-    backgroundColor: '#0F172A',
-    borderRadius: 40,
+    backgroundColor: '#020617', // Match SS dark background
+    borderRadius: 24,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#1E293B',
-    overflow: 'hidden',
   },
-  imageBox: { height: '33.3%', width: '100%', position: 'relative' },
-  heroImg: { width: '100%', height: '100%' },
-  imgOverlay: { position: 'absolute', inset: 0 },
-  pill: {
-    position: 'absolute',
-    top: 24,
-    left: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
+  headerArea: { height: '35%', width: '100%', position: 'relative', justifyContent: 'flex-end', padding: 20 },
+  heroImg: { ...StyleSheet.absoluteFillObject },
+  imgOverlay: { ...StyleSheet.absoluteFillObject },
+  badgeRow: { position: 'absolute', top: 16, left: 16, flexDirection: 'row', gap: 8 },
+  tldrBadge: { backgroundColor: '#000', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  tldrText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  topPickBadge: { backgroundColor: 'rgba(255, 255, 255, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  topPickText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+  headerTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900', lineHeight: 28, letterSpacing: -0.5 },
+  contentBox: { flex: 1, padding: 24, paddingTop: 30 },
+  summaryContainer: { gap: 14 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  bullet: { color: '#FFFFFF', fontSize: 18, marginRight: 12, opacity: 0.8 },
+  bulletText: { color: '#94A3B8', fontSize: 15, lineHeight: 22, fontWeight: '500', flex: 1 },
+  sourceLink: { marginTop: 20 },
+  sourceText: { color: '#475569', fontSize: 14, fontWeight: '600' },
+  footerRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 24, 
+    paddingBottom: 24 
   },
-  pillText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, textTransform: 'uppercase' },
-  contentBox: { flex: 1, padding: 32, justifyContent: 'space-between' },
-  textStack: { gap: 16 },
-  title: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', letterSpacing: -1, lineHeight: 34 },
-  summary: { color: '#94A3B8', fontSize: 16, lineHeight: 26, fontWeight: '500' },
-  actionBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  readBtn: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  readBtnText: { color: '#818CF8', fontWeight: '900', fontSize: 15, marginRight: 10 },
-  arrow: { color: '#818CF8', fontSize: 18, fontWeight: '900' },
-  markBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    backgroundColor: '#0F172A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#1E293B',
-  },
-  markBtnActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    borderColor: '#6366F1',
-  },
-  markIcon: { fontSize: 22 }
+  leftActions: { flexDirection: 'row' },
+  actionItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionEmoji: { fontSize: 18 },
+  actionCount: { color: '#64748B', fontSize: 14, fontWeight: '700' },
+  rightActions: { flexDirection: 'row', gap: 20 },
+  iconBtn: { padding: 4 },
+  icon: { fontSize: 22, color: '#94A3B8' },
+  progressBar: { height: 3, width: '100%', backgroundColor: '#1E293B' },
+  progressFill: { height: '100%', backgroundColor: '#6366F1', borderRadius: 2 }
 });
+
 
 export default BiteCard;

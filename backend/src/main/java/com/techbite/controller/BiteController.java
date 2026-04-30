@@ -7,6 +7,8 @@ import com.techbite.repository.BiteRepository;
 import com.techbite.repository.UserRepository;
 import com.techbite.service.BiteService;
 import com.techbite.service.NewsIngestionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -22,6 +24,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/bites")
 @Validated
 public class BiteController {
+    private static final Logger log = LoggerFactory.getLogger(BiteController.class);
 
     private final BiteService biteService;
     private final NewsIngestionService newsIngestionService;
@@ -79,9 +82,8 @@ public class BiteController {
     @PostMapping("/admin/news/ingest")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Object>> ingestNews() { 
-        System.out.println(">>> [BiteController] Ingest endpoint hit!");
-        // Trigger ingestion in a background thread to avoid blocking the request
-        new Thread(newsIngestionService::ingestAllFeeds).start();
+        log.info(">>> [BiteController] Triggering async ingestion...");
+        newsIngestionService.ingestAllFeeds();
         return ResponseEntity.ok(ApiResponse.success(null, "Ingestion triggered in background"));
     }
 

@@ -34,10 +34,10 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Health check — needed by Docker and Oracle load balancer
-                .requestMatchers("/actuator/health").permitAll()
+                // Health check & Swagger — needed by Render and for documentation
+                .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Public bite feed
-                .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou").permitAll()
+                .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/{id}").permitAll()
                 // Strictly lock admin ingestion and bite management
                 .requestMatchers("/api/v1/bites/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                 // Strictly protect preferences and bookmarks

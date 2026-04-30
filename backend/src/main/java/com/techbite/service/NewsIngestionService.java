@@ -15,9 +15,12 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.techbite.repository.NewsSourceRepository;
+import com.techbite.model.NewsSource;
 
 import java.net.URL;
 import java.net.URLConnection;
@@ -39,20 +42,7 @@ public class NewsIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(NewsIngestionService.class);
 
-    // ── High-Value Tech Feeds for CS Students ──────────────────────────────
-    private static final List<String> RSS_FEEDS = List.of(
-        "https://techcrunch.com/feed/",
-        "https://www.theverge.com/rss/index.xml",
-        "https://feeds.arstechnica.com/arstechnica/index",
-        "https://hnrss.org/frontpage", // Fast-moving frontpage news
-        "https://hnrss.org/newest",    // Absolute newest from HN
-        "https://dev.to/feed",
-        "https://www.wired.com/feed/rss",
-        "https://www.freecodecamp.org/news/rss/",
-        "https://www.thehindu.com/sci-tech/technology/feeder/default.rss" // Localized tech news
-    );
-
-    // ── Category names must match what's in the DB `categories` table ───────
+    // Categories must match what's in the DB `categories` table
     private static final List<String> KNOWN_CATEGORIES = List.of(
         "Artificial Intelligence", "Web Development", "Data Structures",
         "Cybersecurity", "Hardware & Chips", "System Design",
@@ -62,6 +52,7 @@ public class NewsIngestionService {
     private final BiteRepository biteRepository;
     private final CategoryRepository categoryRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final NewsSourceRepository newsSourceRepository;
     private final ChatClient chatClient;
 
     private LocalDateTime lastRunTime;
@@ -70,10 +61,12 @@ public class NewsIngestionService {
     public NewsIngestionService(BiteRepository biteRepository,
                                 CategoryRepository categoryRepository,
                                 BookmarkRepository bookmarkRepository,
+                                NewsSourceRepository newsSourceRepository,
                                 ChatClient.Builder chatClientBuilder) {
         this.biteRepository = biteRepository;
         this.categoryRepository = categoryRepository;
         this.bookmarkRepository = bookmarkRepository;
+        this.newsSourceRepository = newsSourceRepository;
         this.chatClient = chatClientBuilder.build();
     }
 
@@ -113,49 +106,44 @@ public class NewsIngestionService {
 
     private final java.util.concurrent.atomic.AtomicBoolean isIngesting = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-    public Map<String, Object> ingestAllFeeds() {
+    @Async
+    public void ingestAllFeeds() {
         if (!isIngesting.compareAndSet(false, true)) {
             log.warn("[NewsIngestion] Ingestion already in progress. Skipping.");
-            throw new IllegalStateException("An ingestion process is already running. Please wait.");
+            return;
         }
         try {
-            log.info("[NewsIngestion] Starting ingestion engine...");
-        int savedCount = 0;
-        int skippedCount = 0;
-        List<String> errors = new ArrayList<>();
+            log.info("[NewsIngestion] Starting async ingestion engine...");
+            List<NewsSource> sources = newsSourceRepository.findByActiveTrue();
+            int savedCount = 0;
+            int skippedCount = 0;
 
-        for (String feedUrl : RSS_FEEDS) {
-            try {
-                log.info("[NewsIngestion] Fetching feed: {}", feedUrl);
-                List<SyndEntry> entries = fetchRssFeed(feedUrl);
-                log.info("[NewsIngestion] Found {} entries in {}", entries.size(), feedUrl);
-
-                for (SyndEntry entry : entries) {
-                    try {
-                        boolean saved = processAndSaveEntry(entry);
-                        if (saved) {
-                            savedCount++;
-                            log.info("[NewsIngestion] Saved: {}", entry.getTitle());
-                        } else {
-                            skippedCount++;
+            for (NewsSource source : sources) {
+                try {
+                    log.info("[NewsIngestion] Fetching feed: {} ({})", source.getName(), source.getUrl());
+                    List<SyndEntry> entries = fetchRssFeed(source.getUrl());
+                    
+                    for (SyndEntry entry : entries) {
+                        try {
+                            boolean saved = processAndSaveEntry(entry);
+                            if (saved) {
+                                savedCount++;
+                            } else {
+                                skippedCount++;
+                            }
+                        } catch (Exception e) {
+                            log.error("[NewsIngestion] Error processing entry: {}", e.getMessage());
                         }
-                    } catch (Throwable t) {
-                        log.error("[NewsIngestion] Failure on entry '{}': {}", entry.getTitle(), t.getMessage());
-                        skippedCount++;
+                        // Reduced sleep as it's now async, but still keep it for rate limiting
+                        Thread.sleep(5000); 
                     }
-                    // Wait 30s between AI calls — extreme measures for heavy rate limiting
-                    Thread.sleep(30000); 
+                } catch (Exception e) {
+                    log.error("[NewsIngestion] Failed to process source {}: {}", source.getName(), e.getMessage());
                 }
-            } catch (Throwable t) {
-                log.error("[NewsIngestion] Failed to process feed {}: {}", feedUrl, t.getMessage());
-                errors.add(feedUrl + ": " + t.getMessage());
             }
-        }
-
-        this.lastSavedCount = savedCount;
-        this.lastRunTime = LocalDateTime.now();
-        log.info("[NewsIngestion] Completed. Total Saved: {}, Skipped: {}", savedCount, skippedCount);
-        return Map.of("saved", savedCount, "skipped", skippedCount, "errors", errors);
+            this.lastSavedCount = savedCount;
+            this.lastRunTime = LocalDateTime.now();
+            log.info("[NewsIngestion] Async Ingestion Completed. Saved: {}, Skipped: {}", savedCount, skippedCount);
         } finally {
             isIngesting.set(false);
         }
@@ -311,12 +299,15 @@ public class NewsIngestionService {
             Format your response exactly as follows:
             TITLE: <Punchy, professional title, max 80 characters>
             CATEGORY: <Choose one from: %s>
-            SUMMARY: <A 110-150 word breakdown. 
-            - Start with a clear summary of the event.
-            - Then, provide an 'Interview/Career Perspective': Explain how this relates to concepts like System Design, DSA, Operating Systems, or industry hiring trends.
-            - Use actionable, clear, and encouraging language.>
+            SUMMARY:
+            • <First critical insight or news summary>
+            • <Second insight or technical implication>
+            • <Third insight or 'Interview/Career Perspective'>
+            • <Optional: Additional insight, max 5 total>
             
             Rules:
+            - Use the Unicode bullet character (•) for each point.
+            - Ensure each point is concise and high-impact.
             - If this is purely gossip, politics, or not relevant to a developer's career, respond: SKIP
             - Focus on 'The Why' behind the technology.
             """.formatted(title, description.substring(0, Math.min(description.length(), 1000)), categories);
