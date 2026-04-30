@@ -115,8 +115,8 @@ public class NewsIngestionService {
 
     public Map<String, Object> ingestAllFeeds() {
         if (!isIngesting.compareAndSet(false, true)) {
-            log.warn("[NewsIngestion] Ingestion already in progress. Ignoring trigger.");
-            return Map.of("status", "Error", "message", "Ingestion already in progress");
+            log.warn("[NewsIngestion] Ingestion already in progress. Skipping.");
+            throw new IllegalStateException("An ingestion process is already running. Please wait.");
         }
         try {
             log.info("[NewsIngestion] Starting ingestion engine...");

@@ -31,6 +31,11 @@ export const apiClient = {
     const headers = await buildHeaders();
     const response = await fetch(`${API_URL}${endpoint}`, { method: 'GET', headers });
 
+    if (response.status === 401) {
+      await auth.signOut();
+      throw new Error('Session expired. Please sign in again.');
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -50,6 +55,11 @@ export const apiClient = {
       body: JSON.stringify(body),
     });
 
+    if (response.status === 401) {
+      await auth.signOut();
+      throw new Error('Session expired. Please sign in again.');
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -64,6 +74,11 @@ export const apiClient = {
   delete: async <T>(endpoint: string): Promise<T> => {
     const headers = await buildHeaders();
     const response = await fetch(`${API_URL}${endpoint}`, { method: 'DELETE', headers });
+
+    if (response.status === 401) {
+      await auth.signOut();
+      throw new Error('Session expired. Please sign in again.');
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

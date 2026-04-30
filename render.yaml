@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: techbite-backend
+    name: techbite
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -14,9 +14,9 @@ services:
       - key: PORT
         value: 8080
       - key: DDL_AUTO
-        value: update          # Change to 'validate' after first successful deploy
+        value: update
       - key: SQL_INIT_MODE
-        value: always          # Change to 'never' after first successful deploy
+        value: never
       - key: SHOW_SQL
         value: "false"
       - key: DATABASE_URL

@@ -21,18 +21,22 @@ public class TechBiteApplication {
     @Bean
     public CommandLineRunner seedCategories(CategoryRepository categoryRepository) {
         return args -> {
+            System.out.println(">>> [System] Checking categories...");
             if (categoryRepository.count() == 0) {
-                List<String> categories = List.of(
+                List<Category> cats = List.of(
                     "Artificial Intelligence", "Web Development", "Data Structures",
                     "Cybersecurity", "Hardware & Chips", "System Design", 
                     "Open Source", "Career Tips"
-                );
-                categories.forEach(name -> {
-                    Category cat = new Category();
-                    cat.setName(name);
-                    categoryRepository.save(cat);
-                });
-                System.out.println(">>> [System] Seeded " + categories.size() + " categories.");
+                ).stream().map(name -> {
+                    Category c = new Category();
+                    c.setName(name);
+                    return c;
+                }).toList();
+                
+                categoryRepository.saveAllAndFlush(cats);
+                System.out.println(">>> [System] SUCCESS: Seeded " + cats.size() + " categories.");
+            } else {
+                System.out.println(">>> [System] Categories already exist (Count: " + categoryRepository.count() + ")");
             }
         };
     }

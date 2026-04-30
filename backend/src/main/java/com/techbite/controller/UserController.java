@@ -39,12 +39,31 @@ public class UserController {
         String displayName = request.get("displayName");
         String photoUrl = request.get("photoUrl");
 
-        User user = userRepository.findByFirebaseUid(firebaseUid).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setFirebaseUid(firebaseUid);
-            newUser.setEmail(email != null ? email : firebaseUid + "@unknown.com");
-            return newUser;
-        });
+        User user;
+        try {
+            // 1. Try to find by the new Firebase UID
+            user = userRepository.findByFirebaseUid(firebaseUid).orElseGet(() -> {
+                // 2. If UID is new, check if the EMAIL already exists (User recovery)
+                if (email != null) {
+                    Optional<User> existingByEmail = userRepository.findByEmail(email);
+                    if (existingByEmail.isPresent()) {
+                        User recoveredUser = existingByEmail.get();
+                        recoveredUser.setFirebaseUid(firebaseUid); // Link the new UID
+                        return recoveredUser;
+                    }
+                }
+                
+                // 3. Brand new user (No UID, No Email found)
+                User newUser = new User();
+                newUser.setFirebaseUid(firebaseUid);
+                newUser.setEmail(email != null ? email : firebaseUid + "@unknown.com");
+                return userRepository.saveAndFlush(newUser);
+            });
+        } catch (Exception e) {
+            // If another thread created it at the same time, fetch it
+            user = userRepository.findByFirebaseUid(firebaseUid)
+                    .orElseThrow(() -> new RuntimeException("Race condition error: User could not be created or found."));
+        }
 
         // Always update profile fields on login
         if (displayName != null) user.setDisplayName(displayName);
@@ -52,7 +71,7 @@ public class UserController {
         if (email != null) user.setEmail(email);
         userRepository.save(user);
 
-        boolean hasPreferences = !user.getPreferences().isEmpty();
+        boolean hasPreferences = user.getPreferences() != null && !user.getPreferences().isEmpty();
 
         Map<String, Object> data = new HashMap<>();
         data.put("userId", user.getId());

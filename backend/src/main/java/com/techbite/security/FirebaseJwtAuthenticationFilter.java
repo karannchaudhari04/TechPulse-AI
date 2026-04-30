@@ -42,15 +42,6 @@ public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = decodedToken.getEmail();
                 logger.info("[Auth] Token verified for UID: " + uid);
                 
-                // --- Production Resiliency: Auto-Upsert User ---
-                if (userRepository.findByFirebaseUid(uid).isEmpty()) {
-                    User newUser = new User();
-                    newUser.setFirebaseUid(uid);
-                    newUser.setEmail(email != null ? email : uid + "@unknown.com");
-                    userRepository.save(newUser);
-                    logger.info("[Auth] Auto-registered new user: " + email);
-                }
-                
                 List<SimpleGrantedAuthority> authorities;
                 List<String> adminEmails = List.of("karanchaudhari722@gmail.com", "karanchaudhari34804@gmail.com");
                 
