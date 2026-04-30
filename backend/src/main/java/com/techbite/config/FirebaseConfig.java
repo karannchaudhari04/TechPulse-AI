@@ -14,15 +14,22 @@ public class FirebaseConfig {
     public void initialize() {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
-                // Try to load from classpath (where you put the file)
+                GoogleCredentials credentials;
+                String jsonConfig = System.getenv("FIREBASE_SERVICE_ACCOUNT_JSON");
                 var stream = getClass().getClassLoader().getResourceAsStream("firebase-adminsdk.json");
                 
-                GoogleCredentials credentials;
-                if (stream != null) {
+                if (jsonConfig != null && !jsonConfig.isEmpty()) {
+                    // Load directly from the Environment Variable string (Render)
+                    credentials = GoogleCredentials.fromStream(new java.io.ByteArrayInputStream(jsonConfig.getBytes()));
+                    System.out.println("Firebase Auth: Loaded from FIREBASE_SERVICE_ACCOUNT_JSON environment variable.");
+                } else if (stream != null) {
+                    // Load from local file
                     credentials = GoogleCredentials.fromStream(stream);
+                    System.out.println("Firebase Auth: Loaded from classpath file.");
                 } else {
-                    // Fallback to environment variables (for Render)
+                    // Fallback to defaults
                     credentials = GoogleCredentials.getApplicationDefault();
+                    System.out.println("Firebase Auth: Loaded from application default credentials.");
                 }
 
                 FirebaseOptions options = FirebaseOptions.builder()

@@ -28,10 +28,15 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
       await signInWithCredential(auth, googleCredential);
 
       try {
-        const res = await apiClient.post<{ hasPreferences: boolean }>('/users/register-or-login', {});
+        const res = await apiClient.post<{ hasPreferences: boolean }>('/users/register-or-login', {
+          email: auth.currentUser?.email,
+          displayName: auth.currentUser?.displayName,
+          photoUrl: auth.currentUser?.photoURL
+        });
         onSignedIn(res.hasPreferences);
       } catch (err) {
-        onSignedIn(false);
+        console.error("Backend Registration Failed:", err);
+        Alert.alert("Server Error", "Successfully signed in with Google, but could not connect to TechBite server. Please check your internet or try again later.");
       }
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
