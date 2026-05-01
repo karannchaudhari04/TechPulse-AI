@@ -29,7 +29,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://techbite-backend.onrender.com/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://techbite.onrender.com/api/v1",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD30JsCvKMMMTpv6tQyklGhD94diuC4NgU",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "techbite-2ad11",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "626642842714-5366htochl4i04vfbffocd8joogi35fn.apps.googleusercontent.com"
