@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ActivityIndicator, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import BiteCard from '../components/BiteCard';
 import { Bite } from '../types';
