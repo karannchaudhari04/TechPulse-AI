@@ -151,50 +151,57 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
 });
 
 const styles = StyleSheet.create({
-  root: { width: SCREEN_WIDTH, backgroundColor: '#020617', padding: 12 },
+  root: { width: SCREEN_WIDTH, backgroundColor: '#020617', paddingHorizontal: 16, paddingVertical: 12 },
   card: {
     flex: 1,
     backgroundColor: '#0F172A',
-    borderRadius: 32,
+    borderRadius: 36,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8
   },
   imageSection: { height: SCREEN_HEIGHT * (1/6), width: '100%', position: 'relative' },
   heroImg: { ...StyleSheet.absoluteFillObject },
   imgOverlay: { ...StyleSheet.absoluteFillObject },
   
-  badgeRow: { position: 'absolute', top: 12, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
-  categoryBadge: { backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  categoryText: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase' },
-  topPickBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  topPickText: { color: '#FBBF24', fontSize: 11, fontWeight: '700' },
+  badgeRow: { position: 'absolute', top: 16, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
+  categoryBadge: { backgroundColor: 'rgba(15, 23, 42, 0.8)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  categoryText: { color: '#F1F5F9', fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
+  topPickBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  topPickText: { color: '#FDE047', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   
-  title: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', lineHeight: 30, letterSpacing: -0.5, marginBottom: 12 },
+  contentSection: { flex: 1, paddingHorizontal: 24, paddingTop: 20, justifyContent: 'space-between' },
+  title: { color: '#F1F5F9', fontSize: 26, fontWeight: '900', lineHeight: 32, letterSpacing: -0.8, marginBottom: 16 },
+  summaryList: { gap: 14 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  bulletIcon: { marginTop: 10, marginRight: 16, opacity: 0.8 },
+  bulletText: { color: '#94A3B8', fontSize: 16, lineHeight: 26, fontWeight: '500', flex: 1 },
   
-  contentSection: { flex: 1, paddingHorizontal: 22, paddingTop: 15, justifyContent: 'space-between' },
-  summaryList: { gap: 12 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  bulletIcon: { marginTop: 10, marginRight: 12 },
-  bulletText: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, fontWeight: '400', flex: 1 },
-  
-  sourceLink: { marginTop: 10, marginBottom: 10 },
-  sourceText: { color: '#64748B', fontSize: 15, fontWeight: '500' },
+  sourceLink: { marginTop: 12, marginBottom: 12, alignSelf: 'flex-start' },
+  sourceText: { color: '#6366F1', fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
   
   actionBar: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingHorizontal: 20, 
-    paddingVertical: 14,
+    paddingHorizontal: 24, 
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B'
   },
-  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
-  actionText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
-  iconAsset: { width: 24, height: 24, contentFit: 'contain' },
+  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 24 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4 },
+  actionText: { color: '#F1F5F9', fontSize: 13, fontWeight: '800' },
+  statText: { color: '#F1F5F9', fontSize: 14, fontWeight: '900' },
+  iconAsset: { width: 22, height: 22, contentFit: 'contain' },
 
-  progressBar: { height: 3, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
-  progressFill: { height: '100%', backgroundColor: '#6366F1' }
+  progressBar: { height: 4, width: '100%', backgroundColor: '#020617' },
+  progressFill: { height: '100%', backgroundColor: '#6366F1', borderRadius: 2 }
 });
 
 export default BiteCard;

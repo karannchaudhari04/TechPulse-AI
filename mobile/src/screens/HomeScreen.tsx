@@ -121,23 +121,28 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
           style={styles.header}
         >
-          {/* Top Bar (Simplified, No Logo) */}
+          {/* Top Bar with Branding */}
           <View style={styles.topBar}>
-            <View style={styles.topBarLeft}>
-                <Pressable onPress={() => navigation.navigate('Profile')} style={styles.profileCircle}>
-                   {user?.photoURL ? (
-                     <Image source={{ uri: user.photoURL }} style={styles.profileImage} />
-                   ) : (
-                     <Ionicons name="person" size={18} color="#94A3B8" />
-                   )}
-                </Pressable>
-                <View style={styles.streakContainer}>
-                   <MaterialCommunityIcons name="fire" size={20} color="#F59E0B" style={{ marginRight: 2 }} />
-                   <Text style={styles.streakText}>{streak}</Text>
+            <Pressable onPress={() => navigation.navigate('Profile')} style={styles.profileBtn}>
+                <View style={styles.avatarMiniWrap}>
+                    {user?.photoURL ? (
+                      <Image source={{ uri: user.photoURL }} style={styles.avatarMini} />
+                    ) : (
+                      <Text style={styles.avatarInitial}>{user?.displayName?.charAt(0) || 'K'}</Text>
+                    )}
                 </View>
+            </Pressable>
+
+            <View style={styles.brandingCenter}>
+               <Image source={require('../../assets/app_icon.png')} style={styles.miniLogo} />
+               <Text style={styles.brandingText}>TechBite</Text>
             </View>
 
-            <View style={styles.topBarRight}>
+            <View style={styles.streakBadge}>
+                <MaterialCommunityIcons name="fire" size={16} color="#FB923C" />
+                <Text style={styles.streakCount}>{streak}</Text>
+            </View>
+          </View>
                 <Pressable onPress={() => navigation.navigate('Personalization')} style={styles.addBtn}>
                    <Image 
                      source={require('../../assets/add.png')} 
@@ -211,29 +216,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingHorizontal: 22, 
+    paddingHorizontal: 20, 
     paddingTop: 16,
-    paddingBottom: 8
+    paddingBottom: 12
   },
-  topBarLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
-  topBarCenter: { flex: 2, alignItems: 'center' },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 1 },
-  profileCircle: { 
-    width: 38, 
-    height: 38, 
-    borderRadius: 19, 
-    backgroundColor: '#1E293B', 
+  profileBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#0F172A', 
     justifyContent: 'center', 
     alignItems: 'center',
-    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)'
+    borderColor: '#1E293B'
   },
-  profileImage: {
-    width: '100%',
-    height: '100%'
+  avatarMiniWrap: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden', backgroundColor: '#1E293B' },
+  avatarMini: { width: '100%', height: '100%', borderRadius: 17 },
+  avatarInitial: { color: '#94A3B8', fontSize: 14, fontWeight: '800' },
+
+  brandingCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  miniLogo: { width: 28, height: 28, borderRadius: 6 },
+  brandingText: { fontSize: 18, fontWeight: '900', color: '#F1F5F9', letterSpacing: -0.5 },
+
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155'
   },
-  iconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
+  streakCount: { color: '#FB923C', fontSize: 14, fontWeight: '900' },
+
   addBtn: { 
     width: 38, 
     height: 38, 
@@ -247,22 +264,6 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   addIcon: { width: 22, height: 22 },
-  streakContainer: { 
-    flexDirection: 'row', 
-    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 100, 
-    alignItems: 'center', 
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  streakText: { color: '#FBBF24', fontWeight: '900', fontSize: 15, letterSpacing: -0.5 },
   tabWrapper: { marginTop: 4 },
   tabScroll: { paddingHorizontal: 20, gap: 24, paddingBottom: 10 },
   tabBtn: { paddingBottom: 8, alignItems: 'center', minWidth: 40 },

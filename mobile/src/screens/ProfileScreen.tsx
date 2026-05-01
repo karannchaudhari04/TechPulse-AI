@@ -1,19 +1,26 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert, ScrollView, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { signOut } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../utils/firebase';
+import { Ionicons } from '@expo/vector-icons';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function ProfileScreen({ navigation }: any) {
   const user = auth.currentUser;
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isIngesting, setIsIngesting] = useState(false);
 
-  React.useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
-    });
-  }, []);
+  const toggleSettings = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsSettingsOpen(!isSettingsOpen);
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -26,20 +33,10 @@ export default function ProfileScreen({ navigation }: any) {
           style: "destructive",
           onPress: async () => {
             try {
-              // Sign out from Google (non-blocking)
-              try {
-                await GoogleSignin.signOut();
-              } catch (e) {
-                console.log("Google sign out info:", e);
-              }
-              
-              // Sign out from Firebase
+              try { await GoogleSignin.signOut(); } catch (e) {}
               await signOut(auth);
-              
-              // Navigation is handled automatically by AppNavigator's onAuthStateChanged
             } catch (error) {
-              console.error("Sign out error:", error);
-              Alert.alert("Error", "Failed to sign out. Please try again.");
+              Alert.alert("Error", "Failed to sign out.");
             }
           }
         }
@@ -48,159 +45,177 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   const isAdmin = user && ["karanchaudhari722@gmail.com", "karanchaudhari34804@gmail.com"].includes(user.email || "");
-  const [isIngesting, setIsIngesting] = React.useState(false);
 
   const handleTriggerIngestion = async () => {
     if (isIngesting) return;
-    
     setIsIngesting(true);
     try {
       const idToken = await user?.getIdToken();
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bites/admin/news/ingest`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-        },
+        headers: { 'Authorization': `Bearer ${idToken}` },
       });
-
       if (response.ok) {
-        Alert.alert("Success", "News ingestion has been triggered in the background.");
+        Alert.alert("Success", "News ingestion triggered.");
       } else {
-        const errorData = await response.json();
-        Alert.alert("Error", errorData.message || "Failed to trigger ingestion. Are you an admin?");
+        Alert.alert("Error", "Failed to trigger ingestion.");
       }
     } catch (error) {
-      console.error("Ingestion error:", error);
-      Alert.alert("Network Error", "Could not connect to the backend server.");
+      Alert.alert("Network Error", "Could not connect to backend.");
     } finally {
       setIsIngesting(false);
     }
   };
 
-  const handleGoToLogin = () => {
-    // Navigate to Welcome screen to sign in
-    navigation.navigate('Welcome');
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         
-        {/* Header with Back Button */}
-        <View style={styles.header}>
-          <Pressable 
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.backText}>←</Text>
+        {/* Top Header Logo */}
+        <View style={styles.topLogoRow}>
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../../assets/app_icon.png')} 
+              style={styles.logoIcon}
+            />
+            <Text style={styles.logoText}>TechBite</Text>
+          </View>
+          <Pressable onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#94A3B8" />
           </Pressable>
-          <Text style={styles.headerTitle}>Account</Text>
-          <View style={{ width: 44 }} />
         </View>
 
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            {user?.photoURL ? (
-              <Image 
-                source={{ uri: user.photoURL }} 
-                style={styles.avatar}
-                contentFit="cover"
-                transition={500}
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>
-                  {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'G'}
-                </Text>
-              </View>
-            )}
-          </View>
-          
-          <Text style={styles.name}>{user?.displayName || 'Guest Browser'}</Text>
-          <Text style={styles.email}>{user?.email || 'Login to save your bookmarks'}</Text>
-          
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{isAdmin ? 'SYSTEM ADMINISTRATOR' : (user ? 'PREMIUM MEMBER' : 'GUEST MODE')}</Text>
-          </View>
-        </View>
-
-        {/* Admin Section (Only for you) */}
-        {isAdmin && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Admin Dashboard</Text>
-            
-            <Pressable 
-              onPress={handleTriggerIngestion}
-              disabled={isIngesting}
-              style={({ pressed }) => [
-                styles.adminBtn, 
-                pressed && styles.pressed,
-                isIngesting && { opacity: 0.5 }
-              ]}
-            >
-              <Text style={styles.adminEmoji}>⚡</Text>
-              <Text style={styles.adminBtnText}>
-                {isIngesting ? 'Activating Engine...' : 'Trigger News Ingestion'}
-              </Text>
+        {/* Promo Banner */}
+        <LinearGradient
+          colors={['#1E1B4B', '#312E81']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.promoBanner}
+        >
+          <View style={styles.promoContent}>
+            <Text style={styles.promoTitle}>Try the <Text style={{color: '#818CF8'}}>Widget</Text> with Digest Overview!</Text>
+            <Pressable style={styles.addNowBtn}>
+              <Text style={styles.addNowText}>+ Add now</Text>
             </Pressable>
-            <Text style={styles.adminSubtext}>This will fetch RSS feeds and generate AI summaries immediately.</Text>
           </View>
-        )}
+          <Image source={require('../../assets/fire.png')} style={styles.promoIcon} contentFit="contain" />
+        </LinearGradient>
 
-        {/* Content Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Content</Text>
-          
-          <Pressable 
-            onPress={() => navigation.navigate('Bookmarks')}
-            style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
-          >
-            <Text style={styles.menuEmoji}>🔖</Text>
-            <Text style={styles.menuLabel}>Saved Bites</Text>
-            <View style={styles.arrowContainer}>
-                <Text style={styles.menuValue}>View All</Text>
+        {/* User Info Section */}
+        <View style={styles.userInfoRow}>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>{user?.displayName || 'Karan Chaudhari'}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'karanchaudhari722@gmail.com'}</Text>
+          </View>
+          <View style={styles.avatarWrap}>
+             {user?.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+             ) : (
+                <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitial}>{user?.displayName?.charAt(0) || 'K'}</Text>
+                </View>
+             )}
+          </View>
+        </View>
+
+        {/* Action Grid */}
+        <View style={styles.gridRow}>
+          <Pressable style={styles.gridCard}>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardTitle}>Daily{"\n"}Digest</Text>
+              <Text style={styles.cardValue}>28 left</Text>
+            </View>
+            <View style={styles.cardIconWrap}>
+               <Image source={require('../../assets/save.png')} style={styles.cardImg} />
+            </View>
+          </Pressable>
+
+          <Pressable onPress={() => navigation.navigate('Bookmarks')} style={styles.gridCard}>
+            <View style={styles.cardInfo}>
+              <Text style={styles.cardTitle}>Your{"\n"}Activity</Text>
+              <Text style={styles.cardSub}>Likes & Saves</Text>
+            </View>
+            <View style={styles.cardIconWrap}>
+               <Image source={require('../../assets/fire.png')} style={styles.cardImg} />
             </View>
           </Pressable>
         </View>
 
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          
-          <View style={styles.menuItem}>
-            <Text style={styles.menuEmoji}>🔔</Text>
-            <Text style={styles.menuLabel}>Push Notifications</Text>
-            <Text style={styles.menuValue}>On</Text>
-          </View>
+        {/* Menu Items */}
+        <Pressable onPress={() => navigation.navigate('Interests')} style={styles.menuCard}>
+            <View style={styles.menuLeft}>
+                <Text style={styles.menuTitle}>Personalize your Feed</Text>
+                <Text style={styles.menuSub}>topics</Text>
+            </View>
+            <View style={styles.topPickBadge}>
+                <Text style={styles.topPickText}>✨ Top picks</Text>
+            </View>
+        </Pressable>
 
-          <View style={styles.menuItem}>
-            <Text style={styles.menuEmoji}>🌙</Text>
-            <Text style={styles.menuLabel}>Dark Mode</Text>
-            <Text style={styles.menuValue}>System</Text>
-          </View>
+        <Pressable style={styles.menuCard}>
+            <View style={styles.menuLeft}>
+                <Text style={styles.menuTitle}>Invite and Earn</Text>
+                <Text style={styles.menuSub}>You will earn rewards.</Text>
+            </View>
+            <View style={styles.iconCircle}>
+                <Ionicons name="trophy" size={20} color="#FBBF24" />
+            </View>
+        </Pressable>
+
+        {/* Locked Feature Card */}
+        <View style={styles.lockedCard}>
+            <View style={styles.lockIconBox}>
+                <Ionicons name="lock-closed" size={24} color="#94A3B8" />
+            </View>
+            <Text style={styles.lockedText}>
+                Complete a 7-day streak in Daily Digest to unlock the <Text style={{color: '#F1F5F9'}}>Resume Booster</Text> tool.
+            </Text>
         </View>
 
-        {/* Footer Actions */}
-        <View style={styles.footer}>
-          {user ? (
+        {/* Admin Dashboard (Internal Only) */}
+        {isAdmin && (
             <Pressable 
-              onPress={handleSignOut}
-              style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+                onPress={handleTriggerIngestion}
+                style={styles.adminActionCard}
             >
-              <Text style={styles.signOutText}>Sign Out</Text>
+                <LinearGradient
+                    colors={['#4338CA', '#3730A3']}
+                    style={styles.adminGradient}
+                >
+                    <Ionicons name="flash" size={20} color="#FFF" />
+                    <Text style={styles.adminText}>
+                        {isIngesting ? 'Syncing Feeds...' : 'Trigger News Ingestion Engine'}
+                    </Text>
+                </LinearGradient>
             </Pressable>
-          ) : (
-            <Pressable 
-              onPress={handleGoToLogin}
-              style={({ pressed }) => [styles.signInBtn, pressed && styles.pressed]}
-            >
-              <Text style={styles.signInText}>Sign In with Google</Text>
+        )}
+
+        {/* Settings Accordion */}
+        <View style={styles.settingsContainer}>
+            <Pressable onPress={toggleSettings} style={styles.settingsHeader}>
+                <Text style={styles.settingsTitle}>Settings & Support</Text>
+                <Ionicons name={isSettingsOpen ? "chevron-up" : "chevron-down"} size={20} color="#94A3B8" />
             </Pressable>
-          )}
-          
-          <Text style={styles.version}>TechBite v1.1.0 (Admin Edition)</Text>
+            
+            {isSettingsOpen && (
+                <View style={styles.settingsContent}>
+                    <Pressable style={styles.settingItem}>
+                        <Ionicons name="notifications-outline" size={20} color="#94A3B8" />
+                        <Text style={styles.settingLabel}>Notifications</Text>
+                    </Pressable>
+                    <Pressable style={styles.settingItem}>
+                        <Ionicons name="shield-checkmark-outline" size={20} color="#94A3B8" />
+                        <Text style={styles.settingLabel}>Privacy Policy</Text>
+                    </Pressable>
+                    <Pressable onPress={handleSignOut} style={[styles.settingItem, { borderBottomWidth: 0 }]}>
+                        <Ionicons name="log-out-outline" size={20} color="#F87171" />
+                        <Text style={[styles.settingLabel, { color: '#F87171' }]}>Sign Out</Text>
+                    </Pressable>
+                </View>
+            )}
         </View>
+
+        <Text style={styles.versionText}>TechBite v1.2.0 • Premium Edition</Text>
 
       </ScrollView>
     </SafeAreaView>
@@ -208,128 +223,163 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#0F172A' },
-  container: { flexGrow: 1, paddingBottom: 40, backgroundColor: '#0F172A' },
-  header: {
+  safeArea: { flex: 1, backgroundColor: '#020617' },
+  container: { paddingHorizontal: 20, paddingBottom: 40 },
+  topLogoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    paddingVertical: 20,
   },
-  backBtn: {
-    width: 44,
-    height: 44,
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logoIcon: { width: 32, height: 32, borderRadius: 8 },
+  logoText: { fontSize: 20, fontWeight: '900', color: '#F1F5F9', letterSpacing: -0.5 },
+  
+  promoBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 24,
+    overflow: 'hidden',
   },
-  backText: { fontSize: 20, color: '#F1F5F9' },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: '#F1F5F9' },
-  profileCard: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: '#1E293B',
-    marginHorizontal: 24,
-    marginTop: 28,
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 20,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  avatar: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, borderColor: '#7C3AED' },
-  avatarPlaceholder: { 
-    width: 120, height: 120, borderRadius: 60, 
-    backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#6D28D9'
-  },
-  avatarText: { color: '#FFFFFF', fontSize: 40, fontWeight: '900' },
-  name: { fontSize: 24, fontWeight: '900', color: '#F1F5F9', marginBottom: 4 },
-  email: { fontSize: 14, color: '#94A3B8', fontWeight: '500', marginBottom: 20 },
-  badge: {
-    backgroundColor: '#7C3AED',
+  promoContent: { flex: 1, gap: 12 },
+  promoTitle: { fontSize: 16, fontWeight: '700', color: '#F1F5F9', lineHeight: 22 },
+  addNowBtn: {
+    backgroundColor: '#6366F1',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
+    alignSelf: 'flex-start',
   },
-  badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  section: { paddingHorizontal: 24, marginTop: 32 },
-  sectionTitle: { fontSize: 12, fontWeight: '900', color: '#64748B', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 },
-  menuItem: {
+  addNowText: { color: '#FFF', fontWeight: '800', fontSize: 12 },
+  promoIcon: { width: 60, height: 60, opacity: 0.8 },
+
+  userInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  userDetails: { flex: 1 },
+  userName: { fontSize: 28, fontWeight: '900', color: '#F1F5F9', marginBottom: 4 },
+  userEmail: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  avatarWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#1E293B', padding: 2 },
+  avatar: { width: '100%', height: '100%', borderRadius: 32 },
+  avatarPlaceholder: { 
+    width: '100%', height: '100%', borderRadius: 32, 
+    backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' 
+  },
+  avatarInitial: { color: '#94A3B8', fontSize: 24, fontWeight: '800' },
+
+  gridRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
+  gridCard: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 120,
+  },
+  cardInfo: { justifyContent: 'space-between' },
+  cardTitle: { fontSize: 18, fontWeight: '800', color: '#F1F5F9', lineHeight: 24 },
+  cardValue: { fontSize: 14, color: '#818CF8', fontWeight: '700' },
+  cardSub: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  cardIconWrap: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  cardImg: { width: 32, height: 32 },
+
+  menuCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1E293B',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  menuLeft: { gap: 4 },
+  menuTitle: { fontSize: 18, fontWeight: '800', color: '#F1F5F9' },
+  menuSub: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  topPickBadge: {
     backgroundColor: '#1E293B',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#334155',
-    marginBottom: 12,
   },
-  menuEmoji: { fontSize: 18, marginRight: 16 },
-  menuLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: '#E2E8F0' },
-  menuValue: { fontSize: 14, color: '#7C3AED', fontWeight: 'bold' },
-  arrowContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  adminBtn: {
+  topPickText: { color: '#FDE047', fontSize: 12, fontWeight: '800' },
+  iconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  lockedCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#1E293B',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#7C3AED',
-    marginBottom: 8,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
+    gap: 20,
+    marginBottom: 24,
+    opacity: 0.8,
   },
-  adminEmoji: { fontSize: 20, marginRight: 16 },
-  adminBtnText: { flex: 1, fontSize: 16, fontWeight: '900', color: '#7C3AED' },
-  adminSubtext: { fontSize: 11, color: '#64748B', fontWeight: '600', paddingHorizontal: 4, marginBottom: 20 },
-  footer: { paddingHorizontal: 24, marginTop: 'auto', paddingTop: 40, alignItems: 'center' },
-  signOutBtn: {
-    width: '100%',
+  lockIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
     backgroundColor: '#1E293B',
-    paddingVertical: 18,
-    borderRadius: 24,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#7F1D1D',
+    justifyContent: 'center',
   },
-  signOutText: { color: '#F87171', fontWeight: '900', fontSize: 16 },
-  signInBtn: {
-    width: '100%',
-    backgroundColor: '#7C3AED',
-    paddingVertical: 18,
-    borderRadius: 24,
-    alignItems: 'center',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  signInText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16 },
-  version: { marginTop: 20, color: '#475569', fontSize: 12, fontWeight: 'bold' },
-  pressed: { opacity: 0.7 }
-});
+  lockedText: { flex: 1, fontSize: 14, color: '#94A3B8', fontWeight: '600', lineHeight: 20 },
 
+  adminActionCard: { marginBottom: 24, borderRadius: 20, overflow: 'hidden' },
+  adminGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  adminText: { color: '#FFF', fontWeight: '900', fontSize: 14 },
+
+  settingsContainer: {
+    backgroundColor: '#0F172A',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    overflow: 'hidden',
+    marginBottom: 32,
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+  },
+  settingsTitle: { fontSize: 16, fontWeight: '800', color: '#F1F5F9' },
+  settingsContent: { paddingHorizontal: 20, paddingBottom: 10 },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  settingLabel: { fontSize: 14, fontWeight: '600', color: '#94A3B8' },
+  versionText: { textAlign: 'center', color: '#334155', fontSize: 12, fontWeight: '800', marginBottom: 20 },
+});
