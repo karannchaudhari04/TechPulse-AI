@@ -51,7 +51,6 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
         // We'll need a backend endpoint for unlike, or just use the same one if it toggles
         const newCount = await likeBite(item.id); 
         setLikes(newCount);
-        queryClient.invalidateQueries({ queryKey: ['bites'] });
       } catch (error) {
         setLikes(prev => prev + 1);
         setHasLiked(true);
@@ -63,7 +62,6 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
       try {
         const newCount = await likeBite(item.id);
         setLikes(newCount); 
-        queryClient.invalidateQueries({ queryKey: ['bites'] });
       } catch (error) {
         setLikes(prev => prev - 1);
         setHasLiked(false);

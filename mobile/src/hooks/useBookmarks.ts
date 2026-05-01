@@ -50,9 +50,6 @@ export const useBookmarks = () => {
         queryClient.setQueryData(['bookmarks'], context.previous);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-    },
   });
 
   const isBookmarked = (biteId: number) => bookmarks.some(b => b.id === biteId);
