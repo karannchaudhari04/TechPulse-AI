@@ -18,7 +18,7 @@ import Animated, {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function StatCard({ item, index }: { item: any, index: number }) {
+function StatCard({ item, index, onPress }: { item: any, index: number, onPress?: () => void }) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -41,6 +41,7 @@ function StatCard({ item, index }: { item: any, index: number }) {
       <Pressable 
         onPressIn={onPressIn}
         onPressOut={onPressOut}
+        onPress={onPress}
         style={styles.statPressable}
       >
         <View style={[styles.statIconCircle, { backgroundColor: `${item.color}15` }]}>
@@ -118,7 +119,6 @@ export default function ProfileScreen({ navigation }: any) {
   const stats = [
     { label: 'Streak', value: profile?.streakCount || 0, image: require('../../assets/fire.png'), color: '#F59E0B' },
     { label: 'Saved', value: profile?.savedBitesCount || 0, image: require('../../assets/savebite.png'), color: '#7C3AED' },
-    { label: 'Likes', value: profile?.likedBitesCount || 0, image: require('../../assets/like.png'), color: '#EF4444' },
   ];
 
   if (!user) {
@@ -216,7 +216,12 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Stats Row */}
         <View style={styles.statsRow}>
           {stats.map((item, index) => (
-            <StatCard key={item.label} item={item} index={index} />
+            <StatCard 
+              key={item.label} 
+              item={item} 
+              index={index} 
+              onPress={item.label === 'Saved' ? () => navigation.navigate('Bookmarks') : undefined}
+            />
           ))}
         </View>
 
