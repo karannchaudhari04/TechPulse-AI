@@ -20,9 +20,10 @@ interface BiteCardProps {
   isBookmarked: boolean;
   onToggleBookmark: (bite: Bite) => void;
   cardHeight: number;
+  fullScreen?: boolean;
 }
 
-const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight }: BiteCardProps) => {
+const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight, fullScreen }: BiteCardProps) => {
   const queryClient = useQueryClient();
   const [likes, setLikes] = React.useState(item.engagementCount || 0);
   const [hasLiked, setHasLiked] = React.useState(item.isLiked || false);
