@@ -26,6 +26,12 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
   const queryClient = useQueryClient();
   const [likes, setLikes] = React.useState(item.engagementCount || 0);
   const [hasLiked, setHasLiked] = React.useState(item.isLiked || false);
+  const [localBookmarked, setLocalBookmarked] = React.useState(isBookmarked);
+
+  // Sync with prop if changed from elsewhere
+  React.useEffect(() => {
+    setLocalBookmarked(isBookmarked);
+  }, [isBookmarked]);
 
   const handleOpenSource = () => {
     if (item.originalSourceUrl) {
@@ -34,8 +40,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
   };
 
   const handleLike = async () => {
-    // Spark both on every toggle
-    triggerSpark();
+    // Subtle pop for like only
+    likeScale.value = withSequence(withSpring(1.3), withSpring(1));
 
     if (hasLiked) {
       // UNLIKE
@@ -90,16 +96,15 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
     transform: [{ scale: saveScale.value }]
   }));
 
-  const triggerSpark = () => {
-    // Both icons "pop" together
-    likeScale.value = withSequence(withSpring(1.4), withSpring(1));
-    saveScale.value = withSequence(withSpring(1.4), withSpring(1));
-  };
-
   const handleToggleBookmark = () => {
+    // Instant local feedback
+    const newState = !localBookmarked;
+    setLocalBookmarked(newState);
+    
+    // Subtle pop for save only
+    saveScale.value = withSequence(withSpring(1.3), withSpring(1));
+    
     onToggleBookmark(item);
-    // Spark both on every toggle
-    triggerSpark();
   };
 
   // Split summary into bullets if possible
@@ -171,11 +176,11 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
                <Pressable onPress={handleToggleBookmark} style={styles.actionBtn}>
                   <Animated.View style={saveAnimatedStyle}>
                     <Image 
-                      source={isBookmarked ? require('../../assets/save.png') : require('../../assets/savebite.png')} 
+                      source={localBookmarked ? require('../../assets/save.png') : require('../../assets/savebite.png')} 
                       style={styles.iconAsset} 
                     />
                   </Animated.View>
-                  <Text style={[styles.actionText, isBookmarked && { color: '#6366F1' }]}>Save</Text>
+                  <Text style={[styles.actionText, localBookmarked && { color: '#6366F1' }]}>Save</Text>
                </Pressable>
             </View>
 
