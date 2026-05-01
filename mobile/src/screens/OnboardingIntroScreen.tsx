@@ -17,7 +17,7 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
         <View style={styles.topSection}>
            <View style={styles.botRow}>
               <Image 
-                source={require('../../assets/techbot.png')}
+                source={require('../../assets/techbot.jpg')}
                 style={styles.botIcon}
                 resizeMode="contain"
               />
@@ -32,7 +32,7 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
            <View style={styles.glassCard}>
               <View style={styles.brandRow}>
                 <Image 
-                    source={require('../../assets/welcome_logo.png')}
+                    source={require('../../assets/welcome_logo.jpg')}
                     style={styles.logo}
                     resizeMode="contain"
                 />
@@ -45,7 +45,7 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
 
               <View style={styles.illustrationWrap}>
                 <Image 
-                    source={require('../../assets/intro_cards.png')}
+                    source={require('../../assets/intro_cards.jpg')}
                     style={styles.cardsIllustration}
                     resizeMode="contain"
                 />

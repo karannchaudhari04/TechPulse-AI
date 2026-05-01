@@ -60,7 +60,7 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
           <View style={styles.headerSection}>
             <View style={styles.logoRow}>
                <Image 
-                  source={require('../../assets/welcome_logo.png')}
+                  source={require('../../assets/welcome_logo.jpg')}
                   style={styles.abstractLogo}
                   resizeMode="contain"
                />
@@ -71,7 +71,7 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
           
           <View style={styles.illustrationSection}>
             <Image 
-              source={require('../../assets/welcome_illustration.png')}
+              source={require('../../assets/welcome_illustration.jpg')}
               style={styles.illustration}
               resizeMode="contain"
             />

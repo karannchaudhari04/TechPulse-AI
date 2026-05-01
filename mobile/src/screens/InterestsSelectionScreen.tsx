@@ -65,7 +65,7 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
                 </Text>
               </View>
               <View style={styles.botBox}>
-                <Image source={require('../../assets/techbot.png')} style={styles.bot} resizeMode="contain" />
+                <Image source={require('../../assets/techbot.jpg')} style={styles.bot} resizeMode="contain" />
               </View>
             </View>
 
