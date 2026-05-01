@@ -20,4 +20,6 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     boolean existsByUserIdAndBiteId(Long userId, Long biteId);
 
     void deleteByCreatedAtBefore(java.time.LocalDateTime expiryDate);
+
+    long countByUserId(Long userId);
 }

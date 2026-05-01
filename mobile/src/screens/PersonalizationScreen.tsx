@@ -7,17 +7,16 @@ import {
   FlatList, 
   Dimensions, 
   Image, 
-  StatusBar,
-  Animated
+  StatusBar 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Sample data to match the screenshot's aesthetic
 const TOPIC_METADATA: Record<string, { label: string, emoji: string }> = {
   'Artificial Intelligence': { label: 'AI & Machine Learning', emoji: '🤖' },
   'Web Development': { label: 'Web Development', emoji: '✨' },
@@ -36,16 +35,19 @@ interface PersonalizationScreenProps {
 export default function PersonalizationScreen({ onClose }: PersonalizationScreenProps) {
   const queryClient = useQueryClient();
   
-  const { data: allCategories } = useQuery({
+  // 1. Fetch real categories from backend
+  const { data: allCategories, isLoading: loadingCats } = useQuery({
     queryKey: ['allCategories'],
     queryFn: () => userApi.getCategories()
   });
 
-  const { data: userPrefs } = useQuery({
+  // 2. Fetch current user preferences
+  const { data: userPrefs, isLoading: loadingPrefs } = useQuery({
     queryKey: ['userPreferences'],
     queryFn: () => userApi.getPreferences()
   });
 
+  // Toggle interest mutation
   const toggleMutation = useMutation({
     mutationFn: async (categoryName: string) => {
       const current = userPrefs || [];
@@ -55,6 +57,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
       return userApi.savePreferences(updated);
     },
     onSuccess: () => {
+      // Invalidate everything to sync real-time
       queryClient.invalidateQueries({ queryKey: ['userPreferences'] });
       queryClient.invalidateQueries({ queryKey: ['allCategories'] });
     }
@@ -64,16 +67,17 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
     const isFollowing = userPrefs?.some(p => p === item.name);
     const metadata = TOPIC_METADATA[item.name] || { label: item.name, emoji: '🚀' };
     
+    // Format follower count (e.g. 1500 -> 1.5K)
     const formatFollowers = (count: number) => {
       if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
       return count.toString();
     };
 
     return (
-      <View style={styles.topicCard}>
+      <View style={styles.topicItem}>
         <View style={styles.topicInfo}>
-          <Text style={styles.topicLabel}>{metadata.emoji} {metadata.label}</Text>
-          <Text style={styles.topicStats}>{formatFollowers(item.followerCount || 0)} members following</Text>
+          <Text style={styles.topicName}>{metadata.label} {metadata.emoji}</Text>
+          <Text style={styles.topicFollowers}>{formatFollowers(item.followerCount || 0)} Followers</Text>
         </View>
         <Pressable 
           onPress={() => toggleMutation.mutate(item.name)}
@@ -82,11 +86,9 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
             isFollowing && styles.followingBtn
           ]}
         >
-           {isFollowing ? (
-             <Ionicons name="checkmark" size={18} color="#F1F5F9" />
-           ) : (
-             <Text style={styles.followBtnText}>+ Follow</Text>
-           )}
+          <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+            {isFollowing ? 'Following' : '+ Follow'}
+          </Text>
         </Pressable>
       </View>
     );
@@ -99,12 +101,13 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
         
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Interests</Text>
-            <Text style={styles.headerSubtitle}>Tune your AI feed</Text>
-          </View>
-          <Pressable onPress={onClose} style={styles.closeIconCircle}>
-            <Ionicons name="close" size={24} color="#94A3B8" />
+          <Text style={styles.headerTitle}>Personalization</Text>
+          <Pressable onPress={onClose} style={styles.closeBtn}>
+            <Image 
+              source={require('../../assets/cross.png')} 
+              style={styles.crossIcon}
+              resizeMode="contain"
+            />
           </Pressable>
         </View>
 
@@ -112,25 +115,26 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
           data={allCategories}
           renderItem={renderTopic}
           keyExtractor={item => item.id.toString()}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
           ListHeaderComponent={() => (
             <View>
-              {/* Promo Alerts Card */}
-              <Pressable style={styles.alertCard}>
-                <View style={styles.alertIconBox}>
-                    <Ionicons name="notifications" size={20} color="#818CF8" />
+              {/* Alerts Card */}
+              <Pressable style={styles.settingCard}>
+                <View style={styles.cardIconBox}>
+                  <Image 
+                    source={require('../../assets/noti.png')} 
+                    style={styles.cardIcon}
+                    resizeMode="contain"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.alertTitle}>Smart Alerts</Text>
-                  <Text style={styles.alertDesc}>Get notified for top tech bites</Text>
+                  <Text style={styles.cardTitle}>Alerts</Text>
+                  <Text style={styles.cardSubtitle}>Smart notifications enabled</Text>
                 </View>
-                <View style={styles.activeBadge}>
-                    <Text style={styles.activeText}>Active</Text>
-                </View>
+                <Ionicons name="chevron-forward" size={20} color="#475569" />
               </Pressable>
 
-              <Text style={styles.sectionHeader}>Topics for you</Text>
+              <Text style={styles.sectionTitle}>Topics for you</Text>
             </View>
           )}
         />
@@ -140,71 +144,58 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#020617' },
+  root: { flex: 1, backgroundColor: '#000000' },
   safeArea: { flex: 1 },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingHorizontal: 24, 
-    paddingTop: 24,
-    paddingBottom: 24 
+    paddingHorizontal: 20, 
+    paddingTop: 20,
+    paddingBottom: 15 
   },
-  headerLeft: { gap: 4 },
-  headerTitle: { color: '#F1F5F9', fontSize: 28, fontWeight: '900' },
-  headerSubtitle: { color: '#64748B', fontSize: 14, fontWeight: '600' },
-  closeIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0F172A',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
+  headerTitle: { color: '#FFF', fontSize: 20, fontWeight: '800' },
+  closeBtn: { padding: 4 },
+  crossIcon: { width: 24, height: 24 },
+  cardIcon: { width: 24, height: 24 },
   
-  listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
   
-  alertCard: { 
+  settingCard: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#0F172A', 
-    borderRadius: 24, 
+    backgroundColor: '#111111', 
+    borderRadius: 16, 
     padding: 20, 
-    marginBottom: 32,
+    marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#1E293B'
+    borderColor: '#222'
   },
-  alertIconBox: { width: 44, height: 44, backgroundColor: '#1E293B', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  alertTitle: { color: '#F1F5F9', fontSize: 16, fontWeight: '800' },
-  alertDesc: { color: '#64748B', fontSize: 13, marginTop: 2, fontWeight: '500' },
-  activeBadge: { backgroundColor: '#1E293B', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-  activeText: { color: '#818CF8', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  cardIconBox: { width: 44, height: 44, backgroundColor: '#1A1A1A', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  cardText: { flex: 1 },
+  cardTitle: { color: '#FFF', fontSize: 17, fontWeight: '700' },
+  cardSubtitle: { color: '#64748B', fontSize: 13, marginTop: 2 },
   
-  sectionHeader: { color: '#F1F5F9', fontSize: 20, fontWeight: '900', marginBottom: 20 },
+  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginTop: 25, marginBottom: 20 },
   
-  topicCard: { 
+  topicItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    padding: 20, 
-    backgroundColor: '#0F172A',
-    borderRadius: 24,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1E293B'
+    paddingVertical: 18, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#111' 
   },
-  topicInfo: { flex: 1, gap: 4 },
-  topicLabel: { color: '#F1F5F9', fontSize: 16, fontWeight: '800' },
-  topicStats: { color: '#64748B', fontSize: 12, fontWeight: '600' },
+  topicInfo: { flex: 1 },
+  topicName: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  topicFollowers: { color: '#64748B', fontSize: 13, marginTop: 4 },
   
   followBtn: { 
-    backgroundColor: '#F1F5F9', 
-    paddingHorizontal: 16, 
+    backgroundColor: '#F8FAFC', 
+    paddingHorizontal: 18, 
     paddingVertical: 10, 
-    borderRadius: 14,
-    minWidth: 80,
+    borderRadius: 20,
+    minWidth: 95,
     alignItems: 'center'
   },
   followingBtn: {
@@ -212,5 +203,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155'
   },
-  followBtnText: { color: '#020617', fontSize: 13, fontWeight: '900' },
+  followBtnText: { color: '#000', fontSize: 14, fontWeight: '800' },
+  followingBtnText: { color: '#FFF' }
 });

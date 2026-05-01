@@ -27,5 +27,9 @@ export const userApi = {
       displayName,
       photoUrl
     });
+  },
+  
+  ingestNews: async () => {
+    return apiClient.post('/bites/admin/news/ingest', {});
   }
 };

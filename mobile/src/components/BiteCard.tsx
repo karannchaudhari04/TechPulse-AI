@@ -4,6 +4,12 @@ import { Image } from 'expo-image';
 import { Bite } from '../types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withSequence 
+} from 'react-native-reanimated';
 import { likeBite } from '../api/bites';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -28,18 +34,18 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
   };
 
   const handleLike = async () => {
-    if (hasLiked) return; // Only one like per user
+    if (hasLiked) return;
     
-    // Optimistic update
+    // Spark just the like button
+    likeScale.value = withSequence(withSpring(1.5), withSpring(1));
+
     setLikes(prev => prev + 1);
     setHasLiked(true);
     try {
       const newCount = await likeBite(item.id);
       setLikes(newCount); 
-      // Invalidate the 'bites' query so the list picks up the new 'isLiked' and 'engagementCount'
       queryClient.invalidateQueries({ queryKey: ['bites'] });
     } catch (error) {
-      console.error("[BiteCard] Like failed:", error);
       setLikes(prev => prev - 1);
       setHasLiked(false);
     }
@@ -55,6 +61,31 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
       });
     } catch (error) {
       // Handle silently
+    }
+  };
+
+  // Spark Animations
+  const likeScale = useSharedValue(1);
+  const saveScale = useSharedValue(1);
+
+  const likeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: likeScale.value }]
+  }));
+
+  const saveAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: saveScale.value }]
+  }));
+
+  const triggerSpark = () => {
+    // Both icons "pop" together
+    likeScale.value = withSequence(withSpring(1.4), withSpring(1));
+    saveScale.value = withSequence(withSpring(1.4), withSpring(1));
+  };
+
+  const handleToggleBookmark = () => {
+    onToggleBookmark(item);
+    if (!isBookmarked) {
+        triggerSpark();
     }
   };
 
@@ -111,22 +142,26 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
           </Pressable>
         </View>
 
-        {/* Action Bar (Updated with Custom Icons) */}
+        {/* Action Bar */}
         <View style={styles.actionBar}>
             <View style={styles.leftActions}>
                <Pressable onPress={handleLike} style={styles.actionBtn}>
-                  <Image 
-                    source={require('../../assets/fire.png')} 
-                    style={[styles.iconAsset, { tintColor: hasLiked ? "#F59E0B" : "#FFF" }]} 
-                  />
-                  <Text style={[styles.statText, hasLiked && { color: '#F59E0B' }]}>{likes}</Text>
+                  <Animated.View style={likeAnimatedStyle}>
+                    <Image 
+                      source={require('../../assets/like.png')} 
+                      style={[styles.iconAsset, { tintColor: hasLiked ? "#F87171" : "#FFF" }]} 
+                    />
+                  </Animated.View>
+                  <Text style={[styles.statText, hasLiked && { color: '#F87171' }]}>{likes}</Text>
                </Pressable>
                
-               <Pressable onPress={() => onToggleBookmark(item)} style={styles.actionBtn}>
-                  <Image 
-                    source={require('../../assets/save.png')} 
-                    style={[styles.iconAsset, { tintColor: isBookmarked ? "#6366F1" : "#FFF" }]} 
-                  />
+               <Pressable onPress={handleToggleBookmark} style={styles.actionBtn}>
+                  <Animated.View style={saveAnimatedStyle}>
+                    <Image 
+                      source={require('../../assets/savebite.png')} 
+                      style={[styles.iconAsset, { tintColor: isBookmarked ? "#6366F1" : "#FFF" }]} 
+                    />
+                  </Animated.View>
                   <Text style={[styles.actionText, isBookmarked && { color: '#6366F1' }]}>Save</Text>
                </Pressable>
             </View>
@@ -151,57 +186,50 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight 
 });
 
 const styles = StyleSheet.create({
-  root: { width: SCREEN_WIDTH, backgroundColor: '#020617', paddingHorizontal: 16, paddingVertical: 12 },
+  root: { width: SCREEN_WIDTH, backgroundColor: '#020617', padding: 12 },
   card: {
     flex: 1,
     backgroundColor: '#0F172A',
-    borderRadius: 36,
+    borderRadius: 32,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 8
   },
   imageSection: { height: SCREEN_HEIGHT * (1/6), width: '100%', position: 'relative' },
   heroImg: { ...StyleSheet.absoluteFillObject },
   imgOverlay: { ...StyleSheet.absoluteFillObject },
   
-  badgeRow: { position: 'absolute', top: 16, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
-  categoryBadge: { backgroundColor: 'rgba(15, 23, 42, 0.8)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  categoryText: { color: '#F1F5F9', fontSize: 10, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
-  topPickBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-  topPickText: { color: '#FDE047', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  badgeRow: { position: 'absolute', top: 12, left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
+  categoryBadge: { backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  categoryText: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 0.5, textTransform: 'uppercase' },
+  topPickBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  topPickText: { color: '#FBBF24', fontSize: 11, fontWeight: '700' },
   
-  contentSection: { flex: 1, paddingHorizontal: 24, paddingTop: 20, justifyContent: 'space-between' },
-  title: { color: '#F1F5F9', fontSize: 26, fontWeight: '900', lineHeight: 32, letterSpacing: -0.8, marginBottom: 16 },
-  summaryList: { gap: 14 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  bulletIcon: { marginTop: 10, marginRight: 16, opacity: 0.8 },
-  bulletText: { color: '#94A3B8', fontSize: 16, lineHeight: 26, fontWeight: '500', flex: 1 },
+  title: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', lineHeight: 30, letterSpacing: -0.5, marginBottom: 12 },
   
-  sourceLink: { marginTop: 12, marginBottom: 12, alignSelf: 'flex-start' },
-  sourceText: { color: '#6366F1', fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
+  contentSection: { flex: 1, paddingHorizontal: 22, paddingTop: 15, justifyContent: 'space-between' },
+  summaryList: { gap: 12 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  bulletIcon: { marginTop: 10, marginRight: 12 },
+  bulletText: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, fontWeight: '400', flex: 1 },
+  
+  sourceLink: { marginTop: 10, marginBottom: 10 },
+  sourceText: { color: '#64748B', fontSize: 15, fontWeight: '500' },
   
   actionBar: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingHorizontal: 24, 
-    paddingVertical: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B'
+    paddingHorizontal: 20, 
+    paddingVertical: 14,
   },
-  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 24 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4 },
-  actionText: { color: '#F1F5F9', fontSize: 13, fontWeight: '800' },
-  statText: { color: '#F1F5F9', fontSize: 14, fontWeight: '900' },
-  iconAsset: { width: 22, height: 22, contentFit: 'contain' },
+  leftActions: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 4 },
+  actionText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+  iconAsset: { width: 24, height: 24, contentFit: 'contain' },
 
-  progressBar: { height: 4, width: '100%', backgroundColor: '#020617' },
-  progressFill: { height: '100%', backgroundColor: '#6366F1', borderRadius: 2 }
+  progressBar: { height: 3, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
+  progressFill: { height: '100%', backgroundColor: '#6366F1' }
 });
 
 export default BiteCard;

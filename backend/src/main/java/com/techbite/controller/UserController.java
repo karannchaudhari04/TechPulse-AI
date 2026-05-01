@@ -18,14 +18,16 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/users")
 public class UserController {
 
-    private final UserRepository userRepository;
-    private final CategoryRepository categoryRepository;
-    private final com.techbite.service.UserService userService;
+    private final com.techbite.repository.BookmarkRepository bookmarkRepository;
 
-    public UserController(UserRepository userRepository, CategoryRepository categoryRepository, com.techbite.service.UserService userService) {
+    public UserController(UserRepository userRepository, 
+                          CategoryRepository categoryRepository, 
+                          com.techbite.service.UserService userService,
+                          com.techbite.repository.BookmarkRepository bookmarkRepository) {
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.userService = userService;
+        this.bookmarkRepository = bookmarkRepository;
     }
 
     /**
@@ -131,6 +133,8 @@ public class UserController {
         data.put("displayName", user.getDisplayName());
         data.put("photoURL", user.getProfilePictureUrl());
         data.put("preferencesCount", user.getPreferences().size());
+        data.put("savedBitesCount", bookmarkRepository.countByUserId(user.getId()));
+        data.put("likedBitesCount", user.getLikedBites().size());
 
         return ResponseEntity.ok(ApiResponse.success(data, "Profile fetched successfully"));
     }
