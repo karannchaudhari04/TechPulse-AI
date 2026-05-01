@@ -90,3 +90,12 @@ INSERT IGNORE INTO bites (id, category_id, title, content_summary, original_sour
      'https://dev.to/career',
      'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800',
      'PUBLISHED', DATE_ADD(NOW(), INTERVAL 11 MINUTE), NOW(), NOW());
+-- ── Seed News Sources ──────────────────────────────────────────────────────────
+INSERT IGNORE INTO news_sources (id, name, url, active, created_at, updated_at) VALUES
+(1, 'TechCrunch',      'https://techcrunch.com/feed/', true, NOW(), NOW()),
+(2, 'The Verge',       'https://www.theverge.com/rss/index.xml', true, NOW(), NOW()),
+(3, 'Dev.to',          'https://dev.to/feed', true, NOW(), NOW()),
+(4, 'Hacker News',     'https://news.ycombinator.com/rss', true, NOW(), NOW()),
+(5, 'FreeCodeCamp',    'https://www.freecodecamp.org/news/rss/', true, NOW(), NOW()),
+(6, 'GeeksforGeeks',   'https://www.geeksforgeeks.org/feed/', true, NOW(), NOW()),
+(7, 'MIT Tech Review', 'https://www.technologyreview.com/feed/', true, NOW(), NOW());

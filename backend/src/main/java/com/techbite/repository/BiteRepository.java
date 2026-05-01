@@ -24,4 +24,5 @@ public interface BiteRepository extends JpaRepository<Bite, Long> {
             Pageable pageable);
 
     boolean existsByOriginalSourceUrl(String originalSourceUrl);
+    boolean existsByTitle(String title);
 }

@@ -48,7 +48,7 @@ public class User {
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> preferences = new HashSet<>();
-    
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

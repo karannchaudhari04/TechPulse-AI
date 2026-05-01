@@ -14,6 +14,8 @@ import HomeScreen from '../screens/HomeScreen';
 import BookmarksScreen from '../screens/BookmarksScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BiteDetailScreen from '../screens/BiteDetailScreen';
+import PersonalizationScreen from '../screens/PersonalizationScreen';
+import { userApi } from '../api/user';
 
 const linking = {
   prefixes: ['techbite://', 'https://techbite.app'],
@@ -26,7 +28,7 @@ const linking = {
       Welcome: 'welcome',
       OnboardingIntro: 'intro',
       Interests: 'interests',
-      SkillGap: 'skillgap',
+      Personalization: 'personalization',
     },
   },
 };
@@ -35,14 +37,14 @@ export type RootStackParamList = {
   Welcome: undefined;
   OnboardingIntro: undefined;
   Interests: undefined;
-  SkillGap: undefined;
+  Personalization: undefined;
   Home: undefined;
   Bookmarks: undefined;
   Profile: undefined;
   BiteDetail: { id: number };
 };
 
-type AppScreen = 'Welcome' | 'OnboardingIntro' | 'Interests' | 'SkillGap' | 'Home';
+type AppScreen = 'Welcome' | 'OnboardingIntro' | 'Interests' | 'Home' | 'Personalization';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -88,12 +90,19 @@ export default function AppNavigator() {
     setCurrentFlow('Home');
   }, []);
 
-  const handleInterestsComplete = useCallback(() => {
-    setCurrentFlow('SkillGap');
-  }, []);
-
-  const handleSkillGapComplete = useCallback(() => {
-    setCurrentFlow('Home');
+  const handleInterestsComplete = useCallback(async (tags: string[]) => {
+    try {
+      setIsInitializing(true);
+      await userApi.savePreferences(tags);
+      // Invalidate the query so the home screen tabs refresh
+      queryClient.invalidateQueries({ queryKey: ['userPreferences'] });
+      setCurrentFlow('Home');
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      setCurrentFlow('Home');
+    } finally {
+      setIsInitializing(false);
+    }
   }, []);
 
   if (isInitializing) {
@@ -144,16 +153,6 @@ export default function AppNavigator() {
           </Stack.Screen>
         )}
 
-        {currentFlow === 'SkillGap' && (
-          <Stack.Screen name="SkillGap">
-            {(props) => (
-              <SkillGapScreen
-                {...props}
-                onFinish={handleSkillGapComplete}
-              />
-            )}
-          </Stack.Screen>
-        )}
 
         {currentFlow === 'Home' && (
           <>
@@ -164,6 +163,17 @@ export default function AppNavigator() {
         )}
 
         <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
+        
+        <Stack.Screen 
+          name="Personalization" 
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        >
+          {(props) => (
+            <PersonalizationScreen 
+              onClose={() => props.navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
 
         {currentFlow === 'Home' && !user && (
           <Stack.Screen name="Welcome">

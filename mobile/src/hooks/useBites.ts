@@ -12,13 +12,19 @@ export interface PageResponse<T> {
   empty: boolean;
 }
 
-export function useBites(feedType: 'all' | 'foryou' = 'all') {
+export function useBites(feedType: 'all' | 'foryou' | 'category' = 'all', categoryId?: number) {
   return useInfiniteQuery({
-    queryKey: ['bites', feedType],
+    queryKey: ['bites', feedType, categoryId],
     queryFn: async ({ pageParam = 0 }) => {
-      const endpoint = feedType === 'foryou' 
-        ? `/bites/foryou?page=${pageParam}&size=10`
-        : `/bites?page=${pageParam}&size=10`;
+      let endpoint = '';
+      
+      if (feedType === 'foryou') {
+        endpoint = `/bites/foryou?page=${pageParam}&size=10`;
+      } else if (feedType === 'category' && categoryId) {
+        endpoint = `/bites/category/${categoryId}?page=${pageParam}&size=10`;
+      } else {
+        endpoint = `/bites?page=${pageParam}&size=10`;
+      }
       
       return apiClient.get<PageResponse<Bite>>(endpoint);
     },

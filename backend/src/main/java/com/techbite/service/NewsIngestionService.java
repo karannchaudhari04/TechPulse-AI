@@ -4,6 +4,8 @@ import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import com.techbite.model.Bite;
 import com.techbite.model.Category;
 import com.techbite.repository.BiteRepository;
@@ -179,9 +181,18 @@ public class NewsIngestionService {
             }
         }
 
-        if (biteRepository.existsByOriginalSourceUrl(sourceUrl)) return false;
 
+        if (biteRepository.existsByOriginalSourceUrl(sourceUrl)) return false;
+        
         String rawTitle = entry.getTitle() != null ? entry.getTitle().trim() : "";
+        if (rawTitle.isBlank()) return false;
+        
+        // Smarter Deduping: Skip if title already exists (even with different URL)
+        if (biteRepository.existsByTitle(rawTitle)) {
+            log.info("[NewsIngestion] Skipping duplicate title: {}", rawTitle);
+            return false;
+        }
+
         String rawDescription = extractText(entry);
         String thumbUrl = extractImage(entry);
 
@@ -289,8 +300,13 @@ public class NewsIngestionService {
     private String buildPrompt(String title, String description) {
         String categories = String.join(", ", KNOWN_CATEGORIES);
         return """
-            You are a Senior Tech Lead and Career Mentor at a top tech company (like Google or Microsoft).
-            Your goal is to explain this news to a Computer Science student or a fresher preparing for interviews.
+            You are a Senior Tech Lead and Career Mentor at a top tech company. 
+            Your goal is to explain this news to a Computer Science student or a fresher.
+            
+            Focus on one of these "Career Missions":
+            - Land Internship (Focus on basics & resume value)
+            - Crack FAANG (Focus on scalability, system design, and advanced DSA)
+            - Build Startup (Focus on rapid dev, full-stack, and product MVP)
             
             Article:
             TITLE: %s
@@ -300,17 +316,15 @@ public class NewsIngestionService {
             TITLE: <Punchy, professional title, max 80 characters>
             CATEGORY: <Choose one from: %s>
             SUMMARY:
-            • <First critical insight or news summary>
-            • <Second insight or technical implication>
-            • <Third insight or 'Interview/Career Perspective'>
-            • <Optional: Additional insight, max 5 total>
+            • <Major news point or technical update>
+            • <Technical implication or "The Why" behind it>
+            • <CAREER IMPACT: How this helps in an interview or a mission above>
             
             Rules:
-            - Use the Unicode bullet character (•) for each point.
-            - Ensure each point is concise and high-impact.
-            - If this is purely gossip, politics, or not relevant to a developer's career, respond: SKIP
-            - Focus on 'The Why' behind the technology.
-            """.formatted(title, description.substring(0, Math.min(description.length(), 1000)), categories);
+            - Use the Unicode bullet character (•).
+            - Max 3-4 high-impact bullet points.
+            - If not relevant to a developer's career, respond: SKIP
+            """.formatted(title, description.substring(0, Math.min(description.length(), 1500)), categories);
     }
 
     private ParsedBite parseAiResponse(String response, String fallbackTitle, String sourceUrl) {
@@ -338,13 +352,18 @@ public class NewsIngestionService {
     }
 
     private String extractText(SyndEntry entry) {
-        String text = "";
+        String html = "";
         if (entry.getDescription() != null) {
-            text = entry.getDescription().getValue();
+            html = entry.getDescription().getValue();
         } else if (!entry.getContents().isEmpty()) {
-            text = entry.getContents().get(0).getValue();
+            html = entry.getContents().get(0).getValue();
         }
-        return text.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+        
+        if (html == null || html.isBlank()) return "";
+        
+        // Use Jsoup for robust HTML cleaning
+        Document doc = Jsoup.parse(html);
+        return doc.text().trim();
     }
 
     private String parseAuthor(SyndEntry entry) {

@@ -16,25 +16,14 @@ import { Ionicons } from '@expo/vector-icons';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const INTERESTS = [
-  { id: 'all', label: 'All things tech', emoji: '🌐' },
-  { id: 'bigtech', label: 'The Big Tech', emoji: '🌆' },
-  { id: 'notsobig', label: 'The Not so Big Tech', emoji: '🏢' },
-  { id: 'startups', label: 'Start-ups', emoji: '💡' },
-  { id: 'space', label: 'Space Tech', emoji: '🚀' },
-  { id: 'ph', label: 'From Product Hunt', emoji: '😼' },
-  { id: 'js', label: 'JavaScript', emoji: '✨' },
-  { id: 'python', label: 'Python', emoji: '🐍' },
-  { id: 'java', label: 'Java', emoji: '☕' },
-  { id: 'ts', label: 'TypeScript', emoji: '📜' },
-  { id: 'php', label: 'PHP', emoji: '🐘' },
-  { id: 'go', label: 'Go', emoji: '🏎️' },
-  { id: 'rust', label: 'Rust', emoji: '🦀' },
-  { id: 'kotlin', label: 'Kotlin', emoji: '🎻' },
-  { id: 'swift', label: 'Swift', emoji: '🦅' },
-  { id: 'aws', label: 'AWS', emoji: '☁️' },
-  { id: 'aiml', label: 'AI/ML', emoji: '🤖' },
-  { id: 'genai', label: 'Generative AI', emoji: '🤖' },
-  { id: 'data', label: 'Data Science', emoji: '📊' },
+  { id: 'Web Development', label: 'Web Development', emoji: '✨' },
+  { id: 'Artificial Intelligence', label: 'AI & Machine Learning', emoji: '🤖' },
+  { id: 'Data Structures', label: 'Data Structures', emoji: '📊' },
+  { id: 'System Design', label: 'System Design', emoji: '🏗️' },
+  { id: 'Cybersecurity', label: 'Cybersecurity', emoji: '🛡️' },
+  { id: 'Hardware & Chips', label: 'Hardware & Chips', emoji: '🔌' },
+  { id: 'Open Source', label: 'Open Source', emoji: '🌍' },
+  { id: 'Career Tips', label: 'Career Tips', emoji: '📈' },
 ];
 
 const MIN_TAGS = 3;
@@ -51,13 +40,8 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
     <View style={styles.root}>
       {/* 1. Header (Updated to 1 of 2) */}
       <View style={styles.header}>
-        <Text style={styles.headerLeft}>Getting started</Text>
+        <Text style={styles.headerLeft}>Personalize your feed</Text>
         <View style={styles.headerRight}>
-           <View style={styles.dotContainer}>
-              <View style={[styles.dot, styles.dotActive]} />
-              <View style={styles.dot} />
-           </View>
-           <Text style={styles.progressText}>1 of 2</Text>
         </View>
       </View>
 
@@ -111,10 +95,11 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
                  onPress={() => canProceed && onComplete(selectedTags)}
                  style={[styles.nextBtn, canProceed ? styles.nextBtnActive : styles.nextBtnDisabled]}
                >
+                 <Text style={styles.nextBtnText}>Finish & Start Reading</Text>
                  <Ionicons 
-                    name="arrow-forward" 
-                    size={28} 
-                    color={canProceed ? "#FFF" : "rgba(255,255,255,0.2)"} 
+                    name="checkmark-done" 
+                    size={22} 
+                    color="#FFF" 
                  />
                </Pressable>
             </View>
@@ -133,9 +118,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginBottom: 15 },
   headerLeft: { color: '#64748B', fontSize: 16, fontWeight: '600' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dotContainer: { flexDirection: 'row', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#1E293B' },
-  dotActive: { width: 22, backgroundColor: '#818CF8' },
   progressText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   cardContainer: { paddingHorizontal: 16, height: SCREEN_HEIGHT * 0.92 },
@@ -157,17 +139,24 @@ const styles = StyleSheet.create({
   tagText: { color: '#E2E8F0', fontSize: 15, fontWeight: '600' },
   tagTextActive: { color: '#FFF' },
 
-  buttonRow: { height: 80, justifyContent: 'center', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: 10 },
+  buttonRow: { height: 80, justifyContent: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: 10 },
   nextBtn: { 
-    width: 62, 
-    height: 62, 
-    borderRadius: 16, 
-    backgroundColor: '#1E293B', 
+    flex: 1, 
+    height: 64, 
+    borderRadius: 18, 
+    flexDirection: 'row',
     justifyContent: 'center', 
     alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     elevation: 4
+  },
+  nextBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5
   },
   nextBtnActive: { backgroundColor: '#334155', borderColor: 'rgba(255,255,255,0.1)' },
   nextBtnDisabled: { opacity: 0.5 },
