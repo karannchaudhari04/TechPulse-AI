@@ -142,15 +142,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 <MaterialCommunityIcons name="fire" size={16} color="#FB923C" />
                 <Text style={styles.streakCount}>{streak}</Text>
             </View>
-          </View>
-                <Pressable onPress={() => navigation.navigate('Personalization')} style={styles.addBtn}>
-                   <Image 
-                     source={require('../../assets/add.png')} 
-                     style={styles.addIcon}
-                     resizeMode="contain"
-                   />
-                </Pressable>
-            </View>
+
+            <Pressable onPress={() => navigation.navigate('Personalization')} style={styles.addBtn}>
+                <Image 
+                    source={require('../../assets/add.png')} 
+                    style={styles.addIcon}
+                    resizeMode="contain"
+                />
+            </Pressable>
           </View>
 
           {/* Horizontal Scrollable Tabs */}
@@ -209,9 +208,9 @@ const TabButton = ({ label, active, onPress }: { label: string, active: boolean,
 );
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0F172A' },
+  root: { flex: 1, backgroundColor: '#020617' },
   safeArea: { flex: 1 },
-  header: { paddingBottom: 4, backgroundColor: '#0F172A' },
+  header: { paddingBottom: 4, backgroundColor: '#020617' },
   topBar: { 
     flexDirection: 'row', 
     alignItems: 'center', 
