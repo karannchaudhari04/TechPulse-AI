@@ -6,6 +6,8 @@ import com.techbite.model.User;
 import com.techbite.repository.BiteRepository;
 import com.techbite.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestClient;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,14 +23,17 @@ public class BiteServiceImpl implements BiteService {
 
     private final BiteRepository biteRepository;
     private final UserRepository userRepository;
-    private final ChatClient chatClient;
+    private final RestClient restClient;
+
+    @Value("${spring.ai.openai.api-key}")
+    private String geminiApiKey;
 
     public BiteServiceImpl(BiteRepository biteRepository, 
                            UserRepository userRepository,
-                           ChatClient.Builder chatClientBuilder) {
+                           RestClient.Builder restClientBuilder) {
         this.biteRepository = biteRepository;
         this.userRepository = userRepository;
-        this.chatClient = chatClientBuilder.build();
+        this.restClient = restClientBuilder.build();
     }
 
     @Override
@@ -66,17 +71,38 @@ public class BiteServiceImpl implements BiteService {
                     - Stick ONLY to the facts.
                     """.formatted(bite.getTitle(), contentToAnalyze);
 
-                String response = chatClient.prompt()
-                        .user(prompt)
-                        .call()
-                        .content();
+                // --- Direct Gemini API Call (Bulletproof Logic) ---
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiApiKey;
+                
+                var requestBody = java.util.Map.of(
+                    "contents", java.util.List.of(
+                        java.util.Map.of("parts", java.util.List.of(
+                            java.util.Map.of("text", prompt)
+                        ))
+                    )
+                );
 
-                if (response != null && response.contains("SUMMARY:")) {
-                    String newSummary = response.split("SUMMARY:")[1].trim();
-                    bite.setContentSummary(newSummary);
-                    biteRepository.save(bite);
-                    count++;
-                    log.info("[Migration] ✅ [{}/{}] Updated: {}", count, allBites.size(), bite.getTitle());
+                String jsonResponse = restClient.post()
+                        .uri(url)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .body(requestBody)
+                        .retrieve()
+                        .body(String.class);
+
+                if (jsonResponse != null && jsonResponse.contains("\"text\":")) {
+                    // Simple parsing for the re-summarization tool
+                    String[] parts = jsonResponse.split("\"text\": \"");
+                    if (parts.length > 1) {
+                        String aiText = parts[1].split("\"")[0].replace("\\n", "\n").replace("\\\"", "\"");
+                        
+                        if (aiText.contains("SUMMARY:")) {
+                            String newSummary = aiText.split("SUMMARY:")[1].trim();
+                            bite.setContentSummary(newSummary);
+                            biteRepository.save(bite);
+                            count++;
+                            log.info("[Migration] ✅ [{}/{}] Updated: {}", count, allBites.size(), bite.getTitle());
+                        }
+                    }
                 }
             } catch (Exception e) {
                 log.error("[Migration] ❌ Failed to re-summarize bite: " + bite.getId(), e);
