@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import com.techbite.repository.UserRepository;
 import com.techbite.model.User;
@@ -43,11 +44,11 @@ public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
                 logger.info("[Auth] Token verified for UID: " + uid);
                 
                 List<SimpleGrantedAuthority> authorities;
-                List<String> adminEmails = List.of("karanchaudhari722@gmail.com", "karanchaudhari34804@gmail.com");
+                Optional<User> userOpt = userRepository.findByFirebaseUid(uid);
                 
-                if (email != null && adminEmails.contains(email)) {
+                if (userOpt.isPresent() && userOpt.get().getRole() == User.Role.ADMIN) {
                     authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"));
-                    logger.info("[Auth] Admin privileges granted to: " + email);
+                    logger.info("[Auth] Admin privileges granted from database for UID: " + uid);
                 } else {
                     authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
                 }
