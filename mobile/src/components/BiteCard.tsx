@@ -10,6 +10,7 @@ import Animated, {
   withSpring, 
   withSequence 
 } from 'react-native-reanimated';
+import * as WebBrowser from 'expo-web-browser';
 import { likeBite } from '../api/bites';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -34,9 +35,13 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     setLocalBookmarked(isBookmarked);
   }, [isBookmarked]);
 
-  const handleOpenSource = () => {
+  const handleOpenSource = async () => {
     if (item.originalSourceUrl) {
-      Linking.openURL(item.originalSourceUrl).catch(err => {});
+      await WebBrowser.openBrowserAsync(item.originalSourceUrl, {
+        toolbarColor: '#0F172A',
+        enableBarCollapsing: true,
+        showTitle: true,
+      });
     }
   };
 
