@@ -365,12 +365,11 @@ public class NewsIngestionService {
             SUMMARY:
             • <CORE TECHNICAL DETAILS: Explain the update with specific versions, APIs, or architectural changes. Make this at least 2 detailed sentences.>
             • <THE ARCHITECTURAL 'WHY': Go deep into the performance gains, trade-offs, or engineering challenges involved. At least 2 sentences.>
-            • <ECOSYSTEM & FUTURE: How this ripples through the tech stack and what it means for modern development patterns. At least 2 sentences.>
-            • <MENTOR MISSION: High-level advice on how to use this knowledge in a FAANG interview or to solve a real-world startup problem. At least 2 sentences.>
+            • <CAREER MISSION: High-level advice on how to use this knowledge in a FAANG interview or to solve a real-world startup problem. At least 2 sentences.>
             
             Strict Rules:
-            - YOU MUST PROVIDE EXACTLY 4 BULLET POINTS.
-            - EACH BULLET POINT MUST BE AT LEAST 200 CHARACTERS LONG.
+            - YOU MUST PROVIDE EXACTLY 3 BULLET POINTS.
+            - EACH BULLET POINT MUST BE AT LEAST 250 CHARACTERS LONG.
             - DO NOT be concise. We need high detail to fill a full mobile card.
             - Use the Unicode bullet character (•).
             - Stick ONLY to the facts in the article. Do not hallucinate.
