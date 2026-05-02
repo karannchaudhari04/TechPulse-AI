@@ -40,23 +40,6 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     }
   };
 
-  const getFallbackImage = (category: string) => {
-    const cat = (category || '').toLowerCase();
-    if (cat.includes('ai') || cat.includes('artificial')) 
-      return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800'; // AI/Abstract
-    if (cat.includes('web')) 
-      return 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800'; // Coding/Laptop
-    if (cat.includes('mobile')) 
-      return 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800'; // Mobile
-    if (cat.includes('cyber') || cat.includes('security')) 
-      return 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800'; // Security/Circuit
-    if (cat.includes('cloud') || cat.includes('devops')) 
-      return 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; // Cloud/Data
-    if (cat.includes('data') || cat.includes('science')) 
-      return 'https://images.unsplash.com/photo-1551288049-bbbda5035875?w=800'; // Data/Graphs
-    return 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800'; // General Tech
-  };
-
   const handleLike = async () => {
     // Subtle pop for like only
     likeScale.value = withSequence(withSpring(1.3), withSpring(1));
@@ -135,7 +118,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
         {/* Header Section (1/6 Height) */}
         <View style={styles.imageSection}>
           <Image 
-            source={{ uri: item.thumbnailUrl || getFallbackImage(item.categoryName) }}
+            source={{ uri: item.thumbnailUrl || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800' }}
             style={styles.heroImg}
             contentFit="cover"
             transition={300}

@@ -300,41 +300,17 @@ public class NewsIngestionService {
     }
 
     private String extractImage(SyndEntry entry) {
-        // 1. Try enclosures
         if (entry.getEnclosures() != null && !entry.getEnclosures().isEmpty()) {
             return entry.getEnclosures().get(0).getUrl();
         }
-
-        // 2. Try foreign markup (standard RSS media/thumbnail tags)
         if (entry.getForeignMarkup() != null) {
-            String url = entry.getForeignMarkup().stream()
+            return entry.getForeignMarkup().stream()
                 .filter(el -> el.getName().equals("content") || el.getName().equals("thumbnail"))
                 .map(el -> el.getAttributeValue("url"))
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
-            if (url != null) return url;
         }
-
-        // 3. Fallback: Parse description/content for the first <img> tag
-        String html = "";
-        if (entry.getDescription() != null) {
-            html = entry.getDescription().getValue();
-        } else if (entry.getContents() != null && !entry.getContents().isEmpty()) {
-            html = entry.getContents().get(0).getValue();
-        }
-
-        if (html != null && !html.isBlank()) {
-            try {
-                Document doc = Jsoup.parse(html);
-                Element img = doc.select("img").first();
-                if (img != null) {
-                    String src = img.attr("src");
-                    if (src != null && !src.isBlank()) return src;
-                }
-            } catch (Exception ignored) {}
-        }
-
         return null;
     }
 
