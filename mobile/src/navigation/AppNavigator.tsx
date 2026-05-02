@@ -9,7 +9,6 @@ import { auth } from '../utils/firebase';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import OnboardingIntroScreen from '../screens/OnboardingIntroScreen';
 import InterestsSelectionScreen from '../screens/InterestsSelectionScreen';
-import SkillGapScreen from '../screens/SkillGapScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BookmarksScreen from '../screens/BookmarksScreen';
 import ProfileScreen from '../screens/ProfileScreen';

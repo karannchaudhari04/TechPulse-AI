@@ -26,6 +26,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.techbite.app",
       "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "TechBite does not use the camera.",
         "NSPhotoLibraryUsageDescription": "TechBite does not access your photos."
