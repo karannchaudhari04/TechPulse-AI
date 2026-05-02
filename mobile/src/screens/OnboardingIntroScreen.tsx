@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, Pressable, Dimensions, SafeAreaView } fr
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 interface OnboardingIntroScreenProps {
   onNext: () => void;
@@ -80,54 +81,54 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#020617' },
   safeArea: { flex: 1 },
   
-  topSection: { paddingHorizontal: 24, marginTop: 45, marginBottom: 5, flexShrink: 1 },
-  botRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  botIcon: { width: 70, height: 70 },
+  topSection: { paddingHorizontal: scale(24), marginTop: scale(45), marginBottom: scale(5), flexShrink: 1 },
+  botRow: { flexDirection: 'row', alignItems: 'center', gap: scale(16) },
+  botIcon: { width: scale(70), height: scale(70) },
   bubble: { flex: 1 },
-  bubbleText: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', lineHeight: 32 },
+  bubbleText: { color: '#FFFFFF', fontSize: scale(26), fontWeight: '800', lineHeight: scale(32) },
   highlightText: { color: '#818CF8' },
 
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(16) },
   glassCard: { 
     width: '100%',
     height: SCREEN_HEIGHT * 0.52,
-    borderRadius: 36, 
+    borderRadius: scale(36), 
     backgroundColor: 'rgba(30, 41, 59, 0.4)',
     borderWidth: 1.5, 
     borderColor: 'rgba(255,255,255,0.12)',
-    padding: 28,
+    padding: scale(28),
     alignItems: 'center',
     justifyContent: 'space-between'
   },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logo: { width: 32, height: 32 },
-  brandName: { color: '#F8FAFC', fontSize: 26, fontWeight: '900' },
-  description: { color: '#94A3B8', fontSize: 17, textAlign: 'center', lineHeight: 26, fontWeight: '500' },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: scale(12) },
+  logo: { width: scale(32), height: scale(32) },
+  brandName: { color: '#F8FAFC', fontSize: scale(26), fontWeight: '900' },
+  description: { color: '#94A3B8', fontSize: scale(17), textAlign: 'center', lineHeight: scale(26), fontWeight: '500' },
   illustrationWrap: { width: '100%', height: '55%', justifyContent: 'center' },
   cardsIllustration: { width: '100%', height: '100%' },
 
   // Bottom section with NO flex to prevent stretching
   bottomSection: { 
-    paddingHorizontal: 24, 
-    paddingBottom: 50, 
+    paddingHorizontal: scale(24), 
+    paddingBottom: scale(50), 
     alignItems: 'center',
     width: '100%',
     backgroundColor: 'transparent'
   },
-  botGreeting: { color: '#94A3B8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 25, fontWeight: '600' },
+  botGreeting: { color: '#94A3B8', fontSize: scale(15), textAlign: 'center', lineHeight: scale(22), marginBottom: scale(25), fontWeight: '600' },
   
   startBtn: { 
-    width: 280, // Fixed width
-    height: 60, // Fixed height
-    minHeight: 60,
-    maxHeight: 60,
-    borderRadius: 20, 
+    width: scale(280), // Scaled width
+    height: scale(60), // Scaled height
+    minHeight: scale(60),
+    maxHeight: scale(60),
+    borderRadius: scale(20), 
     backgroundColor: '#818CF8',
     flexDirection: 'row', 
     justifyContent: 'center', 
     alignItems: 'center', 
-    gap: 12,
+    gap: scale(12),
   },
-  btnText: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  btnText: { color: '#FFFFFF', fontSize: scale(19), fontWeight: '800' },
   btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] }
 });

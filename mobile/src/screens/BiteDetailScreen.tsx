@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ActivityIndicator, Pressable, Text } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Pressable, Text, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import BiteCard from '../components/BiteCard';
@@ -11,6 +11,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BiteDetail'>;
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 export default function BiteDetailScreen({ route, navigation }: Props) {
   const params = route.params || {};
@@ -81,7 +84,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
           item={bite} 
           isBookmarked={isBookmarked(bite.id)} 
           onToggleBookmark={toggleBookmark}
-          cardHeight={600} // Fixed height for detail view
+          cardHeight={scale(600)} // Scaled height for detail view
         />
       </SafeAreaView>
     </View>
@@ -91,10 +94,10 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#020617' },
   safeArea: { flex: 1 },
-  header: { padding: 20 },
-  headerBack: { color: '#6366F1', fontSize: 16, fontWeight: '700' },
-  center: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', padding: 40 },
-  errorText: { color: '#94A3B8', fontSize: 18, textAlign: 'center', marginBottom: 20 },
-  backBtn: { backgroundColor: '#1E293B', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  backBtnText: { color: '#FFFFFF', fontWeight: '700' }
+  header: { padding: scale(20) },
+  headerBack: { color: '#6366F1', fontSize: scale(16), fontWeight: '700' },
+  center: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', padding: scale(40) },
+  errorText: { color: '#94A3B8', fontSize: scale(18), textAlign: 'center', marginBottom: scale(20) },
+  backBtn: { backgroundColor: '#1E293B', paddingHorizontal: scale(20), paddingVertical: scale(10), borderRadius: scale(10) },
+  backBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: scale(14) }
 });

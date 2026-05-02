@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 // Sample data to match the screenshot's aesthetic
 const TOPIC_METADATA: Record<string, { label: string, emoji: string }> = {
@@ -150,52 +151,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingHorizontal: 20, 
-    paddingTop: 20,
-    paddingBottom: 15 
+    paddingHorizontal: scale(20), 
+    paddingTop: scale(20),
+    paddingBottom: scale(15) 
   },
-  headerTitle: { color: '#FFF', fontSize: 20, fontWeight: '800' },
-  closeBtn: { padding: 4 },
-  crossIcon: { width: 24, height: 24 },
-  cardIcon: { width: 24, height: 24 },
+  headerTitle: { color: '#FFF', fontSize: scale(20), fontWeight: '800' },
+  closeBtn: { padding: scale(4) },
+  crossIcon: { width: scale(24), height: scale(24) },
+  cardIcon: { width: scale(24), height: scale(24) },
   
-  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  listContent: { paddingHorizontal: scale(20), paddingBottom: scale(40) },
   
   settingCard: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: '#111111', 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 15,
+    borderRadius: scale(16), 
+    padding: scale(20), 
+    marginBottom: scale(15),
     borderWidth: 1,
     borderColor: '#222'
   },
-  cardIconBox: { width: 44, height: 44, backgroundColor: '#1A1A1A', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  cardIconBox: { width: scale(44), height: scale(44), backgroundColor: '#1A1A1A', borderRadius: scale(12), justifyContent: 'center', alignItems: 'center', marginRight: scale(15) },
   cardText: { flex: 1 },
-  cardTitle: { color: '#FFF', fontSize: 17, fontWeight: '700' },
-  cardSubtitle: { color: '#64748B', fontSize: 13, marginTop: 2 },
+  cardTitle: { color: '#FFF', fontSize: scale(17), fontWeight: '700' },
+  cardSubtitle: { color: '#64748B', fontSize: scale(13), marginTop: scale(2) },
   
-  sectionTitle: { color: '#FFF', fontSize: 22, fontWeight: '800', marginTop: 25, marginBottom: 20 },
+  sectionTitle: { color: '#FFF', fontSize: scale(22), fontWeight: '800', marginTop: scale(25), marginBottom: scale(20) },
   
   topicItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingVertical: 18, 
+    paddingVertical: scale(18), 
     borderBottomWidth: 1, 
     borderBottomColor: '#111' 
   },
   topicInfo: { flex: 1 },
-  topicName: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  topicFollowers: { color: '#64748B', fontSize: 13, marginTop: 4 },
+  topicName: { color: '#FFF', fontSize: scale(18), fontWeight: '700' },
+  topicFollowers: { color: '#64748B', fontSize: scale(13), marginTop: scale(4) },
   
   followBtn: { 
     backgroundColor: '#F8FAFC', 
-    paddingHorizontal: 18, 
-    paddingVertical: 10, 
-    borderRadius: 20,
-    minWidth: 95,
+    paddingHorizontal: scale(18), 
+    paddingVertical: scale(10), 
+    borderRadius: scale(20),
+    minWidth: scale(95),
     alignItems: 'center'
   },
   followingBtn: {
@@ -203,6 +204,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155'
   },
-  followBtnText: { color: '#000', fontSize: 14, fontWeight: '800' },
+  followBtnText: { color: '#000', fontSize: scale(14), fontWeight: '800' },
   followingBtnText: { color: '#FFF' }
 });

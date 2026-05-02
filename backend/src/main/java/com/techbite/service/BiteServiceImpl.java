@@ -58,14 +58,13 @@ public class BiteServiceImpl implements BiteService {
                     
                     Format your response EXACTLY as follows:
                     SUMMARY:
-                    • <Core Tech: 1-2 sentence technical insight.>
-                    • <Architecture: 1-2 sentence engineering 'why'.>
-                    • <Ecosystem: 1-2 sentence future/career impact.>
-                    • <Action: FAANG-level tip.>
+                    • <Core Tech & Architecture: 2-3 sentence technical and engineering 'why' insight.>
+                    • <Ecosystem & Impact: 1-2 sentence future/career impact.>
+                    • <FAANG-level Mentor Tip: 1-2 sentence actionable career insight.>
                     
                     Strict Rules:
-                    - YOU MUST PROVIDE EXACTLY 3 TO 4 BULLET POINTS.
-                    - THE TOTAL SUMMARY LENGTH MUST BE BETWEEN 80 AND 100 WORDS.
+                    - YOU MUST PROVIDE EXACTLY 2 TO 3 BULLET POINTS.
+                    - THE TOTAL SUMMARY LENGTH MUST BE AROUND 80 WORDS.
                     - Use the Unicode bullet character (•).
                     - Stick ONLY to the facts.
                     """.formatted(bite.getTitle(), contentToAnalyze);

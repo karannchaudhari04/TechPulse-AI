@@ -363,14 +363,13 @@ public class NewsIngestionService {
             TITLE: <A professional, high-signal title. Avoid clickbait. Max 80 chars>
             CATEGORY: <Choose the most relevant: %s>
             SUMMARY:
-            • <Core Tech: Explain the breakthrough/update in a technical, mentor-level sentence.>
-            • <Architecture: Detail the specific engineering 'why' and performance trade-offs.>
-            • <Ecosystem: Describe how this ripples through the tech stack or career mission.>
-            • <Action: Provide a FAANG-level tip or practical takeaway for developers.>
+            • <Core Tech & Architecture: Detail the specific technical breakthrough and engineering trade-offs.>
+            • <Ecosystem & Impact: Describe how this ripples through the tech stack or career mission.>
+            • <FAANG-level Mentor Tip: Provide a practical takeaway or engineering mindset tip.>
             
             Strict Rules:
-            - YOU MUST PROVIDE EXACTLY 3 TO 4 BULLET POINTS.
-            - THE TOTAL SUMMARY LENGTH MUST BE BETWEEN 80 AND 100 WORDS.
+            - YOU MUST PROVIDE EXACTLY 2 TO 3 BULLET POINTS.
+            - THE TOTAL SUMMARY LENGTH MUST BE AROUND 80 WORDS.
             - Each bullet should be a detailed, high-signal technical insight.
             - Use the Unicode bullet character (•).
             - Avoid long, single paragraphs. Each point must be a distinct bullet.

@@ -16,6 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -210,22 +211,22 @@ const TabButton = ({ label, active, onPress }: { label: string, active: boolean,
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0F172A' },
   safeArea: { flex: 1 },
-  header: { paddingBottom: 4, backgroundColor: '#0F172A' },
+  header: { paddingBottom: scale(4), backgroundColor: '#0F172A' },
   topBar: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingHorizontal: 22, 
-    paddingTop: 16,
-    paddingBottom: 8
+    paddingHorizontal: scale(22), 
+    paddingTop: scale(16),
+    paddingBottom: scale(8)
   },
-  topBarLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  topBarLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: scale(10) },
   topBarCenter: { flex: 2, alignItems: 'center' },
   topBarRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 1 },
   profileCircle: { 
-    width: 38, 
-    height: 38, 
-    borderRadius: 19, 
+    width: scale(38), 
+    height: scale(38), 
+    borderRadius: scale(19), 
     backgroundColor: '#1E293B', 
     justifyContent: 'center', 
     alignItems: 'center',
@@ -237,11 +238,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%'
   },
-  iconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
+  iconCircle: { width: scale(38), height: scale(38), borderRadius: scale(19), backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
   addBtn: { 
-    width: 38, 
-    height: 38, 
-    borderRadius: 19, 
+    width: scale(38), 
+    height: scale(38), 
+    borderRadius: scale(19), 
     backgroundColor: '#6366F1', 
     justifyContent: 'center', 
     alignItems: 'center',
@@ -250,15 +251,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4
   },
-  addIcon: { width: 22, height: 22 },
+  addIcon: { width: scale(22), height: scale(22) },
   streakContainer: { 
     flexDirection: 'row', 
     backgroundColor: 'rgba(245, 158, 11, 0.15)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 100, 
+    paddingHorizontal: scale(12), 
+    paddingVertical: scale(6), 
+    borderRadius: scale(100), 
     alignItems: 'center', 
-    gap: 6,
+    gap: scale(6),
     borderWidth: 1.5,
     borderColor: 'rgba(245, 158, 11, 0.3)',
     shadowColor: '#F59E0B',
@@ -266,15 +267,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
-  streakText: { color: '#FBBF24', fontWeight: '900', fontSize: 15, letterSpacing: -0.5 },
-  tabWrapper: { marginTop: 4 },
-  tabScroll: { paddingHorizontal: 20, gap: 24, paddingBottom: 10 },
-  tabBtn: { paddingBottom: 8, alignItems: 'center', minWidth: 40 },
-  tabLabel: { color: '#64748B', fontSize: 16, fontWeight: '600' },
+  streakText: { color: '#FBBF24', fontWeight: '900', fontSize: scale(15), letterSpacing: -0.5 },
+  tabWrapper: { marginTop: scale(4) },
+  tabScroll: { paddingHorizontal: scale(20), gap: scale(24), paddingBottom: scale(10) },
+  tabBtn: { paddingBottom: scale(8), alignItems: 'center', minWidth: scale(40) },
+  tabLabel: { color: '#64748B', fontSize: scale(16), fontWeight: '600' },
   tabLabelActive: { color: '#F8FAFC', fontWeight: '800' },
-  tabIndicator: { position: 'absolute', bottom: 0, width: '100%', height: 3, backgroundColor: '#00A3FF', borderRadius: 2 },
+  tabIndicator: { position: 'absolute', bottom: 0, width: '100%', height: scale(3), backgroundColor: '#00A3FF', borderRadius: scale(2) },
   feed: { flex: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 60 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginBottom: 12 },
-  emptyText: { color: '#94A3B8', fontSize: 16, textAlign: 'center', lineHeight: 24, fontWeight: '500' }
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(60) },
+  emptyTitle: { color: '#FFFFFF', fontSize: scale(22), fontWeight: '800', marginBottom: scale(12) },
+  emptyText: { color: '#94A3B8', fontSize: scale(16), textAlign: 'center', lineHeight: scale(24), fontWeight: '500' }
 });

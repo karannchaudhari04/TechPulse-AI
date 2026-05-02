@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 const INTERESTS = [
   { id: 'Web Development', label: 'Web Development', emoji: '✨' },
@@ -114,47 +115,47 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#020617', paddingTop: Platform.OS === 'android' ? 40 : 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginBottom: 15 },
-  headerLeft: { color: '#64748B', fontSize: 16, fontWeight: '600' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  progressText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  root: { flex: 1, backgroundColor: '#020617', paddingTop: Platform.OS === 'android' ? scale(40) : scale(20) },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: scale(25), marginBottom: scale(15) },
+  headerLeft: { color: '#64748B', fontSize: scale(16), fontWeight: '600' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: scale(10) },
+  progressText: { color: '#FFF', fontSize: scale(16), fontWeight: '700' },
 
-  cardContainer: { paddingHorizontal: 16, height: SCREEN_HEIGHT * 0.92 },
-  card: { flex: 1, borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: '#27272A' },
-  cardContent: { flex: 1, padding: 24 },
+  cardContainer: { paddingHorizontal: scale(16), height: SCREEN_HEIGHT * 0.92 },
+  card: { flex: 1, borderRadius: scale(32), overflow: 'hidden', borderWidth: 1, borderColor: '#27272A' },
+  cardContent: { flex: 1, padding: scale(24) },
 
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  title: { color: '#FFF', fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-  subtitle: { color: '#94A3B8', fontSize: 15, marginTop: 4 },
-  countPending: { color: '#FACC15', fontWeight: '800', marginTop: 8 },
-  countReady: { color: '#4ADE80', fontWeight: '800', marginTop: 8 },
-  botBox: { width: 64, height: 64, backgroundColor: 'rgba(30, 41, 59, 0.5)', borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  bot: { width: 48, height: 48 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: scale(20) },
+  title: { color: '#FFF', fontSize: scale(24), fontWeight: '900', letterSpacing: -0.5 },
+  subtitle: { color: '#94A3B8', fontSize: scale(15), marginTop: scale(4) },
+  countPending: { color: '#FACC15', fontWeight: '800', marginTop: scale(8) },
+  countReady: { color: '#4ADE80', fontWeight: '800', marginTop: scale(8) },
+  botBox: { width: scale(64), height: scale(64), backgroundColor: 'rgba(30, 41, 59, 0.5)', borderRadius: scale(14), justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  bot: { width: scale(48), height: scale(48) },
 
-  tagArea: { flex: 1, marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 10 },
-  tag: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 100, backgroundColor: '#0F172A', borderWidth: 1.2, borderColor: '#1E293B' },
+  tagArea: { flex: 1, marginBottom: scale(10) },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(10), paddingBottom: scale(10) },
+  tag: { paddingHorizontal: scale(16), paddingVertical: scale(12), borderRadius: scale(100), backgroundColor: '#0F172A', borderWidth: 1.2, borderColor: '#1E293B' },
   tagActive: { backgroundColor: '#818CF8', borderColor: '#A5B4FC' },
-  tagText: { color: '#E2E8F0', fontSize: 15, fontWeight: '600' },
+  tagText: { color: '#E2E8F0', fontSize: scale(15), fontWeight: '600' },
   tagTextActive: { color: '#FFF' },
 
-  buttonRow: { height: 80, justifyContent: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: 10 },
+  buttonRow: { height: scale(80), justifyContent: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: scale(10) },
   nextBtn: { 
     flex: 1, 
-    height: 64, 
-    borderRadius: 18, 
+    height: scale(64), 
+    borderRadius: scale(18), 
     flexDirection: 'row',
     justifyContent: 'center', 
     alignItems: 'center',
-    gap: 12,
+    gap: scale(12),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     elevation: 4
   },
   nextBtnText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '800',
     letterSpacing: 0.5
   },
