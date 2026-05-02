@@ -234,10 +234,10 @@ const styles = StyleSheet.create({
   title: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', lineHeight: 30, letterSpacing: -0.5, marginBottom: 12 },
   
   contentSection: { flex: 1, paddingHorizontal: 22, paddingTop: 15, justifyContent: 'space-between' },
-  summaryList: { gap: 16 },
-  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
-  bulletIcon: { marginTop: 6, marginRight: 10 },
-  bulletText: { color: '#CBD5E1', fontSize: 15, lineHeight: 22, fontWeight: '400', flex: 1 },
+  summaryList: { gap: 20 },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  bulletIcon: { marginTop: 10, marginRight: 12 },
+  bulletText: { color: '#CBD5E1', fontSize: 17, lineHeight: 26, fontWeight: '400', flex: 1 },
   
   sourceLink: { marginTop: 10, marginBottom: 10 },
   sourceText: { color: '#64748B', fontSize: 15, fontWeight: '500' },
