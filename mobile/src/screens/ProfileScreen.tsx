@@ -15,6 +15,18 @@ import Animated, {
   useAnimatedStyle, 
   withSpring 
 } from 'react-native-reanimated';
+import { getAuth } from 'firebase/auth';
+
+// Inside your component or useEffect:
+const getToken = async () => {
+  const auth = getAuth();
+  if (auth.currentUser) {
+    const token = await auth.currentUser.getIdToken();
+    console.log("🔥 MY ADMIN TOKEN:", token);
+  }
+};
+
+getToken();
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
