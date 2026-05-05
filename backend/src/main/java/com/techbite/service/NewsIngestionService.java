@@ -64,7 +64,7 @@ public class NewsIngestionService {
                                 CategoryRepository categoryRepository,
                                 BookmarkRepository bookmarkRepository,
                                 NewsSourceRepository newsSourceRepository,
-                                ChatClient.Builder chatClientBuilder) {
+                                @org.springframework.context.annotation.Lazy ChatClient.Builder chatClientBuilder) {
         this.biteRepository = biteRepository;
         this.categoryRepository = categoryRepository;
         this.bookmarkRepository = bookmarkRepository;

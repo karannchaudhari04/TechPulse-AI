@@ -32,7 +32,7 @@ public class BiteServiceImpl implements BiteService {
 
     public BiteServiceImpl(BiteRepository biteRepository, 
                            UserRepository userRepository,
-                           RestClient.Builder restClientBuilder) {
+                           @org.springframework.context.annotation.Lazy RestClient.Builder restClientBuilder) {
         this.biteRepository = biteRepository;
         this.userRepository = userRepository;
         this.restClient = restClientBuilder.build();
