@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { View, Text, Pressable, Linking, StyleSheet, Dimensions, Share, Platform } from 'react-native';
-import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
@@ -37,7 +36,6 @@ interface BiteCardProps {
 const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight, fullScreen = false }: BiteCardProps) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const queryClient = useQueryClient();
-  const viewShotRef = useRef<ViewShot>(null);
   const [likes, setLikes] = React.useState(item.engagementCount || 0);
   const [hasLiked, setHasLiked] = React.useState(item.isLiked || false);
   const [localBookmarked, setLocalBookmarked] = React.useState(isBookmarked);
@@ -89,44 +87,14 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
   const handleShare = async () => {
     try {
       const shareLink = `https://techbite.app/bite/${item.id}`;
-      const message = `🚀 TechBite: ${item.title}\n\nMaster tech, one bite at a time. Check it out: ${shareLink}`;
-
-      // 1. Try to capture the "Smart Card" image
-      let shareUri = null;
-      try {
-        if (viewShotRef.current) {
-          const uri = await captureRef(viewShotRef, {
-            format: 'png',
-            quality: 1,
-          });
-          
-          // Android Fix: Copy to a shareable location
-          shareUri = `${FileSystem.cacheDirectory}techbite_${item.id}.png`;
-          await FileSystem.copyAsync({
-            from: uri,
-            to: shareUri,
-          });
-        }
-      } catch (snapshotError) {
-        console.warn('[Growth] Native snapshot not available. Falling back to link.');
-      }
-
-      // 2. Share the best available content
-      if (shareUri && (await Sharing.isAvailableAsync())) {
-        await Sharing.shareAsync(shareUri, {
-          dialogTitle: 'Share TechBite Card',
-          UTI: 'public.png',
-          mimeType: 'image/png',
-        });
-      } else {
-        // Fallback to text sharing
-        await Share.share({
-          message: message,
-          url: shareLink,
-        });
-      }
+      const message = `🚀 TechBite | High-Yield Tech News\n\nHeadline: ${item.title}\n\nMaster tech, one bite at a time. Read the full "Bite" here: ${shareLink}`;
+      
+      await Share.share({
+        message: message,
+        url: shareLink,
+      });
     } catch (error) {
-      console.error('[Growth] Sharing failed:', error);
+      console.error('[Growth] Share failed:', error);
     }
   };
 
@@ -160,7 +128,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
 
   return (
     <View style={[styles.root, { height: cardHeight }]}>
-      <ViewShot ref={viewShotRef} style={styles.card}>
+      <View style={styles.card}>
         
         {/* Header Section (1/6 Height) */}
         <View style={styles.imageSection}>
@@ -257,7 +225,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
            <View style={[styles.progressFill, { width: '80%' }]} />
         </View>
 
-      </ViewShot>
+      </View>
     </View>
   );
 });
@@ -300,8 +268,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.05)',
     backgroundColor: 'rgba(15, 23, 42, 0.8)'
   },
-  leftActions: { flexDirection: 'row', alignItems: 'center', gap: scale(24) },
-  rightActions: { flexDirection: 'row', alignItems: 'center', gap: scale(16) },
+  leftActions: { flexDirection: 'row', alignItems: 'center', gap: scale(20) },
+  rightActions: { flexDirection: 'row', alignItems: 'center', gap: scale(12) },
   statText: { color: '#94A3B8', fontSize: scale(13), fontWeight: '700', marginTop: 2 },
   actionBtn: { alignItems: 'center', gap: scale(4) },
   actionText: { color: '#94A3B8', fontSize: scale(11), fontWeight: '700', marginTop: 2 },
