@@ -32,9 +32,6 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "ios": {
-        "buildNumber": "1"
-      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://techbite.onrender.com/api/v1",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD30JsCvKMMMTpv6tQyklGhD94diuC4NgU",
