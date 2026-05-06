@@ -2,8 +2,7 @@ package com.techbite.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -13,7 +12,6 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.beans.factory.annotation.Value;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
@@ -23,30 +21,46 @@ import java.util.Properties;
 @Configuration
 public class DatabaseConfig {
 
-    // Use standard Spring properties that are automatically mapped from environment variables
-    @Value("${spring.datasource.writer.url:${DATABASE_WRITER_URL:}}")
+    // Primary Writer Properties
+    @Value("${DATABASE_WRITER_URL:${spring.datasource.writer.url:}}")
     private String writerUrl;
 
-    @Value("${spring.datasource.replica.url:${DATABASE_REPLICA_URL:}}")
+    @Value("${DATABASE_WRITER_USER:${spring.datasource.writer.username:}}")
+    private String writerUser;
+
+    @Value("${DATABASE_WRITER_PASSWORD:${spring.datasource.writer.password:}}")
+    private String writerPassword;
+
+    // Replica Reader Properties
+    @Value("${DATABASE_REPLICA_URL:${spring.datasource.replica.url:}}")
     private String replicaUrl;
 
+    @Value("${DATABASE_REPLICA_USER:${spring.datasource.replica.username:}}")
+    private String replicaUser;
+
+    @Value("${DATABASE_REPLICA_PASSWORD:${spring.datasource.replica.password:}}")
+    private String replicaPassword;
+
     @Bean
-    @ConfigurationProperties(prefix = "spring.datasource.writer")
     public DataSource writerDataSource() {
-        HikariDataSource ds = DataSourceBuilder.create().type(HikariDataSource.class).build();
-        if (writerUrl != null && !writerUrl.isEmpty()) {
-            ds.setJdbcUrl(writerUrl);
-        }
+        HikariDataSource ds = new HikariDataSource();
+        ds.setJdbcUrl(writerUrl);
+        ds.setUsername(writerUser);
+        ds.setPassword(writerPassword);
+        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        ds.setMaximumPoolSize(10);
         return ds;
     }
 
     @Bean
-    @ConfigurationProperties(prefix = "spring.datasource.replica")
     public DataSource replicaDataSource() {
-        HikariDataSource ds = DataSourceBuilder.create().type(HikariDataSource.class).build();
-        if (replicaUrl != null && !replicaUrl.isEmpty()) {
-            ds.setJdbcUrl(replicaUrl);
-        }
+        HikariDataSource ds = new HikariDataSource();
+        // Fallback to writer if replica info is missing
+        ds.setJdbcUrl(replicaUrl != null && !replicaUrl.isEmpty() ? replicaUrl : writerUrl);
+        ds.setUsername(replicaUser != null && !replicaUser.isEmpty() ? replicaUser : writerUser);
+        ds.setPassword(replicaPassword != null && !replicaPassword.isEmpty() ? replicaPassword : writerPassword);
+        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        ds.setMaximumPoolSize(20);
         return ds;
     }
 
@@ -71,7 +85,6 @@ public class DatabaseConfig {
     @Bean
     @Primary
     public DataSource dataSource(@Qualifier("routingDataSource") DataSource routingDataSource) {
-        // This Proxy is CRITICAL for production - it delays the connection until a query is actually run
         return new LazyConnectionDataSourceProxy(routingDataSource);
     }
 
