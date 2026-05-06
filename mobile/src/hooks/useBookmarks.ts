@@ -2,7 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import { auth } from '../utils/firebase';
 import { Bite } from '../types';
-import { PageResponse } from './useBites';
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  number: number;
+  size: number;
+  empty: boolean;
+}
 
 export const useBookmarks = () => {
   const queryClient = useQueryClient();

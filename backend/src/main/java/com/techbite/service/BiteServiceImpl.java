@@ -1,6 +1,7 @@
 package com.techbite.service;
 
 import com.techbite.dto.BiteResponseDTO;
+import com.techbite.dto.CursorPageResponse;
 import com.techbite.model.Bite;
 import com.techbite.model.User;
 import com.techbite.repository.BiteRepository;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 
 import java.util.List;
 import java.util.Optional;
@@ -133,32 +135,71 @@ public class BiteServiceImpl implements BiteService {
     }
 
     @Override
-    public Page<BiteResponseDTO> getAllBites(User user, Pageable pageable) {
+    public CursorPageResponse<BiteResponseDTO> getAllBites(User user, String cursor, int limit) {
         Set<Long> likedIds = user != null ? userRepository.findLikedBiteIdsByUserId(user.getId()) : Set.of();
-        return biteRepository.findByStatusOrderByPublishedAtDesc(Bite.Status.PUBLISHED, pageable)
-                .map(bite -> mapToDTO(bite, likedIds));
+        LocalDateTime cursorDate = null;
+        Long cursorId = null;
+        if (cursor != null && cursor.contains("_")) {
+            String[] parts = cursor.split("_");
+            cursorDate = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(Long.parseLong(parts[0])), java.time.ZoneId.systemDefault());
+            cursorId = Long.parseLong(parts[1]);
+        }
+        
+        List<Bite> bites = biteRepository.findNextPage(Bite.Status.PUBLISHED, cursorDate, cursorId, PageRequest.of(0, limit + 1));
+        return buildCursorResponse(bites, limit, likedIds);
     }
 
     @Override
-    public Page<BiteResponseDTO> getPersonalizedFeed(User user, Pageable pageable) {
+    public CursorPageResponse<BiteResponseDTO> getPersonalizedFeed(User user, String cursor, int limit) {
         if (user == null || user.getPreferences() == null || user.getPreferences().isEmpty()) {
-            return getAllBites(user, pageable);
+            return getAllBites(user, cursor, limit);
         }
         
         Set<Long> likedIds = userRepository.findLikedBiteIdsByUserId(user.getId());
-        Page<Bite> bites = biteRepository.findForYouFeedByUserId(user.getId(), Bite.Status.PUBLISHED, pageable);
-        
-        if (bites.isEmpty()) {
-            return getAllBites(user, pageable);
+        LocalDateTime cursorDate = null;
+        Long cursorId = null;
+        if (cursor != null && cursor.contains("_")) {
+            String[] parts = cursor.split("_");
+            cursorDate = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(Long.parseLong(parts[0])), java.time.ZoneId.systemDefault());
+            cursorId = Long.parseLong(parts[1]);
         }
-        return bites.map(bite -> mapToDTO(bite, likedIds));
+        
+        List<Bite> bites = biteRepository.findForYouNextPage(user.getId(), Bite.Status.PUBLISHED, cursorDate, cursorId, PageRequest.of(0, limit + 1));
+        
+        if (bites.isEmpty() && cursor == null) {
+            return getAllBites(user, cursor, limit);
+        }
+        return buildCursorResponse(bites, limit, likedIds);
     }
 
     @Override
-    public Page<BiteResponseDTO> getBitesByCategory(User user, Long categoryId, Pageable pageable) {
+    public CursorPageResponse<BiteResponseDTO> getBitesByCategory(User user, Long categoryId, String cursor, int limit) {
         Set<Long> likedIds = user != null ? userRepository.findLikedBiteIdsByUserId(user.getId()) : Set.of();
-        return biteRepository.findByCategoryIdAndStatusOrderByPublishedAtDesc(categoryId, Bite.Status.PUBLISHED, pageable)
-                .map(bite -> mapToDTO(bite, likedIds));
+        LocalDateTime cursorDate = null;
+        Long cursorId = null;
+        if (cursor != null && cursor.contains("_")) {
+            String[] parts = cursor.split("_");
+            cursorDate = java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(Long.parseLong(parts[0])), java.time.ZoneId.systemDefault());
+            cursorId = Long.parseLong(parts[1]);
+        }
+        
+        List<Bite> bites = biteRepository.findCategoryNextPage(categoryId, Bite.Status.PUBLISHED, cursorDate, cursorId, PageRequest.of(0, limit + 1));
+        return buildCursorResponse(bites, limit, likedIds);
+    }
+
+    private CursorPageResponse<BiteResponseDTO> buildCursorResponse(List<Bite> bites, int limit, Set<Long> likedIds) {
+        boolean hasNext = bites.size() > limit;
+        List<Bite> content = hasNext ? bites.subList(0, limit) : bites;
+        
+        String nextCursor = null;
+        if (!content.isEmpty()) {
+            Bite lastBite = content.get(content.size() - 1);
+            long timeMillis = lastBite.getPublishedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+            nextCursor = timeMillis + "_" + lastBite.getId();
+        }
+        
+        List<BiteResponseDTO> dtoList = content.stream().map(b -> mapToDTO(b, likedIds)).toList();
+        return new CursorPageResponse<>(dtoList, nextCursor, hasNext);
     }
 
 

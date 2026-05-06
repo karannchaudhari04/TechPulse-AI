@@ -2,41 +2,37 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { Bite } from '../types';
 import { apiClient } from '../api/client';
 
-// The Spring Data Page<T> response structure
-export interface PageResponse<T> {
+export interface CursorPageResponse<T> {
   content: T[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-  size: number;
-  empty: boolean;
+  nextCursor: string | null;
+  hasNext: boolean;
 }
 
 export function useBites(feedType: 'all' | 'foryou' | 'category' = 'all', categoryId?: number) {
   return useInfiniteQuery({
     queryKey: ['bites', feedType, categoryId],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam = null as string | null }) => {
       let endpoint = '';
+      const cursorParam = pageParam ? `cursor=${pageParam}&` : '';
       
       if (feedType === 'foryou') {
-        endpoint = `/bites/foryou?page=${pageParam}&size=10`;
+        endpoint = `/bites/foryou?${cursorParam}limit=10`;
       } else if (feedType === 'category' && categoryId) {
-        endpoint = `/bites/category/${categoryId}?page=${pageParam}&size=10`;
+        endpoint = `/bites/category/${categoryId}?${cursorParam}limit=10`;
       } else {
-        endpoint = `/bites?page=${pageParam}&size=10`;
+        endpoint = `/bites?${cursorParam}limit=10`;
       }
       
-      return apiClient.get<PageResponse<Bite>>(endpoint);
+      return apiClient.get<CursorPageResponse<Bite>>(endpoint);
     },
     getNextPageParam: (lastPage) => {
-      // If there are more pages available, return the next page number
-      if (lastPage.number + 1 < lastPage.totalPages) {
-        return lastPage.number + 1;
+      if (lastPage.hasNext) {
+        return lastPage.nextCursor;
       }
-      return undefined; // Stops pagination
+      return undefined;
     },
-    initialPageParam: 0,
+    initialPageParam: null as string | null,
     staleTime: 1000 * 60 * 5, // Cache the feed for 5 minutes
-    retry: 2, // Simple retry logic automatically handled by React Query
+    retry: 2,
   });
 }

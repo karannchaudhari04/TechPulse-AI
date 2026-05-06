@@ -2,6 +2,7 @@ package com.techbite.controller;
 
 import com.techbite.dto.ApiResponse;
 import com.techbite.dto.BiteResponseDTO;
+import com.techbite.dto.CursorPageResponse;
 import com.techbite.model.Bite;
 import com.techbite.model.User;
 import com.techbite.repository.BiteRepository;
@@ -54,42 +55,36 @@ public class BiteController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getAllBites(
+    public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getAllBites(
             @AuthenticationPrincipal String firebaseUid,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "publishedAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String direction) {
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") int limit) {
         
         User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
-        Sort sort = direction.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        PageRequest pageRequest = PageRequest.of(page, size, sort);
-        Page<BiteResponseDTO> bites = biteService.getAllBites(user, pageRequest);
+        CursorPageResponse<BiteResponseDTO> bites = biteService.getAllBites(user, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Feed fetched successfully"));
     }
 
     @GetMapping("/foryou")
-    public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getForYouFeed(
+    public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getForYouFeed(
             @AuthenticationPrincipal String firebaseUid,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") int limit) {
         
         User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<BiteResponseDTO> bites = biteService.getPersonalizedFeed(user, pageRequest);
+        CursorPageResponse<BiteResponseDTO> bites = biteService.getPersonalizedFeed(user, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Personalized feed fetched"));
     }
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<ApiResponse<Page<BiteResponseDTO>>> getBitesByCategory(
+    public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getBitesByCategory(
             @AuthenticationPrincipal String firebaseUid,
             @PathVariable Long categoryId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") int limit) {
         
         User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
-        PageRequest pageRequest = PageRequest.of(page, size);
-        Page<BiteResponseDTO> bites = biteService.getBitesByCategory(user, categoryId, pageRequest);
+        CursorPageResponse<BiteResponseDTO> bites = biteService.getBitesByCategory(user, categoryId, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Category feed fetched"));
     }
 
