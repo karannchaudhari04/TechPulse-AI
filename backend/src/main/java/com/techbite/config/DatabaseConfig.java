@@ -2,7 +2,6 @@ package com.techbite.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +13,7 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
@@ -23,17 +23,20 @@ import java.util.Properties;
 @Configuration
 public class DatabaseConfig {
 
-    @Value("${DATABASE_WRITER_URL}")
+    // Use standard Spring properties that are automatically mapped from environment variables
+    @Value("${spring.datasource.writer.url:${DATABASE_WRITER_URL:}}")
     private String writerUrl;
 
-    @Value("${DATABASE_REPLICA_URL}")
+    @Value("${spring.datasource.replica.url:${DATABASE_REPLICA_URL:}}")
     private String replicaUrl;
 
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource.writer")
     public DataSource writerDataSource() {
         HikariDataSource ds = DataSourceBuilder.create().type(HikariDataSource.class).build();
-        ds.setJdbcUrl(writerUrl); // Explicitly set for Hikari compatibility
+        if (writerUrl != null && !writerUrl.isEmpty()) {
+            ds.setJdbcUrl(writerUrl);
+        }
         return ds;
     }
 
@@ -41,7 +44,9 @@ public class DatabaseConfig {
     @ConfigurationProperties(prefix = "spring.datasource.replica")
     public DataSource replicaDataSource() {
         HikariDataSource ds = DataSourceBuilder.create().type(HikariDataSource.class).build();
-        ds.setJdbcUrl(replicaUrl); // Explicitly set for Hikari compatibility
+        if (replicaUrl != null && !replicaUrl.isEmpty()) {
+            ds.setJdbcUrl(replicaUrl);
+        }
         return ds;
     }
 
@@ -66,6 +71,7 @@ public class DatabaseConfig {
     @Bean
     @Primary
     public DataSource dataSource(@Qualifier("routingDataSource") DataSource routingDataSource) {
+        // This Proxy is CRITICAL for production - it delays the connection until a query is actually run
         return new LazyConnectionDataSourceProxy(routingDataSource);
     }
 
