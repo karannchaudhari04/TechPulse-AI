@@ -21,7 +21,6 @@ import java.util.Properties;
 @Configuration
 public class DatabaseConfig {
 
-    // Primary Writer Properties
     @Value("${DATABASE_WRITER_URL:${spring.datasource.writer.url:}}")
     private String writerUrl;
 
@@ -31,7 +30,6 @@ public class DatabaseConfig {
     @Value("${DATABASE_WRITER_PASSWORD:${spring.datasource.writer.password:}}")
     private String writerPassword;
 
-    // Replica Reader Properties
     @Value("${DATABASE_REPLICA_URL:${spring.datasource.replica.url:}}")
     private String replicaUrl;
 
@@ -55,12 +53,16 @@ public class DatabaseConfig {
     @Bean
     public DataSource replicaDataSource() {
         HikariDataSource ds = new HikariDataSource();
-        // Fallback to writer if replica info is missing
         ds.setJdbcUrl(replicaUrl != null && !replicaUrl.isEmpty() ? replicaUrl : writerUrl);
         ds.setUsername(replicaUser != null && !replicaUser.isEmpty() ? replicaUser : writerUser);
         ds.setPassword(replicaPassword != null && !replicaPassword.isEmpty() ? replicaPassword : writerPassword);
         ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
         ds.setMaximumPoolSize(20);
+        
+        // AP Theorem Implementation: Enable TiDB Stale Reads / Follower Reads
+        // This prioritizes Availability over Consistency for read-only traffic.
+        ds.setConnectionInitSql("SET tidb_replica_read = 'leader-and-follower'");
+        
         return ds;
     }
 
