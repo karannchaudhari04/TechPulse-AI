@@ -22,10 +22,10 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://techbite.onrender.com/api/v1",
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD30JsCvKMMMTpv6tQyklGhD94diuC4NgU",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "USE_EAS_SECRETS_OR_ENV",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "techbite-2ad11",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "626642842714-5366htochl4i04vfbffocd8joogi35fn.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "626642842714-kupjaq7lgenrd1p5tkvfgoq6qifee6qa.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "USE_EAS_SECRETS_OR_ENV",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "USE_EAS_SECRETS_OR_ENV"
       }
     },
     "production": {
@@ -34,10 +34,10 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://techbite.onrender.com/api/v1",
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyD30JsCvKMMMTpv6tQyklGhD94diuC4NgU",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "USE_EAS_SECRETS_OR_ENV",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "techbite-2ad11",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "626642842714-5366htochl4i04vfbffocd8joogi35fn.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "626642842714-kupjaq7lgenrd1p5tkvfgoq6qifee6qa.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "USE_EAS_SECRETS_OR_ENV",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "USE_EAS_SECRETS_OR_ENV"
       }
     }
   },

@@ -56,6 +56,7 @@ public class NewsIngestionService {
     private final BookmarkRepository bookmarkRepository;
     private final NewsSourceRepository newsSourceRepository;
     private final ChatClient chatClient;
+    private final org.springframework.cache.CacheManager cacheManager;
 
     private LocalDateTime lastRunTime;
     private int lastSavedCount = 0;
@@ -64,12 +65,14 @@ public class NewsIngestionService {
                                 CategoryRepository categoryRepository,
                                 BookmarkRepository bookmarkRepository,
                                 NewsSourceRepository newsSourceRepository,
-                                @org.springframework.context.annotation.Lazy ChatClient.Builder chatClientBuilder) {
+                                @org.springframework.context.annotation.Lazy ChatClient.Builder chatClientBuilder,
+                                org.springframework.cache.CacheManager cacheManager) {
         this.biteRepository = biteRepository;
         this.categoryRepository = categoryRepository;
         this.bookmarkRepository = bookmarkRepository;
         this.newsSourceRepository = newsSourceRepository;
         this.chatClient = chatClientBuilder.build();
+        this.cacheManager = cacheManager;
     }
 
     @Value("${spring.ai.openai.api-key}")
@@ -150,6 +153,16 @@ public class NewsIngestionService {
             }
             this.lastSavedCount = savedCount;
             this.lastRunTime = LocalDateTime.now();
+            
+            if (savedCount > 0) {
+                log.info("[NewsIngestion] New bites ingested. Invalidating Redis feed caches...");
+                org.springframework.cache.Cache globalFeed = cacheManager.getCache("globalFeed");
+                if (globalFeed != null) globalFeed.clear();
+                
+                org.springframework.cache.Cache categoryFeed = cacheManager.getCache("categoryFeed");
+                if (categoryFeed != null) categoryFeed.clear();
+            }
+            
             log.info("[NewsIngestion] Async Ingestion Completed. Saved: {}, Skipped: {}", savedCount, skippedCount);
         } finally {
             isIngesting.set(false);

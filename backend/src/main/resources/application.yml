@@ -1,70 +1,41 @@
 spring:
-  application:
-    name: techbite
-
   datasource:
-    # ── Local dev: uses your local MySQL on port 3309 ──────────────────────────
-    # ── Production: set DATABASE_URL in Render dashboard ──────────────────────
-    url: ${DATABASE_URL:jdbc:mysql://localhost:3309/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DATABASE_USER:root}
-    password: ${DATABASE_PASSWORD:karan}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      connection-timeout: 20000
-      maximum-pool-size: 5      # Keep low — TiDB free tier has connection limits
-      minimum-idle: 1
-      idle-timeout: 300000
-      connection-test-query: SELECT 1
+    writer:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      type: com.zaxxer.hikari.HikariDataSource
+      hikari:
+        connection-timeout: 60000
+        maximum-pool-size: 10
 
-  sql:
-    init:
-      # 'always'  → runs data.sql every startup (local dev)
-      # 'never'   → skips data.sql (production — data already seeded)
-      mode: ${SQL_INIT_MODE:always}
+    replica:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      type: com.zaxxer.hikari.HikariDataSource
+      hikari:
+        connection-timeout: 60000
+        maximum-pool-size: 20
 
+  # JPA is now manually configured in DatabaseConfig.java for production stability
   jpa:
-    open-in-view: false
-    defer-datasource-initialization: true
-    hibernate:
-      ddl-auto: update
     show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
+    hibernate:
+      ddl-auto: update # Keep for local dev/initial setup
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
   ai:
     openai:
-      api-key: ${GEMINI_API_KEY:${SPRING_AI_OPENAI_API_KEY:AIzaSyD1uik4xJNGVk37d44gUs7SJCdMlO7B7FM}}
-      base-url: https://generativelanguage.googleapis.com/v1beta/openai
-      chat:
-        options:
-          model: gemini-3.1-flash-lite-preview
+      api-key: ${GEMINI_API_KEY}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
 
-  task:
-    scheduling:
-      pool:
-        size: 2
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
 
-app:
-  jwt:
-    secret: ${JWT_SECRET:local_dev_secret_key_not_for_production}
-    expiration-ms: 86400000
-  firebase:
-    config-path: ${FIREBASE_CONFIG_PATH:classpath:firebase-adminsdk.json}
-  news:
-    ingestion:
-      enabled: true
-      feeds-per-run: 5
-
-server:
-  address: 0.0.0.0
-  port: ${PORT:8080}     # Render injects PORT automatically
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      show-details: always
+logging:
+  level:
+    com.techbite: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.jdbc.datasource: DEBUG

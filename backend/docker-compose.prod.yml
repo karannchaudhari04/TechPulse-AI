@@ -6,47 +6,26 @@
 
 services:
 
-  mysql:
-    image: mysql:8.0
-    container_name: techbite-mysql-prod
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: techbite
-      MYSQL_USER: techbite_user
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - mysql_prod_data:/var/lib/mysql
-    # NOT exposed to host — only accessible within Docker network
-    expose:
-      - "3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-    # MySQL tuning for 1GB RAM Oracle VM
-    command: >
-      --innodb-buffer-pool-size=128M
-      --max-connections=50
-      --query-cache-size=0
-      --thread-cache-size=4
-
   backend:
     image: ${DOCKER_IMAGE:-techbite-backend:latest}
-    container_name: techbite-backend-prod
     restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
     environment:
-      DATABASE_URL: jdbc:mysql://mysql:3306/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      DATABASE_USER: techbite_user
-      DATABASE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_WRITER_URL: ${DATABASE_WRITER_URL}
+      SPRING_DATASOURCE_WRITER_USERNAME: ${DATABASE_WRITER_USER}
+      SPRING_DATASOURCE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD}
+      SPRING_DATASOURCE_READER1_URL: ${DATABASE_READER_1_URL}
+      SPRING_DATASOURCE_READER1_USERNAME: ${DATABASE_READER_1_USER}
+      SPRING_DATASOURCE_READER1_PASSWORD: ${DATABASE_READER_1_PASSWORD}
+      SPRING_DATASOURCE_READER2_URL: ${DATABASE_READER_2_URL}
+      SPRING_DATASOURCE_READER2_USERNAME: ${DATABASE_READER_2_USER}
+      SPRING_DATASOURCE_READER2_PASSWORD: ${DATABASE_READER_2_PASSWORD}
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
       SPRING_PROFILES_ACTIVE: prod
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     # Limits prevent OOM kill on 1GB VM
     deploy:
       resources:
@@ -55,10 +34,18 @@ services:
         reservations:
           memory: 200M
 
+  redis:
+    image: redis:7-alpine
+    container_name: techbite-redis-prod
+    restart: always
+    # Ports usually not exposed in prod for Redis unless needed
+    # expose:
+    #   - "6379"
+
   # Nginx reverse proxy — handles HTTPS + port 80 forwarding
   nginx:
     image: nginx:alpine
-    container_name: techbite-nginx
+    container_name: techbite-nginx-prod
     restart: always
     depends_on:
       - backend
@@ -70,7 +57,3 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     profiles:
       - with-nginx   # Only starts when: docker compose --profile with-nginx up
-
-volumes:
-  mysql_prod_data:
-    driver: local

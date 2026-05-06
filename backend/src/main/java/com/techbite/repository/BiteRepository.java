@@ -12,13 +12,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.cache.annotation.Cacheable;
+
 public interface BiteRepository extends JpaRepository<Bite, Long> {
 
     @EntityGraph(attributePaths = {"category"})
+    @Cacheable(value = "globalFeed", key = "#status.name() + '-' + (#cursorDate != null ? #cursorDate.toString() : 'null') + '-' + (#cursorId != null ? #cursorId : 'null')")
     @Query("SELECT b FROM Bite b WHERE b.status = :status AND (:cursorDate IS NULL OR b.publishedAt < :cursorDate OR (b.publishedAt = :cursorDate AND b.id < :cursorId)) ORDER BY b.publishedAt DESC, b.id DESC")
     List<Bite> findNextPage(@Param("status") Bite.Status status, @Param("cursorDate") LocalDateTime cursorDate, @Param("cursorId") Long cursorId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"category"})
+    @Cacheable(value = "categoryFeed", key = "#categoryId + '-' + #status.name() + '-' + (#cursorDate != null ? #cursorDate.toString() : 'null') + '-' + (#cursorId != null ? #cursorId : 'null')")
     @Query("SELECT b FROM Bite b WHERE b.category.id = :categoryId AND b.status = :status AND (:cursorDate IS NULL OR b.publishedAt < :cursorDate OR (b.publishedAt = :cursorDate AND b.id < :cursorId)) ORDER BY b.publishedAt DESC, b.id DESC")
     List<Bite> findCategoryNextPage(@Param("categoryId") Long categoryId, @Param("status") Bite.Status status, @Param("cursorDate") LocalDateTime cursorDate, @Param("cursorId") Long cursorId, Pageable pageable);
 

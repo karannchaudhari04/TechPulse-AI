@@ -126,7 +126,24 @@
       <version>8.10.1</version>
     </dependency>
 
+    <!-- Redis for Caching -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
     <!-- AOP for Async/Caching -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-aop</artifactId>
+    </dependency>
+
+    <!-- TiDB specialized dialects -->
+    <dependency>
+      <groupId>org.hibernate.orm</groupId>
+      <artifactId>hibernate-community-dialects</artifactId>
+      <version>6.4.4.Final</version>
+    </dependency>
   </dependencies>
   
   <dependencyManagement>

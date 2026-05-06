@@ -1,42 +1,40 @@
-# ============================================================
-# docker-compose.yml — LOCAL DEVELOPMENT
-# Replaces your local MySQL (port 3309) with a Docker container
-# Usage: docker compose up -d
-# ============================================================
-
 services:
-
-  mysql:
-    image: mysql:8.0
-    container_name: techbite-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: karan
-      MYSQL_DATABASE: techbite
-    ports:
-      - "3309:3306"      # keeps your existing local port mapping
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pkaran"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   backend:
     build: .
-    container_name: techbite-backend
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
     environment:
-      DATABASE_URL: jdbc:mysql://mysql:3306/techbite?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      DATABASE_USER: root
-      DATABASE_PASSWORD: karan
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-AIzaSyDqKY5uqt84jpyWRdpS4_HAWq2_sextjMY}
-    ports:
-      - "8080:8080"
+      SPRING_DATASOURCE_WRITER_URL: ${DATABASE_WRITER_URL}
+      SPRING_DATASOURCE_WRITER_USERNAME: ${DATABASE_WRITER_USER}
+      SPRING_DATASOURCE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD}
+      SPRING_DATASOURCE_REPLICA_URL: ${DATABASE_REPLICA_URL}
+      SPRING_DATASOURCE_REPLICA_USERNAME: ${DATABASE_REPLICA_USER}
+      SPRING_DATASOURCE_REPLICA_PASSWORD: ${DATABASE_REPLICA_PASSWORD}
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      SQL_INIT_MODE: ${SQL_INIT_MODE:-never}
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    command: ["java", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]
+    depends_on:
+      - redis
 
-volumes:
-  mysql_data:
+  redis:
+    image: redis:alpine
+    container_name: techbite-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  nginx:
+    image: nginx:alpine
+    container_name: techbite-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
