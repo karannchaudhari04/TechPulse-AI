@@ -17,20 +17,18 @@
 
 **TechBite** solves the "information overload" problem for tech professionals and students. Instead of scrolling through endless articles, TechBite automatically scrapes top tech blogs, uses **Google Gemini AI** to summarize them into 80-150 word "bites", and delivers them in a highly addictive, frictionless vertical feed (similar to TikTok/Shorts).
 
-Engineered as a **production-grade distributed system**, TechBite is capable of high-concurrency traffic through horizontal scaling, database read/write splitting, dynamic Redis CAS rate-limiting, and distributed locking synchronization.
+Engineered as a **production-ready distributed system**, TechBite is capable of high-concurrency traffic through horizontal scaling, database read/write splitting, and aggressive caching.
 
 ---
 
 ## ✨ Features
 
 - **⚡ 60 FPS Vertical Feed**: Hyper-optimized native scrolling using Shopify's `FlashList` and Reanimated.
-- **🤖 AI Ingestion Pipeline**: Automated background ingestion pipeline utilizing Gemini AI with full multi-model API redundancy to extract key insights.
-- **🔒 Distributed Task Synchronization**: Leverages **ShedLock** with a Redis lock provider to ensure exactly one replica executes scheduled news scraping jobs in a clustered environment.
-- **🛡️ Cluster-Wide CAS Rate Limiting**: Built on **Bucket4j + Lettuce Redis CAS**, utilizing Lettuce's atomic CAS provider over a shared `RedisConnectionFactory` to block high-volume traffic across all replicas instantly.
+- **🤖 AI-Powered Summaries**: Automated background ingestion pipeline utilizing Gemini AI to extract key insights.
 - **🧠 Personalized "For You"**: Tailored content delivery based on user-selected interests (DSA, AI, Web Dev, etc.).
 - **🔥 Daily Streaks & Gamification**: Push notifications and streak tracking to build consistent learning habits.
 - **🔖 Bookmarks & Social Sharing**: Save crucial interview prep tips or share dynamic deep links that redirect directly into the app.
-- **🔐 Secure Stateless Auth**: Seamless Google Sign-In backed by Firebase Admin SDK, custom user roles (`USER` / `ADMIN`), and stateless JWT verification.
+- **🔐 Secure Stateless Auth**: Seamless Google Sign-In backed by Firebase Admin SDK and stateless JWT verification.
 
 ---
 
@@ -39,9 +37,9 @@ Engineered as a **production-grade distributed system**, TechBite is capable of 
 | Domain | Technologies Used |
 | :--- | :--- |
 | **Mobile Client** | React Native (Expo), TypeScript, FlashList, Reanimated, React Query, NativeWind (Tailwind) |
-| **Backend API** | Java 17, Spring Boot 3.2, Spring Security, Spring AI, Rome (RSS), Bucket4j, ShedLock |
-| **Database & Cache** | TiDB Cloud (MySQL Dialect), Redis (Lettuce Client) |
-| **DevOps & Cloud** | Docker, Nginx (Round-Robin Load Balancer), Render (PaaS), EAS (Expo Application Services) |
+| **Backend API** | Java 17, Spring Boot 3.2, Spring Security, Spring AI, Rome (RSS), Bucket4j |
+| **Database & Cache** | TiDB (MySQL Dialect), Redis |
+| **DevOps & Cloud** | Docker, Nginx (Load Balancer), Render (PaaS), EAS (Expo Application Services) |
 
 ---
 
@@ -49,70 +47,22 @@ Engineered as a **production-grade distributed system**, TechBite is capable of 
 
 This project moves beyond standard CRUD apps by implementing **Enterprise-grade distributed patterns**:
 
-### 1. High-Availability Clustered Scale-Out
-- **Stateless JVM Architecture**: Session states are managed exclusively via JWTs. An **Nginx Load Balancer** distributes traffic using a Round-Robin algorithm across a scaling cluster of Spring Boot nodes.
-- **TiDB Read/Write Splitting**: Implemented custom `AbstractRoutingDataSource` and Spring AOP to route heavy feed queries to TiDB Read Replicas (`tidb_replica_read = 'leader-and-follower'`), prioritizing system availability (CAP Theorem AP-Mode).
+### 1. Horizontal Scaling & High Availability (AP-Mode)
+- The backend is fully **stateless**. Session state is managed via JWTs, allowing an **Nginx Load Balancer** to distribute traffic via Round-Robin across multiple Spring Boot instances.
+- **TiDB Read/Write Splitting**: Implemented custom `AbstractRoutingDataSource` and Spring AOP to route heavy feed queries to TiDB Read Replicas (`tidb_replica_read = 'leader-and-follower'`), prioritizing system availability over strict consistency (CAP Theorem AP-Mode).
 
-### 2. Distributed Lock Coordination (ShedLock)
-To prevent scraping redundancy, resource conflicts, and API quota waste across a 3-replica backend cluster, TechBite implements **ShedLock** using Redis as the lock provider:
-```java
-@Scheduled(cron = "0 0 */2 * * *")
-@SchedulerLock(
-    name = "NewsIngestion_scheduledIngest", 
-    lockAtMostFor = "15m", 
-    lockAtLeastFor = "5m"
-)
-public void scheduledIngest() { ... }
-```
-When the cron triggers, instances compete for the `NewsIngestion_scheduledIngest` lock stored inside the shared Redis space. The winning instance executes the ingestion job, while other replicas skip the run safely.
-
-### 3. Shared CAS API Throttling
-Unlike traditional rate limiters which track requests in JVM memory (failing in distributed clusters), TechBite uses a **distributed, lock-free rate limiting** mechanism based on **Bucket4j + Lettuce Redis CAS (Compare-and-Swap)**:
-- **Shared Connection Pooling**: Reuses Spring's primary `RedisConnectionFactory` connection pool to eliminate Lettuce socket overhead and potential connection leaks.
-- **Atomic Operations**: Employs Letuce's CAS provider (`LettuceBasedProxyManager`) to dynamically query and update keys (`GUEST_172.x.x.x` or `AUTH_<UID>`) atomically, guaranteeing precise rate limit enforcement across all replica nodes without network bottlenecking.
-- **Capacities**: Permitted 60 requests/min for guests, and 200 requests/min for authenticated accounts.
-
-### 4. Resilient Multi-Model AI Stack
+### 2. The AI Ingestion Pipeline
 - A scheduled Spring Boot cron job reads RSS feeds via **Rome**.
 - Raw HTML is sanitized using **JSoup** to prevent prompt injection.
-- AI summaries utilize a robust, cascading **4-model fallback stack** (`gemini-2.5-flash` $\rightarrow$ `gemini-3.1-flash-lite-preview` $\rightarrow$ `gemini-3-flash-preview` $\rightarrow$ `gemini-2.5-flash-lite`) with automatic exponential rate-limit back-offs, securing 100% aggregation SLA.
+- Clean text is sent to **Google Gemini** via `spring-ai`, prompting it to return structured JSON containing a concise summary and category classification.
 
----
+### 3. Fail-Safe Caching Strategy
+- The primary feed is aggressively cached in **Redis**. 
+- Implemented a custom `CacheErrorHandler` ensuring that if the Redis node goes down, the application gracefully falls back to database reads instead of throwing 500 Internal Server Errors.
 
-## 📊 System Architecture Flow
-
-```mermaid
-graph TD
-    Client[React Native App] -->|HTTP Requests| Nginx[Nginx Load Balancer: Port 8080]
-    
-    subgraph Spring Boot Backend Cluster
-        Nginx -->|Round-Robin| S1[Backend Instance 1]
-        Nginx -->|Round-Robin| S2[Backend Instance 2]
-        Nginx -->|Round-Robin| S3[Backend Instance 3]
-    end
-
-    subgraph Distributed Lock & Cache
-        S1 <-->|Lettuce CAS & ShedLock| Redis[Redis: Port 6379]
-        S2 <-->|Lettuce CAS & ShedLock| Redis
-        S3 <-->|Lettuce CAS & ShedLock| Redis
-    end
-
-    subgraph Distributed Database Layer
-        S1 -->|Write Split| TiDB_W[TiDB Cloud Primary]
-        S1 -.->|Read Split| TiDB_R[TiDB Cloud Replica]
-        S2 -->|Write Split| TiDB_W
-        S2 -.->|Read Split| TiDB_R
-        S3 -->|Write Split| TiDB_W
-        S3 -.->|Read Split| TiDB_R
-    end
-    
-    subgraph Ingestion Pipeline
-        ShedLockJob[ShedLock Cron: Single Node Run] -.->|RSS Fetch| Rome[Rome Parser]
-        Rome -->|Sanitize| JSoup[JSoup Engine]
-        JSoup -->|AI Analysis| Gemini[Google Gemini AI Stack]
-        Gemini -->|Ingested Bites| TiDB_W
-    end
-```
+### 4. Extreme Mobile Optimization
+- **Sub-30MB APK**: Achieved by enabling Android ABI Splitting in Gradle and utilizing Hermes engine.
+- **Instant TTI (Time to Interactive)**: UI rendering is decoupled from network requests using React Query with local Async Storage persistence. 
 
 ---
 
@@ -135,37 +85,43 @@ graph TD
 - Docker Desktop
 - Firebase Project & Google Gemini API Key
 
-### 1. Run the Multi-Replica Backend Locally (Docker Compose)
+### 1. Run Backend Locally (Docker)
 The backend is fully containerized for a zero-config setup.
 ```bash
 cd backend
-# 1. Copy .env.example to .env and configure DATABASE_WRITER_URL, GEMINI_API_KEY, and Firebase credentials
-# 2. Boot up the entire high-availability cluster
-docker compose up -d --scale backend=3 --build
+# Rename .env.example to .env and add your Gemini & Firebase keys
+docker compose up -d
 ```
-*This starts a local TiDB/MySQL compatible server, Redis, 3 Spring Boot backend instances, and the Nginx Load Balancer routing on `localhost:8080`.*
+*This starts MySQL (TiDB local), Redis, 3 Spring Boot instances, and the Nginx Load Balancer on `localhost:8080`.*
 
-### 2. Run the Mobile App
+### 2. Run Mobile App
 ```bash
 cd mobile
 npm install
-# Rename .env.example to .env and set EXPO_PUBLIC_API_URL=http://<YOUR_IP>:8080/api/v1
 npx expo start
 ```
-*Use the Expo Go app on your physical iOS/Android device or boot up an Emulator to run the application.*
+*Use the Expo Go app or an Android Emulator to view the app.*
 
 ---
 
 ## 🎯 Resume & Interview Talking Points
 
-If you are an interviewer or technical recruiter reviewing this project, here are the key engineering challenges solved:
+If you are a recruiter reviewing this project, here are the key engineering challenges solved:
 
-* **Distributed Coordination & ShedLock**: Solved data ingestion concurrency by implementing ShedLock distributed locks using Redis as the lock provider, ensuring only one replica in a 3-instance Spring Boot cluster executes heavy scraping routines.
-* **Distributed CAS Throttling**: Designed a cluster-wide lock-free rate limiter with Bucket4j + Lettuce Redis CAS, extracting the connection pool directly from Spring Data's `RedisConnectionFactory` to guarantee strict throttling safety across replicas.
-* **Database Routing & TiDB Tuning**: Configured a custom AbstractRoutingDataSource with Spring AOP to split Read/Write SQL operations, leveraging TiDB Follower Reads to achieve high availability (CAP AP-mode). Resolved critical TiDB driver setReadOnly propagation syntax errors globally.
-* **Hermes & Gradle Optimization**: Achieved a sub-30MB production APK by configuring Android ABI Splitting and the Hermes engine in React Native, leading to a 75% reduction in binary footprint.
-* **API Resiliency with Fallbacks**: Built a redundant, fail-safe AI pipeline utilizing a 4-model Gemini API fallback system with smart back-offs and exponential rate-limit delays to guarantee a 100% ingestion uptime SLA on free-tier limits.
-* **Secured Architecture & Dynamic RBAC**: Eliminated client-side administration whitelists by implementing dynamic user role properties (`USER` / `ADMIN`) returned via secure Firebase authentication filters and restricted CORS configurations to strict subnets and explicit origins.
+* **Distributed Systems**: Architected a horizontally scaled, stateless Spring Boot backend using Nginx load balancing and JWT authentication, supporting high-concurrency mobile traffic.
+* **Database Optimization**: Engineered a custom Database Routing layer using Spring AOP to split Read/Write traffic, leveraging TiDB Follower Reads to achieve CAP Theorem AP-mode availability.
+* **Mobile Performance**: Optimized React Native performance by implementing ABI Splitting, Hermes engine, and FlashList, reducing final APK size by 75% and achieving 60fps scrolling.
+* **Automated AI Pipeline**: Designed an automated data pipeline using Rome RSS and Google Gemini AI to scrape, summarize, and categorize high-yield tech news, aggressively cached via Redis.
+* **Viral Acquisition**: Built a seamless viral acquisition loop utilizing deep linking, Server-Side Rendered (Thymeleaf) dynamic landing pages, and Expo Push Notifications.
+
+---
+
+## 🗺️ Future Roadmap
+
+- [ ] **iOS Native Build**: Configure EAS for App Store release.
+- [ ] **Web Dashboard**: Next.js admin panel for manual bite curation.
+- [ ] **Audio Bites**: Integration with Text-to-Speech APIs for podcast-style listening.
+- [ ] **Offline Mode**: Comprehensive SQLite sync for reading without an internet connection.
 
 ---
 
