@@ -98,7 +98,7 @@ public class NewsIngestionService {
         log.info("[System] Scheduled bookmark cleanup is currently disabled.");
     }
 
-    @Scheduled(cron = "0 0 */2 * * *")
+    @Scheduled(cron = "0 0 */4 * * *")
     @SchedulerLock(
         name = "NewsIngestion_scheduledIngest", 
         lockAtMostFor = "15m", 
