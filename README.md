@@ -51,3 +51,17 @@ docker compose down && docker compose up -d --scale backend=3
 cd mobile
 npm install
 npx expo start
+
+
+📈 Production Architecture
+
+Multi-instance backend with load balancing
+Database read/write separation
+Resilient AI fallback system
+Containerized and ready for Render / Railway
+
+📝 What I Learned
+
+Designed distributed systems patterns (horizontal scaling, read replicas, caching)
+Built a complete end-to-end Generative AI content pipeline
+Optimized mobile performance for real-world mid-range devices
