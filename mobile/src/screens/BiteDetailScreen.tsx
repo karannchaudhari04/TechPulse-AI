@@ -17,7 +17,8 @@ const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 export default function BiteDetailScreen({ route, navigation }: Props) {
   const params = route.params || {};
-  const id = params.id;
+  const rawId = params.id;
+  const id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
