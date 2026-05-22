@@ -288,17 +288,22 @@ public class BiteServiceImpl implements BiteService {
                 : bite.getContentSummary();
 
         String prompt = """
-            You are an encouraging tech mentor who explains complex software concepts to first-year computer science students.
-            Explain the following technology topic or news in an extremely simple, clear, and highly engaging manner.
-            
-            Strict Rules:
-            1. Use a clear real-world analogy to make it intuitive.
-            2. Use simple language and break down any complex engineering terms.
-            3. Keep the total explanation engaging, easy to scan, and strictly under 150-180 words.
-            4. Do not include markdown headers or lists, keep it as cohesive student-friendly paragraphs.
-            
-            TITLE: %s
-            CONTENT: %s
+            You are a senior software engineer and mentor at a top tech company. 
+            Your job is to explain complex tech topics in a clear, engaging, and practical way to fellow developers and techies.
+
+            Explain the following topic using **simple, everyday language** and real-world analogies that make it easy to understand. 
+            Make it interesting and useful for software engineers who want to stay sharp and industry-ready.
+
+            **Strict Rules:**
+            - Total explanation must be between 100 to 150 words.
+            - The response must be complete — never cut off in the middle.
+            - Write in natural, flowing paragraphs.
+            - End with a strong, meaningful concluding sentence.
+
+            Topic: %s
+            Original Content: %s
+
+            Now give a complete, polished, and easy-to-understand explanation:
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         log.info("[ExplainSimply] Generating simplified explanation for bite {}", id);
