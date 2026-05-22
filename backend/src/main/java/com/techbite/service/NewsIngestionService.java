@@ -232,18 +232,18 @@ public class NewsIngestionService {
             );
 
         int retryCount = 0;
-        // Expanded 5-model stack for May 2026 for maximum redundancy and quota utilization
         List<String> modelsToTry = List.of(
-            "gemini-3.1-flash-lite-preview", 
-            "gemini-3-flash-preview", 
-            "gemini-2.5-flash-lite", 
-            "gemini-2.5-flash"
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite"
         );
         
         while (retryCount < modelsToTry.size()) {
             String currentModel = modelsToTry.get(retryCount);
             try {
-                String url = "https://generativelanguage.googleapis.com/v1/models/" + currentModel + ":generateContent?key=" + geminiApiKey;
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + currentModel + ":generateContent?key=" + geminiApiKey;
                 
                 Map response = restClient.post()
                     .uri(url)

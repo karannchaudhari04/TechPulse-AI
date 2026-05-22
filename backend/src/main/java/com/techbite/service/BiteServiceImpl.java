@@ -33,6 +33,9 @@ public class BiteServiceImpl implements BiteService {
     @Value("${spring.ai.openai.api-key}")
     private String geminiApiKey;
 
+    @Value("${spring.ai.openai.explain-api-key}")
+    private String explainApiKey;
+
     public BiteServiceImpl(BiteRepository biteRepository, 
                            UserRepository userRepository,
                            @org.springframework.context.annotation.Lazy RestClient.Builder restClientBuilder,
@@ -92,8 +95,10 @@ public class BiteServiceImpl implements BiteService {
                 """.formatted(bite.getTitle(), contentToAnalyze);
 
             List<String> modelsToTry = List.of(
-                "gemini-3.1-flash-lite-preview", 
-                "gemini-3-flash-preview", 
+                "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
                 "gemini-2.5-flash-lite"
             );
             
@@ -118,7 +123,7 @@ public class BiteServiceImpl implements BiteService {
     }
 
     private String callGeminiApi(String modelName, String prompt) {
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + geminiApiKey;
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + explainApiKey;
         var requestBody = java.util.Map.of("contents", List.of(java.util.Map.of("parts", List.of(java.util.Map.of("text", prompt)))));
 
         String jsonResponse = restClient.post()
@@ -233,9 +238,10 @@ public class BiteServiceImpl implements BiteService {
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         List<String> modelsToTry = List.of(
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-pro",
             "gemini-2.5-flash",
-            "gemini-3.1-flash-lite-preview", 
-            "gemini-3-flash-preview", 
             "gemini-2.5-flash-lite"
         );
         
@@ -296,10 +302,24 @@ public class BiteServiceImpl implements BiteService {
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         log.info("[ExplainSimply] Generating simplified explanation for bite {}", id);
-        String explanation = explainChatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        
+        List<String> modelsToTry = List.of(
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite"
+        );
+        
+        String explanation = null;
+        for (String modelName : modelsToTry) {
+            try {
+                explanation = callGeminiApi(modelName, prompt);
+                if (explanation != null) break;
+            } catch (Exception e) {
+                log.warn("[ExplainSimply] Model {} failed: {}", modelName, e.getMessage());
+            }
+        }
 
         if (explanation == null || explanation.isBlank()) {
             throw new RuntimeException("AI failed to generate a simplified explanation.");
