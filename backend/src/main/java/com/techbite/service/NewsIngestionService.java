@@ -53,6 +53,13 @@ public class NewsIngestionService {
         "Open Source & GitHub", "Career & Placements", "Emerging Tech"
     );
 
+    // Obvious non-tech noise keywords to filter out instantly in Java in 0ms, saving Gemini API keys
+    private static final List<String> BLACKLISTED_KEYWORDS = List.of(
+        "cricket", "bollywood", "hollywood", "gossip", "election", "politics",
+        "recipe", "fashion", "sports", "football", "tennis", "olympics",
+        "movie", "entertainment", "celeb"
+    );
+
     private final BiteRepository biteRepository;
     private final CategoryRepository categoryRepository;
     private final BookmarkRepository bookmarkRepository;
@@ -149,8 +156,6 @@ public class NewsIngestionService {
                         } catch (Exception e) {
                             log.error("[NewsIngestion] Error processing entry: {}", e.getMessage());
                         }
-                        // Increased sleep to 10s to stay safely under Free Tier 429 limits
-                        Thread.sleep(10000); 
                     }
                 } catch (Exception e) {
                     log.error("[NewsIngestion] Failed to process source {}: {}", source.getName(), e.getMessage());
@@ -184,8 +189,8 @@ public class NewsIngestionService {
         SyndFeedInput input = new SyndFeedInput();
         try (XmlReader reader = new XmlReader(connection)) {
             SyndFeed feed = input.build(reader);
-            // Increase limit to 15 to catch more fresh items
-            return feed.getEntries().stream().limit(15).toList();
+            // Streamline limit to 8 to catch fresh items efficiently while conserving server resources
+            return feed.getEntries().stream().limit(8).toList();
         }
     }
 
@@ -193,19 +198,34 @@ public class NewsIngestionService {
         String sourceUrl = entry.getLink();
         if (sourceUrl == null || sourceUrl.isBlank()) return false;
 
-        // Skip articles older than 72 hours to ensure a highly relevant fresh digest
+        String md5Key = hashUrl(sourceUrl);
+        org.springframework.cache.Cache processedUrlsCache = cacheManager.getCache("processedUrls");
+        
+        // Instant Skip: If MD5 is in Redis processedUrls cache, bypass entirely
+        if (processedUrlsCache != null && processedUrlsCache.get(md5Key) != null) {
+            return false;
+        }
+
+        // Skip articles older than 48 hours to ensure a highly relevant fresh digest
         Date pubDate = entry.getPublishedDate();
         if (pubDate != null) {
             long ageInMillis = System.currentTimeMillis() - pubDate.getTime();
-            long maxAge = 72L * 60 * 60 * 1000; // 72 hours
+            long maxAge = 48L * 60 * 60 * 1000; // 48 hours
             if (ageInMillis > maxAge) {
                 log.info("[NewsIngestion] Skipping old article ({}h old): {}", ageInMillis / 3600000, entry.getTitle());
+                if (processedUrlsCache != null) {
+                    processedUrlsCache.put(md5Key, "PROCESSED");
+                }
                 return false;
             }
         }
 
-
-        if (biteRepository.existsByOriginalSourceUrl(sourceUrl)) return false;
+        if (biteRepository.existsByOriginalSourceUrl(sourceUrl)) {
+            if (processedUrlsCache != null) {
+                processedUrlsCache.put(md5Key, "PROCESSED");
+            }
+            return false;
+        }
         
         String rawTitle = entry.getTitle() != null ? entry.getTitle().trim() : "";
         if (rawTitle.isBlank()) return false;
@@ -213,6 +233,9 @@ public class NewsIngestionService {
         // Smarter Deduping: Skip if title already exists (even with different URL)
         if (biteRepository.existsByTitle(rawTitle)) {
             log.info("[NewsIngestion] Skipping duplicate title: {}", rawTitle);
+            if (processedUrlsCache != null) {
+                processedUrlsCache.put(md5Key, "PROCESSED");
+            }
             return false;
         }
 
@@ -220,6 +243,20 @@ public class NewsIngestionService {
         String thumbUrl = extractImage(entry);
 
         if (rawTitle.isBlank() || rawDescription.isBlank()) return false;
+
+        // Java-side Pre-filtering: Instant 0ms skip for non-tech/noise articles to protect Gemini API key quota
+        String lowerTitle = rawTitle.toLowerCase();
+        String lowerDesc = rawDescription.toLowerCase();
+        boolean isNoise = BLACKLISTED_KEYWORDS.stream().anyMatch(keyword -> 
+            lowerTitle.contains(keyword) || lowerDesc.contains(keyword)
+        );
+        if (isNoise) {
+            log.info("[NewsIngestion] Skipped non-tech article via Java pre-filtering: {}", rawTitle);
+            if (processedUrlsCache != null) {
+                processedUrlsCache.put(md5Key, "PROCESSED");
+            }
+            return false;
+        }
 
         String aiPrompt = buildPrompt(rawTitle, rawDescription);
         String aiResponse = null;
@@ -231,67 +268,78 @@ public class NewsIngestionService {
                 )
             );
 
-        int retryCount = 0;
-        List<String> modelsToTry = List.of(
-            "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b"
-        );
-        
-        while (retryCount < modelsToTry.size()) {
-            String currentModel = modelsToTry.get(retryCount);
-            try {
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + currentModel + ":generateContent?key=" + geminiApiKey;
-                
-                Map response = restClient.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("User-Agent", "TechBite-News-Aggregator/2026-Edition")
-                    .body(requestBody)
-                    .retrieve()
-                    .body(Map.class);
+            int retryCount = 0;
+            List<String> modelsToTry = List.of(
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-8b"
+            );
+            
+            while (retryCount < modelsToTry.size()) {
+                String currentModel = modelsToTry.get(retryCount);
+                try {
+                    String url = "https://generativelanguage.googleapis.com/v1beta/models/" + currentModel + ":generateContent?key=" + geminiApiKey;
+                    
+                    Map response = restClient.post()
+                        .uri(url)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("User-Agent", "TechBite-News-Aggregator/2026-Edition")
+                        .body(requestBody)
+                        .retrieve()
+                        .body(Map.class);
 
-                if (response != null && response.get("candidates") instanceof List candidates && !candidates.isEmpty()) {
-                    Map firstCandidate = (Map) candidates.get(0);
-                    if (firstCandidate != null && firstCandidate.get("content") instanceof Map content) {
-                        List parts = (List) content.get("parts");
-                        if (parts != null && !parts.isEmpty()) {
-                            aiResponse = (String) ((Map) parts.get(0)).get("text");
-                            break; // Success!
+                    if (response != null && response.get("candidates") instanceof List candidates && !candidates.isEmpty()) {
+                        Map firstCandidate = (Map) candidates.get(0);
+                        if (firstCandidate != null && firstCandidate.get("content") instanceof Map content) {
+                            List parts = (List) content.get("parts");
+                            if (parts != null && !parts.isEmpty()) {
+                                aiResponse = (String) ((Map) parts.get(0)).get("text");
+                                break; // Success!
+                            }
                         }
                     }
-                }
-                throw new RuntimeException("Empty or malformed AI response");
+                    throw new RuntimeException("Empty or malformed AI response");
 
-            } catch (Exception e) {
-                String errorMsg = e.getMessage();
-                log.warn("[NewsIngestion] Model '{}' failed. Details: {}. Trying fallback... (Attempt {}/{})", 
-                    currentModel, errorMsg, retryCount + 1, modelsToTry.size());
-                
-                // If we hit "Daily Quota Exceeded", stop everything to save resources
-                if (errorMsg != null && (errorMsg.contains("429") || errorMsg.contains("RESOURCE_EXHAUSTED"))) {
-                    // Flash-Lite models usually have high RPM but low RPD on free tiers
-                    if (errorMsg.contains("RequestsPerDay") || errorMsg.contains("RESOURCE_EXHAUSTED") || errorMsg.contains("Quota exceeded")) {
-                        throw new QuotaExceededException(currentModel);
+                } catch (Exception e) {
+                    String errorMsg = e.getMessage();
+                    log.warn("[NewsIngestion] Model '{}' failed. Details: {}. Trying fallback... (Attempt {}/{})", 
+                        currentModel, errorMsg, retryCount + 1, modelsToTry.size());
+                    
+                    // If we hit "Daily Quota Exceeded", stop everything to save resources
+                    if (errorMsg != null && (errorMsg.contains("429") || errorMsg.contains("RESOURCE_EXHAUSTED"))) {
+                        // Flash-Lite models usually have high RPM but low RPD on free tiers
+                        if (errorMsg.contains("RequestsPerDay") || errorMsg.contains("RESOURCE_EXHAUSTED") || errorMsg.contains("Quota exceeded")) {
+                            throw new QuotaExceededException(currentModel);
+                        }
                     }
-                }
 
-                // Normal rate limit wait
-                int waitTime = (errorMsg != null && errorMsg.contains("429")) ? 20000 : 5000;
-                try { Thread.sleep(waitTime); } catch (InterruptedException ignored) {}
-                retryCount++;
+                    // Normal rate limit wait
+                    int waitTime = (errorMsg != null && errorMsg.contains("429")) ? 20000 : 5000;
+                    try { Thread.sleep(waitTime); } catch (InterruptedException ignored) {}
+                    retryCount++;
+                }
+                if (retryCount == modelsToTry.size()) return false;
             }
-            if (retryCount == modelsToTry.size()) return false;
-        }
+
+            // Safe throttling sleep: Sleep 10s ONLY after a successful API request is completed
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException ignored) {}
+
         } catch (Exception e) {
             log.error("[NewsIngestion] Direct Gemini API failed for '{}': {}", rawTitle, e.getMessage());
             return false;
         }
 
         ParsedBite parsed = parseAiResponse(aiResponse, rawTitle, sourceUrl);
-        if (parsed == null) return false;
+        if (parsed == null) {
+            if (processedUrlsCache != null) {
+                processedUrlsCache.put(md5Key, "PROCESSED");
+            }
+            return false;
+        }
 
         Optional<Category> categoryOpt = categoryRepository.findByNameIgnoreCaseIn(
                 Set.of(parsed.categoryName().toLowerCase())
@@ -299,6 +347,9 @@ public class NewsIngestionService {
 
         if (categoryOpt.isEmpty()) {
             log.warn("[NewsIngestion] No matching category for '{}'. Skipping.", parsed.categoryName());
+            if (processedUrlsCache != null) {
+                processedUrlsCache.put(md5Key, "PROCESSED");
+            }
             return false;
         }
 
@@ -323,6 +374,10 @@ public class NewsIngestionService {
 
         biteRepository.saveAndFlush(bite);
         log.info("[NewsIngestion] ✅ Saved: '{}'", bite.getTitle());
+
+        if (processedUrlsCache != null) {
+            processedUrlsCache.put(md5Key, "PROCESSED");
+        }
         return true;
     }
 
@@ -445,6 +500,20 @@ public class NewsIngestionService {
             return entry.getAuthor();
         }
         return null;
+    }
+
+    private String hashUrl(String url) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] array = md.digest(url.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : array) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return String.valueOf(url.hashCode());
+        }
     }
 
     private record ParsedBite(String title, String categoryName, String summary) {}

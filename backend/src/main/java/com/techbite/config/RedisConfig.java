@@ -91,9 +91,16 @@ public class RedisConfig implements CachingConfigurer {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jacksonSerializer()));
 
+        // Custom config for news ingestion processed URLs: 2 Days TTL (48 hours) to match the 48-hour article freshness filter
+        RedisCacheConfiguration processedUrlsConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofDays(2))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jacksonSerializer()));
+
         java.util.Map<String, RedisCacheConfiguration> customConfigs = java.util.Map.of(
             "biteExplanations", explanationsConfig,
-            "biteExplanationsSimply", explanationsConfig
+            "biteExplanationsSimply", explanationsConfig,
+            "processedUrls", processedUrlsConfig
         );
 
         return RedisCacheManager.builder(connectionFactory)
