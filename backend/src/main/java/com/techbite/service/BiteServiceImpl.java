@@ -77,21 +77,32 @@ public class BiteServiceImpl implements BiteService {
     private void processSingleBiteReSummary(Bite bite) {
         try {
             String contentToAnalyze = (bite.getContentDescription() != null && !bite.getContentDescription().isEmpty())
-                    ? bite.getContentDescription()
-                    : bite.getContentSummary();
+                ? bite.getContentDescription()
+                : bite.getContentSummary();
 
             String prompt = """
-                You are a Senior Architect and Career Mentor at a top-tier tech firm.
-                Analyze this tech news and re-summarize it with deep technical insight.
-                
+                You are a friendly and experienced tech mentor who explains latest technology news to computer science students and junior developers.
+
+                Summarize the given article into a short, easy-to-understand "bite".
+
+                Article to Analyze:
                 TITLE: %s
                 CONTENT: %s
-                
-                Format EXACTLY:
+
+                Format your response EXACTLY as follows:
+                TITLE: <A clear, interesting, and easy-to-understand title. Max 75 characters.>
                 SUMMARY:
-                • <Core Tech & Architecture: 2-3 sentence technical insight.>
-                • <Ecosystem & Impact: 1-2 sentence career impact.>
-                • <Mentor Tip: 1-2 sentence actionable career insight.>
+                • <Explain the main idea in simple and clear language>
+                • <Why this matters for students or junior software engineers>
+                • <One practical tip or key takeaway>
+
+                Strict Rules:
+                - Use simple, everyday language. Avoid heavy jargon.
+                - Total summary must be between 90 to 140 words.
+                - Write in natural flowing paragraphs with bullet points.
+                - Never cut off mid-sentence. Always complete your thoughts.
+                - Keep a positive, encouraging, and helpful tone.
+                - Stick ONLY to the facts in the article. Do not hallucinate.
                 """.formatted(bite.getTitle(), contentToAnalyze);
 
             List<String> modelsToTry = List.of(
@@ -229,12 +240,23 @@ public class BiteServiceImpl implements BiteService {
                 : bite.getContentSummary();
 
         String prompt = """
-            You are a Senior Architect and Career Mentor at a top-tier tech firm.
-            Explain the following technology topic/news in a clear, deep-dive technical manner for a CS student or junior engineer.
-            Break down the core architecture, concepts, and why it matters to their career.
-            
-            TITLE: %s
-            CONTENT: %s
+            You are a friendly senior software engineer mentoring junior developers and tech enthusiasts.
+
+            Explain the following technology topic or news in a **clear, detailed but easy-to-understand way**.
+
+            Use real-world analogies where possible. Break down complex ideas simply.
+
+            **STRICT REQUIREMENTS:**
+            - Total explanation must be between 120 and 180 words.
+            - The response MUST be complete. Never cut off mid-sentence.
+            - Always finish your thoughts with a proper concluding sentence.
+            - Write in natural, flowing paragraphs.
+            - Keep a positive, encouraging, and helpful tone.
+
+            Topic: %s
+            Content: %s
+
+            Now give a complete, polished, and easy-to-understand technical explanation:
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         List<String> modelsToTry = List.of(
@@ -281,37 +303,42 @@ public class BiteServiceImpl implements BiteService {
     @Override
     public String explainSimply(Long id) {
         Bite bite = biteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bite not found"));
+            .orElseThrow(() -> new RuntimeException("Bite not found"));
 
-        String contentToAnalyze = bite.getContentSummary();
+        String contentToAnalyze = (bite.getContentDescription() != null && !bite.getContentDescription().isEmpty())
+            ? bite.getContentDescription()
+            : bite.getContentSummary();
 
         String prompt = """
-            You are a senior software engineer mentoring fellow developers and techies.
+            You are a friendly senior software engineer who loves mentoring junior developers and tech enthusiasts.
 
-            Explain the following topic in **clear, simple, and engaging language**.
-            Use real-world analogies to make it easy to understand.
+            Your goal is to explain the following tech topic in a **very clear, simple, and engaging way**.
+
+            Use real-world analogies and everyday language. Avoid heavy jargon — if you use a technical term, explain it simply.
 
             **STRICT REQUIREMENTS:**
-            - Total response must be between 100 and 150 words.
-            - The explanation MUST be complete. NEVER cut off in the middle of a sentence.
-            - Always finish your thought and end with a proper concluding sentence.
-            - Write in natural flowing paragraphs.
-            - Do not use bullet points or markdown.
+            - Total explanation must be between 100 and 150 words.
+            - The response MUST be complete. Never cut off mid-sentence.
+            - Always finish your thoughts with a proper concluding sentence.
+            - Write in natural, flowing paragraphs (no bullet points).
+            - Keep a positive, encouraging, and easy-to-read tone.
 
             Topic: %s
             Content: %s
 
-            Provide a complete, polished explanation now:
+            Now give a complete, polished, and easy-to-understand explanation:
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         String explanation = explainChatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+            .user(prompt)
+            .call()
+            .content();
 
-        // Safety net to avoid truncated responses
-        if (explanation == null || explanation.trim().length() < 80 || explanation.endsWith("\\")) {
-            explanation = "I couldn't generate a complete explanation right now. Please try again or read the original summary.";
+        // Strong safety net against truncation
+        if (explanation == null || explanation.trim().length() < 80 || 
+            explanation.endsWith("\\") || explanation.endsWith("...")) {
+        
+            explanation = "I couldn't generate a complete explanation right now. Please try again or read the original summary above.";
         }
 
         return explanation.trim();

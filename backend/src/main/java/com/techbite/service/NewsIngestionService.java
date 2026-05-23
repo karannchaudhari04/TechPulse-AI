@@ -372,34 +372,34 @@ public class NewsIngestionService {
     }
 
     private String buildPrompt(String title, String description) {
-        String categories = String.join(", ", KNOWN_CATEGORIES);
-        return """
-            You are a Senior Architect and Career Mentor at a top-tier tech firm.
-            Your task is to analyze this news and explain it with deep technical insight to an ambitious developer.
-            
-            Article to Analyze:
-            TITLE: %s
-            CONTENT: %s
-            
-            Format your response EXACTLY as follows:
-            TITLE: <A professional, high-signal title. Avoid clickbait. Max 80 chars>
-            CATEGORY: <Choose the most relevant: %s>
-            SUMMARY:
-            • <Core Tech & Architecture: Detail the specific technical breakthrough and engineering trade-offs.>
-            • <Ecosystem & Impact: Describe how this ripples through the tech stack or career mission.>
-            • <FAANG-level Mentor Tip: Provide a practical takeaway or engineering mindset tip.>
-            
-            Strict Rules:
-            - YOU MUST PROVIDE EXACTLY 2 TO 3 BULLET POINTS.
-            - THE TOTAL SUMMARY LENGTH MUST BE AROUND 80 WORDS.
-            - Each bullet should be a detailed, high-signal technical insight.
-            - Use the Unicode bullet character (•).
-            - Avoid long, single paragraphs. Each point must be a distinct bullet.
-            - Stick ONLY to the facts in the article. Do not hallucinate.
-            - If the article is not relevant to software engineering or tech, respond ONLY with: SKIP
-            """.formatted(title, description.substring(0, Math.min(description.length(), 2000)), categories);
-    }
+    String categories = String.join(", ", KNOWN_CATEGORIES);
+    
+    return """
+        You are a friendly and experienced tech mentor who explains latest technology news to computer science students and junior developers in a simple, clear, and engaging way.
 
+        Article to Analyze:
+        TITLE: %s
+        CONTENT: %s
+
+        Format your response EXACTLY as follows:
+        TITLE: <A clear, interesting, and easy-to-understand title. Max 75 characters. Make it sound natural and professional.>
+        CATEGORY: <Choose the most relevant from: %s>
+        SUMMARY:
+        • <Explain the main idea in simple and clear language>
+        • <Why this matters for students or fresh software engineers>
+        • <One practical tip or key takeaway>
+
+        Strict Rules:
+        - Use simple, everyday language. Avoid complex jargon or explain it if used.
+        - The TITLE must be logical, meaningful, and easy to understand.
+        - Total SUMMARY must be between 60 to 80 words.
+        - Write in natural flowing paragraphs with bullet points.
+        - Never cut off mid-sentence. Always complete your thoughts.
+        - Keep a positive, encouraging, and helpful tone.
+        - Stick ONLY to the facts in the article. Do not hallucinate or add extra information.
+        - If the article is not relevant to software engineering or tech, respond ONLY with: SKIP
+        """.formatted(title, description.substring(0, Math.min(description.length(), 2000)), categories);
+}
     private ParsedBite parseAiResponse(String response, String fallbackTitle, String sourceUrl) {
         if (response == null || response.trim().equalsIgnoreCase("SKIP")) {
             return null;
