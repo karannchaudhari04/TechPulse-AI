@@ -21,8 +21,8 @@ public class GeminiConfig {
     public ChatClient explainChatClient() {
         OpenAiApi openAiApi = new OpenAiApi(baseUrl, explainApiKey);
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .withModel("gemini-3-flash-preview")
-                .withTemperature(0.7f)
+                .withModel("gemini-2.5-flash")
+                .withTemperature(0.5f)
                 .build();
         OpenAiChatModel openAiChatModel = new OpenAiChatModel(openAiApi, options);
         return ChatClient.create(openAiChatModel);

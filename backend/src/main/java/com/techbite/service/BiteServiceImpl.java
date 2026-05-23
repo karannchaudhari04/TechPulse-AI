@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.ai.openai.OpenAiChatOptions;
 
 @Service
 @Slf4j
@@ -106,11 +108,11 @@ public class BiteServiceImpl implements BiteService {
                 """.formatted(bite.getTitle(), contentToAnalyze);
 
             List<String> modelsToTry = List.of(
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
                 "gemini-3-flash-preview",
                 "gemini-3.1-flash-lite-preview",
-                "gemini-2.5-pro",
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite"
+                "gemini-2.5-pro"
             );
             
             String aiText = null;
@@ -137,18 +139,25 @@ public class BiteServiceImpl implements BiteService {
         String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + explainApiKey;
         var requestBody = java.util.Map.of("contents", List.of(java.util.Map.of("parts", List.of(java.util.Map.of("text", prompt)))));
 
-        String jsonResponse = restClient.post()
-                .uri(url)
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                .body(requestBody)
-                .retrieve()
-                .body(String.class);
+        try {
+            Map response = restClient.post()
+                    .uri(url)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(Map.class);
 
-        if (jsonResponse != null && jsonResponse.contains("\"text\":")) {
-            String[] parts = jsonResponse.split("\"text\": \"");
-            if (parts.length > 1) {
-                return parts[1].split("\"")[0].replace("\\n", "\n").replace("\\\"", "\"");
+            if (response != null && response.get("candidates") instanceof List candidates && !candidates.isEmpty()) {
+                Map firstCandidate = (Map) candidates.get(0);
+                if (firstCandidate != null && firstCandidate.get("content") instanceof Map content) {
+                    List parts = (List) content.get("parts");
+                    if (parts != null && !parts.isEmpty()) {
+                        return (String) ((Map) parts.get(0)).get("text");
+                    }
+                }
             }
+        } catch (Exception e) {
+            log.warn("[BiteService] Direct Gemini call failed for model {}: {}", modelName, e.getMessage());
         }
         return null;
     }
@@ -260,11 +269,11 @@ public class BiteServiceImpl implements BiteService {
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         List<String> modelsToTry = List.of(
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
             "gemini-3-flash-preview",
             "gemini-3.1-flash-lite-preview",
-            "gemini-2.5-pro",
-            "gemini-2.5-flash",
-            "gemini-2.5-flash-lite"
+            "gemini-2.5-pro"
         );
         
         String aiText = null;
@@ -329,10 +338,39 @@ public class BiteServiceImpl implements BiteService {
             Now give a complete, polished, and easy-to-understand explanation:
             """.formatted(bite.getTitle(), contentToAnalyze);
 
-        String explanation = explainChatClient.prompt()
-            .user(prompt)
-            .call()
-            .content();
+        List<String> modelsToTry = List.of(
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-pro"
+        );
+
+        String explanation = null;
+
+        for (String model : modelsToTry) {
+            try {
+                // Temporarily override model for this call
+                OpenAiChatOptions options = OpenAiChatOptions.builder()
+                    .withModel(model)
+                    .withTemperature(0.65f)
+                    .build();
+
+                String result = explainChatClient.prompt()
+                    .options(options)
+                    .user(prompt)
+                    .call()
+                    .content();
+
+                if (result != null && result.trim().length() > 80) {
+                    explanation = result.trim();
+                    break;
+                }
+            } 
+            catch (Exception e) {
+                log.warn("[ExplainSimply] Model {} failed for bite {}: {}", model, id, e.getMessage());
+            }
+        }
 
         // Strong safety net against truncation
         if (explanation == null || explanation.trim().length() < 80 || 

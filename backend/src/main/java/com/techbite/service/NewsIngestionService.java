@@ -233,11 +233,11 @@ public class NewsIngestionService {
 
         int retryCount = 0;
         List<String> modelsToTry = List.of(
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite-preview",
             "gemini-2.5-pro",
             "gemini-2.5-flash",
-            "gemini-2.5-flash-lite"
+            "gemini-2.5-flash-lite",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview"
         );
         
         while (retryCount < modelsToTry.size()) {
@@ -253,14 +253,17 @@ public class NewsIngestionService {
                     .retrieve()
                     .body(Map.class);
 
-                List candidates = (List) response.get("candidates");
-                if (candidates == null || candidates.isEmpty()) throw new RuntimeException("Empty AI response");
-                
-                Map firstCandidate = (Map) candidates.get(0);
-                Map content = (Map) firstCandidate.get("content");
-                List parts = (List) content.get("parts");
-                aiResponse = (String) ((Map) parts.get(0)).get("text");
-                break; // Success!
+                if (response != null && response.get("candidates") instanceof List candidates && !candidates.isEmpty()) {
+                    Map firstCandidate = (Map) candidates.get(0);
+                    if (firstCandidate != null && firstCandidate.get("content") instanceof Map content) {
+                        List parts = (List) content.get("parts");
+                        if (parts != null && !parts.isEmpty()) {
+                            aiResponse = (String) ((Map) parts.get(0)).get("text");
+                            break; // Success!
+                        }
+                    }
+                }
+                throw new RuntimeException("Empty or malformed AI response");
 
             } catch (Exception e) {
                 String errorMsg = e.getMessage();
@@ -268,15 +271,15 @@ public class NewsIngestionService {
                     currentModel, errorMsg, retryCount + 1, modelsToTry.size());
                 
                 // If we hit "Daily Quota Exceeded", stop everything to save resources
-                if (errorMsg.contains("429") && (errorMsg.contains("RequestsPerDay") || errorMsg.contains("RequestsPerMinute"))) {
+                if (errorMsg != null && (errorMsg.contains("429") || errorMsg.contains("RESOURCE_EXHAUSTED"))) {
                     // Flash-Lite models usually have high RPM but low RPD on free tiers
-                    if (errorMsg.contains("RequestsPerDay")) {
+                    if (errorMsg.contains("RequestsPerDay") || errorMsg.contains("RESOURCE_EXHAUSTED") || errorMsg.contains("Quota exceeded")) {
                         throw new QuotaExceededException(currentModel);
                     }
                 }
 
                 // Normal rate limit wait
-                int waitTime = errorMsg.contains("429") ? 20000 : 5000;
+                int waitTime = (errorMsg != null && errorMsg.contains("429")) ? 20000 : 5000;
                 try { Thread.sleep(waitTime); } catch (InterruptedException ignored) {}
                 retryCount++;
             }
