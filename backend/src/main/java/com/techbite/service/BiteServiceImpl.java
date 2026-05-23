@@ -238,6 +238,7 @@ public class BiteServiceImpl implements BiteService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(value = "biteExplanations", key = "#id")
     public String explainBite(Long id) {
         Bite bite = biteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bite not found"));
@@ -302,6 +303,7 @@ public class BiteServiceImpl implements BiteService {
     }
 
     @Override
+    @org.springframework.cache.annotation.Cacheable(value = "biteExplanationsSimply", key = "#id")
     public String explainSimply(Long id) {
         Bite bite = biteRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Bite not found"));

@@ -85,8 +85,20 @@ public class RedisConfig implements CachingConfigurer {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jacksonSerializer()));
 
+        // Custom config for explanations: 7 Days TTL to conserve Gemini API quota and guarantee high performance
+        RedisCacheConfiguration explanationsConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofDays(7))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jacksonSerializer()));
+
+        java.util.Map<String, RedisCacheConfiguration> customConfigs = java.util.Map.of(
+            "biteExplanations", explanationsConfig,
+            "biteExplanationsSimply", explanationsConfig
+        );
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
+                .withInitialCacheConfigurations(customConfigs)
                 .build();
     }
 
