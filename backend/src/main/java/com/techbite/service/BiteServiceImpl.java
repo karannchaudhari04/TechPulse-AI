@@ -83,36 +83,34 @@ public class BiteServiceImpl implements BiteService {
                 : bite.getContentSummary();
 
             String prompt = """
-                You are a friendly and experienced tech mentor who explains latest technology news to computer science students and junior developers.
-
-                Summarize the given article into a short, easy-to-understand "bite".
-
-                Article to Analyze:
+                You are a friendly tech mentor explaining news to CS students and junior devs.
+                Summarize this tech article simply.
+                
+                Article:
                 TITLE: %s
                 CONTENT: %s
-
-                Format your response EXACTLY as follows:
-                TITLE: <A clear, interesting, and easy-to-understand title. Max 75 characters.>
+                
+                Output EXACTLY in this format:
+                TITLE: <Engaging, easy title under 75 chars>
                 SUMMARY:
-                • <Explain the main idea in simple and clear language>
-                • <Why this matters for students or junior software engineers>
-                • <One practical tip or key takeaway>
-
-                Strict Rules:
-                - Use simple, everyday language. Avoid heavy jargon.
-                - Total summary must be between 90 to 140 words.
-                - Write in natural flowing paragraphs with bullet points.
-                - Never cut off mid-sentence. Always complete your thoughts.
-                - Keep a positive, encouraging, and helpful tone.
-                - Stick ONLY to the facts in the article. Do not hallucinate.
+                • <Main idea in clear, everyday words>
+                • <Why this matters to a tech student or junior engineer>
+                • <One encouraging tip or practical takeaway>
+                
+                Rules:
+                - Keep SUMMARY length between 70 to 90 words.
+                - Avoid heavy jargon. If used, explain it simply.
+                - Finish all thoughts with complete sentences.
+                - Keep an encouraging and helpful tone.
+                - Stick strictly to the article facts. No hallucinations.
                 """.formatted(bite.getTitle(), contentToAnalyze);
 
             List<String> modelsToTry = List.of(
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
-                "gemini-3-flash-preview",
-                "gemini-3.1-flash-lite-preview",
-                "gemini-2.5-pro"
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-8b"
             );
             
             String aiText = null;
@@ -249,31 +247,25 @@ public class BiteServiceImpl implements BiteService {
                 : bite.getContentSummary();
 
         String prompt = """
-            You are a friendly senior software engineer mentoring junior developers and tech enthusiasts.
-
-            Explain the following technology topic or news in a **clear, detailed but easy-to-understand way**.
-
-            Use real-world analogies where possible. Break down complex ideas simply.
-
-            **STRICT REQUIREMENTS:**
-            - Total explanation must be between 120 and 180 words.
-            - The response MUST be complete. Never cut off mid-sentence.
-            - Always finish your thoughts with a proper concluding sentence.
-            - Write in natural, flowing paragraphs.
-            - Keep a positive, encouraging, and helpful tone.
-
+            You are a friendly senior engineer mentoring junior devs.
+            Explain the following topic simply, using everyday words and fun, real-world analogies.
+            
             Topic: %s
             Content: %s
-
-            Now give a complete, polished, and easy-to-understand technical explanation:
+            
+            Rules:
+            - Write in natural, friendly paragraphs (100-140 words).
+            - No complex jargon (explain it simply if used).
+            - Keep it encouraging and positive.
+            - Must finish with a complete, supportive concluding sentence.
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         List<String> modelsToTry = List.of(
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite-preview",
-            "gemini-2.5-pro"
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b"
         );
         
         String aiText = null;
@@ -319,31 +311,25 @@ public class BiteServiceImpl implements BiteService {
             : bite.getContentSummary();
 
         String prompt = """
-            You are a friendly senior software engineer who loves mentoring junior developers and tech enthusiasts.
-
-            Your goal is to explain the following tech topic in a **very clear, simple, and engaging way**.
-
-            Use real-world analogies and everyday language. Avoid heavy jargon — if you use a technical term, explain it simply.
-
-            **STRICT REQUIREMENTS:**
-            - Total explanation must be between 100 and 150 words.
-            - The response MUST be complete. Never cut off mid-sentence.
-            - Always finish your thoughts with a proper concluding sentence.
-            - Write in natural, flowing paragraphs (no bullet points).
-            - Keep a positive, encouraging, and easy-to-read tone.
-
+            You are a friendly software engineer mentoring junior devs.
+            Explain this tech topic in simple, encouraging terms using a fun analogy.
+            
             Topic: %s
             Content: %s
-
-            Now give a complete, polished, and easy-to-understand explanation:
+            
+            Rules:
+            - Write in natural, flowing paragraphs (no bullets).
+            - Word count: 90-130 words.
+            - Avoid heavy jargon. Make it easy and encouraging.
+            - The final sentence must be fully complete and supportive.
             """.formatted(bite.getTitle(), contentToAnalyze);
 
         List<String> modelsToTry = List.of(
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite-preview",
-            "gemini-2.5-pro"
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b"
         );
 
         String explanation = null;

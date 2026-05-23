@@ -233,11 +233,11 @@ public class NewsIngestionService {
 
         int retryCount = 0;
         List<String> modelsToTry = List.of(
-            "gemini-2.5-pro",
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite",
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite-preview"
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-8b"
         );
         
         while (retryCount < modelsToTry.size()) {
@@ -375,34 +375,32 @@ public class NewsIngestionService {
     }
 
     private String buildPrompt(String title, String description) {
-    String categories = String.join(", ", KNOWN_CATEGORIES);
-    
-    return """
-        You are a friendly and experienced tech mentor who explains latest technology news to computer science students and junior developers in a simple, clear, and engaging way.
-
-        Article to Analyze:
-        TITLE: %s
-        CONTENT: %s
-
-        Format your response EXACTLY as follows:
-        TITLE: <A clear, interesting, and easy-to-understand title. Max 75 characters. Make it sound natural and professional.>
-        CATEGORY: <Choose the most relevant from: %s>
-        SUMMARY:
-        • <Explain the main idea in simple and clear language>
-        • <Why this matters for students or fresh software engineers>
-        • <One practical tip or key takeaway>
-
-        Strict Rules:
-        - Use simple, everyday language. Avoid complex jargon or explain it if used.
-        - The TITLE must be logical, meaningful, and easy to understand.
-        - Total SUMMARY must be between 60 to 80 words.
-        - Write in natural flowing paragraphs with bullet points.
-        - Never cut off mid-sentence. Always complete your thoughts.
-        - Keep a positive, encouraging, and helpful tone.
-        - Stick ONLY to the facts in the article. Do not hallucinate or add extra information.
-        - If the article is not relevant to software engineering or tech, respond ONLY with: SKIP
-        """.formatted(title, description.substring(0, Math.min(description.length(), 2000)), categories);
-}
+        String categories = String.join(", ", KNOWN_CATEGORIES);
+        
+        return """
+            You are a friendly tech mentor explaining news to CS students and junior devs.
+            Summarize this tech article simply.
+            
+            Article:
+            TITLE: %s
+            CONTENT: %s
+            
+            Output EXACTLY in this format:
+            TITLE: <Engaging, easy title under 75 chars>
+            CATEGORY: <Choose from: %s>
+            SUMMARY:
+            • <Main idea in clear, everyday words>
+            • <Why this matters to a tech student or junior engineer>
+            • <One encouraging tip or practical takeaway>
+            
+            Rules:
+            - Keep SUMMARY length between 70 to 90 words.
+            - Avoid heavy jargon. If used, explain it simply.
+            - Finish all thoughts with complete sentences.
+            - Stick strictly to the article facts. No hallucinations.
+            - If not tech or CS relevant, reply ONLY: SKIP
+            """.formatted(title, description.substring(0, Math.min(description.length(), 2000)), categories);
+    }
     private ParsedBite parseAiResponse(String response, String fallbackTitle, String sourceUrl) {
         if (response == null || response.trim().equalsIgnoreCase("SKIP")) {
             return null;
