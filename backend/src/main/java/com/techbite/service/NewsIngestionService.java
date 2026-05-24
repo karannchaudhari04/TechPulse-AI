@@ -171,6 +171,9 @@ public class NewsIngestionService {
                 
                 org.springframework.cache.Cache categoryFeed = cacheManager.getCache("categoryFeed");
                 if (categoryFeed != null) categoryFeed.clear();
+
+                org.springframework.cache.Cache totalBiteCount = cacheManager.getCache("totalBiteCount");
+                if (totalBiteCount != null) totalBiteCount.clear();
             }
             
             log.info("[NewsIngestion] Async Ingestion Completed. Saved: {}, Skipped: {}", savedCount, skippedCount);
