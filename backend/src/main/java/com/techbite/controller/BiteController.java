@@ -44,10 +44,6 @@ public class BiteController {
         this.biteRepository = biteRepository;
     }
 
-    @GetMapping("/")
-    public String index() {
-        return "TechBite API is Live. Total Bites: " + biteRepository.count();
-    }
 
     @GetMapping("/count")
     public ResponseEntity<ApiResponse<Long>> getBiteCount() {
