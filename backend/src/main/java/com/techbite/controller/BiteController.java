@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+import com.techbite.service.UserService;
+
 @RestController
 @RequestMapping("/api/v1/bites")
 @Validated
@@ -33,15 +35,18 @@ public class BiteController {
     private final NewsIngestionService newsIngestionService;
     private final UserRepository userRepository;
     private final BiteRepository biteRepository;
+    private final UserService userService;
 
     public BiteController(BiteService biteService, 
                           NewsIngestionService newsIngestionService,
                           UserRepository userRepository,
-                          BiteRepository biteRepository) {
+                          BiteRepository biteRepository,
+                          UserService userService) {
         this.biteService = biteService;
         this.newsIngestionService = newsIngestionService;
         this.userRepository = userRepository;
         this.biteRepository = biteRepository;
+        this.userService = userService;
     }
 
 
@@ -52,34 +57,34 @@ public class BiteController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getAllBites(
-            @AuthenticationPrincipal String firebaseUid,
+            @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") int limit) {
         
-        User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        User user = resolveUser(principal);
         CursorPageResponse<BiteResponseDTO> bites = biteService.getAllBites(user, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Feed fetched successfully"));
     }
 
     @GetMapping("/foryou")
     public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getForYouFeed(
-            @AuthenticationPrincipal String firebaseUid,
+            @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") int limit) {
         
-        User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        User user = resolveUser(principal);
         CursorPageResponse<BiteResponseDTO> bites = biteService.getPersonalizedFeed(user, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Personalized feed fetched"));
     }
 
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<ApiResponse<CursorPageResponse<BiteResponseDTO>>> getBitesByCategory(
-            @AuthenticationPrincipal String firebaseUid,
+            @AuthenticationPrincipal Object principal,
             @PathVariable Long categoryId,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") int limit) {
         
-        User user = userRepository.findByFirebaseUid(firebaseUid).orElse(null);
+        User user = resolveUser(principal);
         CursorPageResponse<BiteResponseDTO> bites = biteService.getBitesByCategory(user, categoryId, cursor, limit);
         return ResponseEntity.ok(ApiResponse.success(bites, "Category feed fetched"));
     }
@@ -87,11 +92,13 @@ public class BiteController {
     @PostMapping("/{id}/like")
     @Transactional
     public ResponseEntity<ApiResponse<Integer>> likeBite(
-            @AuthenticationPrincipal String firebaseUid,
+            @AuthenticationPrincipal Object principal,
             @PathVariable Long id) {
         
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = resolveUser(principal);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
         
         Bite bite = biteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bite not found"));
@@ -104,6 +111,7 @@ public class BiteController {
             bite.setEngagementCount(Math.max(0, currentCount - 1));
             userRepository.save(user);
             biteRepository.save(bite);
+            userService.evictUserCache(user.getFirebaseUid());
             return ResponseEntity.ok(ApiResponse.success(bite.getEngagementCount(), "Bite unliked"));
         }
         
@@ -113,6 +121,7 @@ public class BiteController {
         
         userRepository.save(user);
         biteRepository.save(bite);
+        userService.evictUserCache(user.getFirebaseUid());
         
         return ResponseEntity.ok(ApiResponse.success(bite.getEngagementCount(), "Bite liked"));
     }
@@ -147,9 +156,9 @@ public class BiteController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<BiteResponseDTO>> getBiteById(
-            @AuthenticationPrincipal String firebaseUid,
+            @AuthenticationPrincipal Object principal,
             @PathVariable Long id) {
-        User user = firebaseUid != null ? userRepository.findByFirebaseUid(firebaseUid).orElse(null) : null;
+        User user = resolveUser(principal);
         BiteResponseDTO bite = biteService.getBiteById(user, id);
         return ResponseEntity.ok(ApiResponse.success(bite, "Bite fetched successfully"));
     }
@@ -171,5 +180,17 @@ public class BiteController {
         }
         String explanation = biteService.explainSimply(biteId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("explanation", explanation), "Bite explained successfully"));
+    }
+
+    // ─── Helpers ────────────────────────────────────────────────────────────────
+
+    private User resolveUser(Object principal) {
+        if (principal instanceof User user) {
+            return user;
+        }
+        if (principal instanceof String uid) {
+            return userRepository.findByFirebaseUid(uid).orElse(null);
+        }
+        return null;
     }
 }

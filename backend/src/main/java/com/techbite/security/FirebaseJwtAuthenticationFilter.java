@@ -3,7 +3,7 @@ package com.techbite.security;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseToken;
 import com.techbite.model.User;
-import com.techbite.repository.UserRepository;
+import com.techbite.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,10 +25,10 @@ import java.util.Optional;
 @Component
 public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
-    public FirebaseJwtAuthenticationFilter(@Lazy UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public FirebaseJwtAuthenticationFilter(@Lazy UserService userService) {
+        this.userService = userService;
     }
 
     @Override
@@ -45,14 +45,19 @@ public class FirebaseJwtAuthenticationFilter extends OncePerRequestFilter {
                 List<GrantedAuthority> authorities = new ArrayList<>();
                 authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
                 
-                // Check database for Admin role without logging UID
-                Optional<User> userOpt = userRepository.findByFirebaseUid(uid);
-                if (userOpt.isPresent() && userOpt.get().getRole() == User.Role.ADMIN) {
-                    authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                // Check database (via cached service) for roles and set User as principal
+                Optional<User> userOpt = userService.getUserByFirebaseUid(uid);
+                Object principal = uid; // String fallback for new/unsynced users
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    principal = user;
+                    if (user.getRole() == User.Role.ADMIN) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                    }
                 }
 
                 UsernamePasswordAuthenticationToken authentication = 
-                    new UsernamePasswordAuthenticationToken(uid, null, authorities);
+                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 

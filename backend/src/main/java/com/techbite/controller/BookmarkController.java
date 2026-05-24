@@ -103,11 +103,18 @@ public class BookmarkController {
 
     private User resolveUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof String uid)) {
+        if (auth == null) {
             throw new RuntimeException("Not authenticated");
         }
-        return userRepository.findByFirebaseUid(uid)
-                .orElseThrow(() -> new RuntimeException("User not found for UID: " + uid));
+        Object principal = auth.getPrincipal();
+        if (principal instanceof User user) {
+            return user;
+        }
+        if (principal instanceof String uid) {
+            return userRepository.findByFirebaseUid(uid)
+                    .orElseThrow(() -> new RuntimeException("User not found for UID: " + uid));
+        }
+        throw new RuntimeException("Not authenticated");
     }
 
     private BiteResponseDTO mapToDTO(Bite bite) {

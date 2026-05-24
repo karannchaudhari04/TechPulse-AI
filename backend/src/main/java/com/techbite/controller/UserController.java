@@ -68,8 +68,7 @@ public class UserController {
             @RequestBody Map<String, List<String>> request) {
 
         String firebaseUid = getFirebaseUid();
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found. Please sign in first."));
+        User user = getCurrentUser();
 
         List<String> categoryNames = request.get("categories");
         if (categoryNames == null || categoryNames.isEmpty()) {
@@ -100,6 +99,7 @@ public class UserController {
 
         user.setPreferences(newPrefs);
         userRepository.save(user);
+        userService.evictUserCache(firebaseUid);
 
         Map<String, Object> data = new HashMap<>();
         data.put("savedCount", newPrefs.size());
@@ -113,9 +113,7 @@ public class UserController {
      */
     @GetMapping("/preferences")
     public ResponseEntity<ApiResponse<List<String>>> getPreferences() {
-        String firebaseUid = getFirebaseUid();
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found."));
+        User user = getCurrentUser();
 
         List<String> names = user.getPreferences().stream()
                 .map(Category::getName)
@@ -126,9 +124,7 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProfile() {
-        String firebaseUid = getFirebaseUid();
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found."));
+        User user = getCurrentUser();
 
         Map<String, Object> data = new HashMap<>();
         data.put("streakCount", user.getStreakCount());
@@ -148,8 +144,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<Integer>> updateStreak(
             @RequestHeader(value = "X-User-Timezone", required = false) String userTimezone) {
         String firebaseUid = getFirebaseUid();
-        User user = userRepository.findByFirebaseUid(firebaseUid)
-                .orElseThrow(() -> new RuntimeException("User not found."));
+        User user = getCurrentUser();
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime lastRead = user.getLastReadAt();
@@ -190,17 +185,39 @@ public class UserController {
         
         user.setLastReadAt(now);
         userRepository.save(user);
+        userService.evictUserCache(firebaseUid);
         
         return ResponseEntity.ok(ApiResponse.success(user.getStreakCount(), "Streak updated"));
     }
 
-    // ─── Helper ─────────────────────────────────────────────────────────────────
+    private User getCurrentUser() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            throw new RuntimeException("Not authenticated");
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof User user) {
+            return user;
+        }
+        if (principal instanceof String uid) {
+            return userRepository.findByFirebaseUid(uid)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+        }
+        throw new RuntimeException("Not authenticated");
+    }
 
     private String getFirebaseUid() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof String uid)) {
+        if (auth == null) {
             throw new RuntimeException("Not authenticated");
         }
-        return uid;
+        Object principal = auth.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getFirebaseUid();
+        }
+        if (principal instanceof String uid) {
+            return uid;
+        }
+        throw new RuntimeException("Not authenticated");
     }
 }
