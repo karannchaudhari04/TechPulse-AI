@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,12 +6,16 @@ import { auth } from '../utils/firebase';
 import { markBitesAsViewed, getViewedBiteIds } from '../api/bites';
 
 const PENDING_VIEWED_KEY = '@pending_viewed_bite_ids';
+const DAILY_READ_KEY = '@daily_read_bites';
+
+const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
 export function useViewedBites() {
   const queryClient = useQueryClient();
   const isSignedIn = !!auth.currentUser;
   const pendingIdsRef = useRef<number[]>([]);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const [readTodayIds, setReadTodayIds] = useState<number[]>([]);
 
   // 1. Fetch viewed bites from backend (only when logged in)
   const { data: viewedBiteIds = [] } = useQuery({
@@ -61,8 +65,27 @@ export function useViewedBites() {
     }
   };
 
-  // Load pending from AsyncStorage on mount and when login status changes
+  // Load daily reads and pending from AsyncStorage on mount
   useEffect(() => {
+    const loadDailyRead = async () => {
+      try {
+        const today = getTodayDateString();
+        const stored = await AsyncStorage.getItem(DAILY_READ_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.date === today) {
+            setReadTodayIds(parsed.ids || []);
+            return;
+          }
+        }
+        // If not found or date mismatch, initialize/reset
+        await AsyncStorage.setItem(DAILY_READ_KEY, JSON.stringify({ date: today, ids: [] }));
+        setReadTodayIds([]);
+      } catch (err) {
+        console.error('[ViewedBites] Failed to load daily reads:', err);
+      }
+    };
+
     const loadPending = async () => {
       try {
         const stored = await AsyncStorage.getItem(PENDING_VIEWED_KEY);
@@ -80,13 +103,34 @@ export function useViewedBites() {
         console.error('[ViewedBites] Failed to load pending from storage:', err);
       }
     };
+
+    loadDailyRead();
     loadPending();
   }, [isSignedIn]);
 
   // Mark a bite as viewed
   const markAsViewed = async (biteId: number) => {
-    // If not signed in, we don't strictly enforce viewed exclusion (as feeds are globally cached for guests).
-    // However, we can track them locally if needed.
+    // 1. Update daily read progress (for both guest & logged in users)
+    try {
+      const today = getTodayDateString();
+      const stored = await AsyncStorage.getItem(DAILY_READ_KEY);
+      let currentDailyIds: number[] = [];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.date === today) {
+          currentDailyIds = parsed.ids || [];
+        }
+      }
+      if (!currentDailyIds.includes(biteId)) {
+        currentDailyIds.push(biteId);
+        await AsyncStorage.setItem(DAILY_READ_KEY, JSON.stringify({ date: today, ids: currentDailyIds }));
+        setReadTodayIds([...currentDailyIds]);
+      }
+    } catch (err) {
+      console.error('[ViewedBites] Failed to update daily reads:', err);
+    }
+
+    // If not signed in, we don't sync with backend
     if (!auth.currentUser) return;
 
     // If already in viewed set or already pending, skip
@@ -129,6 +173,7 @@ export function useViewedBites() {
 
   return {
     viewedBiteIds,
+    readTodayIds,
     markAsViewed,
     syncPendingWithBackend,
   };

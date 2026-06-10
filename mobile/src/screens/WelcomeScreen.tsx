@@ -6,6 +6,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../utils/firebase';
 import { apiClient } from '../api/client';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../utils/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -17,6 +18,7 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps) {
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const { colors, isAmoled } = useTheme();
 
   const handleGoogleSignIn = async () => {
     if (isSigningIn) return;
@@ -48,7 +50,7 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <SafeAreaView style={styles.safeArea}>
         
         <View style={styles.topBar}>
@@ -56,7 +58,7 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
         </View>
-
+ 
         <View style={styles.contentContainer}>
           <View style={styles.headerSection}>
             <View style={styles.logoRow}>
@@ -87,7 +89,11 @@ export default function WelcomeScreen({ onSkip, onSignedIn }: WelcomeScreenProps
             <Pressable
               onPress={handleGoogleSignIn}
               disabled={isSigningIn}
-              style={({ pressed }) => [styles.socialBtn, pressed && styles.btnPressed]}
+              style={({ pressed }) => [
+                styles.socialBtn,
+                { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border },
+                pressed && styles.btnPressed
+              ]}
             >
               <View style={styles.btnContent}>
                   {isSigningIn ? (

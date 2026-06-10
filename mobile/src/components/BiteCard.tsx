@@ -10,16 +10,21 @@ import Animated, {
   useSharedValue, 
   useAnimatedStyle, 
   withSpring, 
-  withSequence 
+  withSequence,
+  withTiming,
+  withRepeat,
+  Easing,
+  interpolate
 } from 'react-native-reanimated';
 import * as WebBrowser from 'expo-web-browser';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { likeBite, explainBite } from '../api/bites';
+import { explainBite } from '../api/bites';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import ExplainModal from './ExplainModal';
+import { useTheme } from '../utils/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,16 +43,53 @@ interface BiteCardProps {
 const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight, fullScreen = false }: BiteCardProps) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const queryClient = useQueryClient();
-  const [likes, setLikes] = React.useState(item.engagementCount || 0);
-  const [hasLiked, setHasLiked] = React.useState(item.isLiked || false);
+  const { isAmoled, colors } = useTheme();
   const [localBookmarked, setLocalBookmarked] = React.useState(isBookmarked);
 
   // Sync states when FlashList recycles this card for a new item (separates likes/bookmarks per bite)
   React.useEffect(() => {
-    setLikes(item.engagementCount || 0);
-    setHasLiked(item.isLiked || false);
     setLocalBookmarked(isBookmarked);
-  }, [item.id, item.engagementCount, item.isLiked, isBookmarked]);
+  }, [item.id, isBookmarked]);
+
+  const explainBtnScale = useSharedValue(1);
+  const explainGlow = useSharedValue(0);
+  const rotateVal = useSharedValue(0);
+
+  React.useEffect(() => {
+    // Infinite slow rotation for the sparkles icon
+    rotateVal.value = withRepeat(
+      withTiming(360, { duration: 3500, easing: Easing.linear }),
+      -1,
+      false
+    );
+
+    // Infinite breathing glow loop
+    explainGlow.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1500 }),
+        withTiming(0, { duration: 1500 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const explainBtnGlowStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: explainBtnScale.value }],
+      shadowColor: '#8B5CF6',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: interpolate(explainGlow.value, [0, 1], [0.35, 0.7]),
+      shadowRadius: interpolate(explainGlow.value, [0, 1], [6, 12]),
+      elevation: interpolate(explainGlow.value, [0, 1], [4, 8]),
+    };
+  });
+
+  const rotateStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotateVal.value}deg` }]
+    };
+  });
 
   const [explainModalVisible, setExplainModalVisible] = React.useState(false);
 
@@ -72,37 +114,6 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     }
   };
 
-  const handleLike = async () => {
-    // Subtle pop for like only
-    likeScale.value = withSequence(withSpring(1.3), withSpring(1));
-
-    if (hasLiked) {
-      // UNLIKE
-      setLikes(prev => Math.max(0, prev - 1));
-      setHasLiked(false);
-      try {
-        // We'll need a backend endpoint for unlike, or just use the same one if it toggles
-        const newCount = await likeBite(item.id); 
-        setLikes(newCount);
-      } catch (error) {
-        setLikes(prev => prev + 1);
-        setHasLiked(true);
-      }
-    } else {
-      // LIKE
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setLikes(prev => prev + 1);
-      setHasLiked(true);
-      try {
-        const newCount = await likeBite(item.id);
-        setLikes(newCount); 
-      } catch (error) {
-        setLikes(prev => prev - 1);
-        setHasLiked(false);
-      }
-    }
-  };
-
   const handleShare = async () => {
     try {
       const shareLink = `https://techbite.onrender.com/bite/${item.id}`;
@@ -118,12 +129,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
   };
 
   // Spark Animations
-  const likeScale = useSharedValue(1);
   const saveScale = useSharedValue(1);
-
-  const likeAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: likeScale.value }]
-  }));
 
   const saveAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: saveScale.value }]
@@ -150,8 +156,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     : item.contentSummary.split('. ').filter(p => p.trim().length > 0);
 
   return (
-    <View style={[styles.root, { height: cardHeight }]}>
-      <View style={styles.card}>
+    <View style={[styles.root, { height: cardHeight, backgroundColor: colors.rootBackground }]}>
+      <View style={[styles.card, { backgroundColor: colors.cardBackground, borderColor: colors.border, borderWidth: isAmoled ? 1 : 0 }]}>
         
         {/* Header Section (1/6 Height) */}
         <View style={styles.imageSection}>
@@ -194,41 +200,33 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
                 ))}
             </Animated.ScrollView>
           </View>
+        </View>
 
-          {/* Explain Simply Premium Purple Sparkles Button */}
-          <Pressable 
-            onPress={handleExplainSimply}
-            style={({ pressed }) => [
-              styles.explainBtn,
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-            ]}
-          >
+        {/* Explain Simply Premium Floating Bot Button */}
+        <Pressable 
+          onPress={handleExplainSimply}
+          onPressIn={() => { explainBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
+          onPressOut={() => { explainBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+          style={styles.explainBtnWrapper}
+        >
+          <Animated.View style={[styles.explainBtn, explainBtnGlowStyle]}>
             <LinearGradient
               colors={['#8B5CF6', '#6366F1']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.explainGradient}
             >
-              <Ionicons name="sparkles" size={14} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={styles.explainText}>Explain Simply</Text>
+              <Animated.View style={[rotateStyle, { position: 'absolute', opacity: 0.45 }]}>
+                <Ionicons name="sparkles" size={32} color="#FFF" />
+              </Animated.View>
+              <MaterialCommunityIcons name="robot" size={24} color="#FFF" />
             </LinearGradient>
-          </Pressable>
-        </View>
+          </Animated.View>
+        </Pressable>
 
         {/* Action Bar */}
-        <View style={styles.actionBar}>
+        <View style={[styles.actionBar, { backgroundColor: isAmoled ? '#000000' : 'rgba(15, 23, 42, 0.8)', borderTopColor: colors.border }]}>
             <View style={styles.leftActions}>
-               <Pressable onPress={handleLike} style={styles.actionBtn}>
-                  <Animated.View style={likeAnimatedStyle}>
-                    <Image 
-                      source={hasLiked ? require('../../assets/liked.png') : require('../../assets/like.png')} 
-                      style={styles.iconAsset} 
-                      contentFit="contain"
-                    />
-                  </Animated.View>
-                  <Text style={[styles.statText, hasLiked && { color: '#F87171' }]}>{likes}</Text>
-               </Pressable>
-               
                <Pressable onPress={handleToggleBookmark} style={styles.actionBtn}>
                   <Animated.View style={saveAnimatedStyle}>
                     <Image 
@@ -263,7 +261,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
         </View>
 
         {/* Progress Bar (Bottom) */}
-        <View style={styles.progressBar}>
+        <View style={[styles.progressBar, { backgroundColor: isAmoled ? '#111' : 'rgba(255,255,255,0.05)' }]}>
            <View style={[styles.progressFill, { width: '80%' }]} />
         </View>
 
@@ -332,29 +330,25 @@ const styles = StyleSheet.create({
 
   progressBar: { height: 2, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
   progressFill: { height: '100%', backgroundColor: '#6366F1', shadowColor: '#6366F1', shadowRadius: 4, shadowOpacity: 0.5 },
+  explainBtnWrapper: {
+    position: 'absolute',
+    bottom: scale(80),
+    right: scale(20),
+    width: scale(56),
+    height: scale(56),
+    zIndex: 10,
+  },
   explainBtn: {
-    marginVertical: scale(8),
-    borderRadius: scale(16),
+    width: '100%',
+    height: '100%',
+    borderRadius: scale(28),
     overflow: 'hidden',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
   },
   explainGradient: {
-    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scale(10),
-    paddingHorizontal: scale(16),
-  },
-  explainText: {
-    color: '#FFFFFF',
-    fontSize: scale(13),
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
 });
 

@@ -162,7 +162,6 @@ public class BiteServiceImpl implements BiteService {
 
     @Override
     public CursorPageResponse<BiteResponseDTO> getAllBites(User user, String cursor, int limit) {
-        Set<Long> likedIds = user != null ? userRepository.findLikedBiteIdsByUserId(user.getId()) : Set.of();
         LocalDateTime cursorDate = null;
         Long cursorId = null;
         if (cursor != null && cursor.contains("_")) {
@@ -177,7 +176,7 @@ public class BiteServiceImpl implements BiteService {
         } else {
             bites = biteRepository.findNextPage(Bite.Status.PUBLISHED, cursorDate, cursorId, PageRequest.of(0, limit + 1));
         }
-        return buildCursorResponse(bites, limit, likedIds);
+        return buildCursorResponse(bites, limit);
     }
 
     @Override
@@ -186,7 +185,6 @@ public class BiteServiceImpl implements BiteService {
             return getAllBites(user, cursor, limit);
         }
         
-        Set<Long> likedIds = userRepository.findLikedBiteIdsByUserId(user.getId());
         LocalDateTime cursorDate = null;
         Long cursorId = null;
         if (cursor != null && cursor.contains("_")) {
@@ -200,12 +198,11 @@ public class BiteServiceImpl implements BiteService {
         if (bites.isEmpty() && cursor == null) {
             return getAllBites(user, cursor, limit);
         }
-        return buildCursorResponse(bites, limit, likedIds);
+        return buildCursorResponse(bites, limit);
     }
 
     @Override
     public CursorPageResponse<BiteResponseDTO> getBitesByCategory(User user, Long categoryId, String cursor, int limit) {
-        Set<Long> likedIds = user != null ? userRepository.findLikedBiteIdsByUserId(user.getId()) : Set.of();
         LocalDateTime cursorDate = null;
         Long cursorId = null;
         if (cursor != null && cursor.contains("_")) {
@@ -220,10 +217,10 @@ public class BiteServiceImpl implements BiteService {
         } else {
             bites = biteRepository.findCategoryNextPage(categoryId, Bite.Status.PUBLISHED, cursorDate, cursorId, PageRequest.of(0, limit + 1));
         }
-        return buildCursorResponse(bites, limit, likedIds);
+        return buildCursorResponse(bites, limit);
     }
 
-    private CursorPageResponse<BiteResponseDTO> buildCursorResponse(List<Bite> bites, int limit, Set<Long> likedIds) {
+    private CursorPageResponse<BiteResponseDTO> buildCursorResponse(List<Bite> bites, int limit) {
         boolean hasNext = bites.size() > limit;
         List<Bite> content = hasNext ? bites.subList(0, limit) : bites;
         
@@ -234,7 +231,7 @@ public class BiteServiceImpl implements BiteService {
             nextCursor = timeMillis + "_" + lastBite.getId();
         }
         
-        List<BiteResponseDTO> dtoList = content.stream().map(b -> mapToDTO(b, likedIds)).toList();
+        List<BiteResponseDTO> dtoList = content.stream().map(b -> mapToDTO(b)).toList();
         return new CursorPageResponse<>(dtoList, nextCursor, hasNext);
     }
 
@@ -243,8 +240,7 @@ public class BiteServiceImpl implements BiteService {
     public BiteResponseDTO getBiteById(User user, Long id) {
         Bite bite = biteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Bite not found"));
-        Set<Long> likedIds = user != null ? userRepository.findLikedBiteIdsByUserId(user.getId()) : Set.of();
-        return mapToDTO(bite, likedIds);
+        return mapToDTO(bite);
     }
 
     @Override
@@ -296,7 +292,7 @@ public class BiteServiceImpl implements BiteService {
         return aiText;
     }
 
-    private BiteResponseDTO mapToDTO(Bite bite, Set<Long> likedIds) {
+    private BiteResponseDTO mapToDTO(Bite bite) {
         return BiteResponseDTO.builder()
                 .id(bite.getId())
                 .title(bite.getTitle())
@@ -308,7 +304,7 @@ public class BiteServiceImpl implements BiteService {
                 .categoryName(bite.getCategory() != null ? bite.getCategory().getName() : "Uncategorized")
                 .publishedAt(bite.getPublishedAt())
                 .engagementCount(bite.getEngagementCount())
-                .isLiked(likedIds.contains(bite.getId()))
+                .isLiked(false)
                 .build();
     }
 

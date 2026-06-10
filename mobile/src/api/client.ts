@@ -2,6 +2,7 @@
 // TanStack Query manages caching/retries on top of this.
 
 import { auth } from '../utils/firebase';
+import { networkTracker } from '../utils/network';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.38:8080/api/v1';
 if (!process.env.EXPO_PUBLIC_API_URL) {
@@ -31,68 +32,100 @@ async function buildHeaders(extra: Record<string, string> = {}): Promise<Record<
   };
 }
 
+const handleNetworkError = (error: any) => {
+  if (
+    error &&
+    (error.message?.includes('Network request failed') ||
+      error.message?.includes('Failed to fetch') ||
+      error.name === 'TypeError')
+  ) {
+    networkTracker.setOnline(false);
+  }
+};
+
 export const apiClient = {
   get: async <T>(endpoint: string): Promise<T> => {
-    const headers = await buildHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, { method: 'GET', headers });
+    try {
+      const headers = await buildHeaders();
+      const response = await fetch(`${API_URL}${endpoint}`, { method: 'GET', headers });
 
-    if (response.status === 401) {
-      await auth.signOut();
-      throw new Error('Session expired. Please sign in again.');
-    }
+      networkTracker.setOnline(true);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+      if (response.status === 401) {
+        await auth.signOut();
+        throw new Error('Session expired. Please sign in again.');
+      }
 
-    const json = await response.json();
-    if (!json.success) {
-      throw new Error(json.message || 'API responded with a failure status');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(json.message || 'API responded with a failure status');
+      }
+      return json.data as T;
+    } catch (error) {
+      handleNetworkError(error);
+      throw error;
     }
-    return json.data as T;
   },
 
   post: async <T>(endpoint: string, body: any): Promise<T> => {
-    const headers = await buildHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+    try {
+      const headers = await buildHeaders();
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
 
-    if (response.status === 401) {
-      await auth.signOut();
-      throw new Error('Session expired. Please sign in again.');
-    }
+      networkTracker.setOnline(true);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+      if (response.status === 401) {
+        await auth.signOut();
+        throw new Error('Session expired. Please sign in again.');
+      }
 
-    const json = await response.json();
-    if (!json.success) {
-      throw new Error(json.message || 'API responded with a failure status');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(json.message || 'API responded with a failure status');
+      }
+      return json.data as T;
+    } catch (error) {
+      handleNetworkError(error);
+      throw error;
     }
-    return json.data as T;
   },
 
   delete: async <T>(endpoint: string): Promise<T> => {
-    const headers = await buildHeaders();
-    const response = await fetch(`${API_URL}${endpoint}`, { method: 'DELETE', headers });
+    try {
+      const headers = await buildHeaders();
+      const response = await fetch(`${API_URL}${endpoint}`, { method: 'DELETE', headers });
 
-    if (response.status === 401) {
-      await auth.signOut();
-      throw new Error('Session expired. Please sign in again.');
-    }
+      networkTracker.setOnline(true);
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+      if (response.status === 401) {
+        await auth.signOut();
+        throw new Error('Session expired. Please sign in again.');
+      }
 
-    const json = await response.json();
-    if (!json.success) {
-      throw new Error(json.message || 'API responded with a failure status');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(json.message || 'API responded with a failure status');
+      }
+      return json.data as T;
+    } catch (error) {
+      handleNetworkError(error);
+      throw error;
     }
-    return json.data as T;
   },
 };

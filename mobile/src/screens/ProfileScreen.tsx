@@ -15,12 +15,14 @@ import Animated, {
   useAnimatedStyle, 
   withSpring 
 } from 'react-native-reanimated';
+import { useTheme } from '../utils/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 function StatCard({ item, index, onPress }: { item: any, index: number, onPress?: () => void }) {
   const scale = useSharedValue(1);
+  const { colors, isAmoled } = useTheme();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
@@ -37,7 +39,11 @@ function StatCard({ item, index, onPress }: { item: any, index: number, onPress?
   return (
     <Animated.View 
       entering={FadeInDown.delay(200 + index * 100)} 
-      style={[styles.statCard, animatedStyle]}
+      style={[
+        styles.statCard, 
+        { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border },
+        animatedStyle
+      ]}
     >
       <Pressable 
         onPressIn={onPressIn}
@@ -61,6 +67,7 @@ function StatCard({ item, index, onPress }: { item: any, index: number, onPress?
 
 export default function ProfileScreen({ navigation }: any) {
   const user = auth.currentUser;
+  const { colors, isAmoled } = useTheme();
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -137,7 +144,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <View style={styles.guestContainer}>
           <Ionicons name="person-circle-outline" size={100} color="#334155" />
           <Text style={styles.guestTitle}>Guest Mode</Text>
@@ -151,12 +158,12 @@ export default function ProfileScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Pressable onPress={() => navigation.goBack()} style={[styles.iconBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
             <Image 
               source={require('../../assets/back.png')} 
               style={{ width: 22, height: 22 }} 
@@ -164,7 +171,7 @@ export default function ProfileScreen({ navigation }: any) {
             />
           </Pressable>
           <Text style={styles.headerTitle}>Profile</Text>
-          <Pressable onPress={() => navigation.navigate('Personalization')} style={styles.iconBtn}>
+          <Pressable onPress={() => navigation.navigate('Personalization')} style={[styles.iconBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
             <Image 
               source={require('../../assets/setting.png')} 
               style={{ width: 22, height: 22 }} 
@@ -176,8 +183,8 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Profile Info Card */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.profileCardWrapper}>
           <LinearGradient
-            colors={['rgba(30, 41, 59, 0.95)', 'rgba(15, 23, 42, 0.95)']}
-            style={styles.profileCard}
+            colors={isAmoled ? ['#111111', '#000000'] : ['rgba(30, 41, 59, 0.95)', 'rgba(15, 23, 42, 0.95)']}
+            style={[styles.profileCard, { borderColor: colors.border }]}
           >
             {/* Background Tech Pattern */}
             <Image 

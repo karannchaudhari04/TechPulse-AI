@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
+import { useTheme } from '../utils/theme';
+import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -39,6 +41,7 @@ interface PersonalizationScreenProps {
 
 export default function PersonalizationScreen({ onClose }: PersonalizationScreenProps) {
   const queryClient = useQueryClient();
+  const { isAmoled, setAmoled } = useTheme();
   
   // 1. Fetch real categories from backend
   const { data: allCategories, isLoading: loadingCats } = useQuery({
@@ -160,6 +163,28 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
                   <Text style={styles.cardSubtitle}>Smart notifications enabled</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#475569" />
+              </Pressable>
+
+              {/* AMOLED Black Theme Card */}
+              <Pressable 
+                style={styles.settingCard} 
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                  setAmoled(!isAmoled);
+                }}
+              >
+                <View style={styles.cardIconBox}>
+                  <Ionicons name={isAmoled ? "moon" : "sunny"} size={22} color="#6366F1" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>AMOLED Black Theme</Text>
+                  <Text style={styles.cardSubtitle}>{isAmoled ? "Pure black theme active" : "Standard theme active"}</Text>
+                </View>
+                <Ionicons 
+                  name={isAmoled ? "toggle" : "toggle-outline"} 
+                  size={32} 
+                  color={isAmoled ? "#6366F1" : "#475569"} 
+                />
               </Pressable>
 
               <Text style={styles.sectionTitle}>Topics for you</Text>

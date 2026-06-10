@@ -7,12 +7,14 @@ import { FlashList } from '@shopify/flash-list';
 import BiteCard from '../components/BiteCard';
 import { Bite } from '../types';
 import { useBookmarks } from '../hooks/useBookmarks';
+import { useTheme } from '../utils/theme';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function BookmarksScreen({ navigation }: any) {
   const { bookmarks, isLoading, isBookmarked, toggleBookmark } = useBookmarks();
   const [headerHeight, setHeaderHeight] = useState(100);
+  const { colors, isAmoled } = useTheme();
 
   const itemHeight = SCREEN_HEIGHT - headerHeight;
 
@@ -29,14 +31,14 @@ export default function BookmarksScreen({ navigation }: any) {
   ), [isBookmarked, toggleBookmark, itemHeight]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         
         <View 
           onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
-          style={styles.header}
+          style={[styles.header, { backgroundColor: colors.background }]}
         >
-          <Pressable onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Pressable onPress={() => navigation.goBack()} style={[styles.iconBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
             <Image 
               source={require('../../assets/back.png')} 
               style={{ width: 22, height: 22 }} 
@@ -58,7 +60,7 @@ export default function BookmarksScreen({ navigation }: any) {
           </View>
         ) : bookmarks.length === 0 ? (
           <View style={styles.center}>
-            <View style={styles.emptyIconContainer}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
                <Image 
                  source={require('../../assets/savebite.png')} 
                  style={{ width: 60, height: 60 }} 

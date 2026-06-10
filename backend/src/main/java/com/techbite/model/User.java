@@ -61,17 +61,7 @@ public class User {
     )
     private Set<Category> preferences = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "user_liked_bites",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "bite_id"),
-        indexes = {
-            @Index(name = "idx_liked_user_bite", columnList = "user_id, bite_id"),
-            @Index(name = "idx_liked_bite_id", columnList = "bite_id")
-        }
-    )
-    private Set<Bite> likedBites = new HashSet<>();
+
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

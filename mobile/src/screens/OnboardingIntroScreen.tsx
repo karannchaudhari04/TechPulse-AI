@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Dimensions, SafeAreaView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withSequence, 
+  withTiming 
+} from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -10,6 +18,49 @@ interface OnboardingIntroScreenProps {
 }
 
 export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenProps) {
+  const [line1, setLine1] = useState("");
+  const [line2, setLine2] = useState("");
+  const translateY = useSharedValue(0);
+
+  // Floating hover animation for TechBot
+  useEffect(() => {
+    translateY.value = withRepeat(
+      withSequence(
+        withTiming(-12, { duration: 1500 }),
+        withTiming(0, { duration: 1500 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  // Incremental typing animation for tagline
+  useEffect(() => {
+    const fullTextLine1 = "Master tech, ";
+    const fullTextLine2 = "one bite at a time.";
+    let idx1 = 0;
+    let idx2 = 0;
+    let interval: any;
+
+    interval = setInterval(() => {
+      if (idx1 < fullTextLine1.length) {
+        setLine1((prev) => prev + fullTextLine1.charAt(idx1));
+        idx1++;
+      } else if (idx2 < fullTextLine2.length) {
+        setLine2((prev) => prev + fullTextLine2.charAt(idx2));
+        idx2++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 45);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const animatedBotStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }]
+  }));
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
@@ -17,13 +68,19 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
         {/* Top Header */}
         <View style={styles.topSection}>
            <View style={styles.botRow}>
-              <Image 
-                source={require('../../assets/techbot.jpg')}
-                style={styles.botIcon}
-                resizeMode="contain"
-              />
+              <Animated.View style={animatedBotStyle}>
+                <Image 
+                  source={require('../../assets/techbot.jpg')}
+                  style={styles.botIcon}
+                  resizeMode="contain"
+                />
+              </Animated.View>
               <View style={styles.bubble}>
-                 <Text style={styles.bubbleText}>Master tech, {"\n"}<Text style={styles.highlightText}>one bite at a time.</Text></Text>
+                 <Text style={styles.bubbleText}>
+                   {line1}
+                   {line1.length >= 13 && "\n"}
+                   <Text style={styles.highlightText}>{line2}</Text>
+                 </Text>
               </View>
            </View>
         </View>
@@ -60,17 +117,24 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
              Your personalized roadmap to tech excellence.
            </Text>
 
-           <Pressable 
-              onPress={onNext}
-              style={({ pressed }) => [
-                styles.startBtn, 
-                pressed && styles.btnPressed
-              ]}
-           >
-              <Text style={styles.btnText}>Let's start</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-           </Pressable>
-        </View>
+            <Pressable 
+               onPress={onNext}
+               style={({ pressed }) => [
+                 styles.startBtnWrapper, 
+                 pressed && styles.btnPressed
+               ]}
+            >
+               <LinearGradient
+                 colors={['#6366F1', '#4F46E5']}
+                 start={{ x: 0, y: 0 }}
+                 end={{ x: 1, y: 0 }}
+                 style={styles.startBtn}
+               >
+                 <Text style={styles.btnText}>Let's start</Text>
+                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+               </LinearGradient>
+            </Pressable>
+         </View>
 
       </SafeAreaView>
     </View>
@@ -117,18 +181,24 @@ const styles = StyleSheet.create({
   },
   botGreeting: { color: '#94A3B8', fontSize: scale(15), textAlign: 'center', lineHeight: scale(22), marginBottom: scale(25), fontWeight: '600' },
   
-  startBtn: { 
+  startBtnWrapper: { 
     width: scale(280), // Scaled width
-    height: scale(60), // Scaled height
-    minHeight: scale(60),
-    maxHeight: scale(60),
-    borderRadius: scale(20), 
-    backgroundColor: '#818CF8',
+    height: scale(56), // Scaled height
+    borderRadius: scale(28), 
+    overflow: 'hidden',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  startBtn: { 
+    flex: 1,
     flexDirection: 'row', 
     justifyContent: 'center', 
     alignItems: 'center', 
-    gap: scale(12),
+    gap: scale(10),
   },
-  btnText: { color: '#FFFFFF', fontSize: scale(19), fontWeight: '800' },
-  btnPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] }
+  btnText: { color: '#FFFFFF', fontSize: scale(18), fontWeight: '800', letterSpacing: 0.5 },
+  btnPressed: { opacity: 0.9, transform: [{ scale: 0.96 }] }
 });

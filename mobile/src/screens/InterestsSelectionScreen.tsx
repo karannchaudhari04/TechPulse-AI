@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -12,6 +12,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming 
+} from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -32,6 +38,39 @@ const INTERESTS = [
 ];
 
 const MIN_TAGS = 3;
+
+function TagPill({ tag, isSelected, onPress }: { tag: any; isSelected: boolean; onPress: () => void }) {
+  const scaleVal = useSharedValue(1);
+  const glow = useSharedValue(0);
+
+  useEffect(() => {
+    scaleVal.value = withSpring(isSelected ? 1.05 : 1, { damping: 10, stiffness: 100 });
+    glow.value = withTiming(isSelected ? 1 : 0, { duration: 200 });
+  }, [isSelected]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scaleVal.value }],
+      shadowColor: '#6366F1',
+      shadowOffset: { width: 0, height: glow.value * 4 },
+      shadowOpacity: glow.value * 0.35,
+      shadowRadius: glow.value * 8,
+      elevation: glow.value * 5,
+      backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.25)' : '#0F172A',
+      borderColor: isSelected ? '#818CF8' : '#1E293B',
+    };
+  });
+
+  return (
+    <Pressable onPress={onPress}>
+      <Animated.View style={[styles.tag, animatedStyle]}>
+        <Text style={[styles.tagText, isSelected && styles.tagTextActive]}>
+          {tag.label} {tag.emoji}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function InterestsSelectionScreen({ onComplete }: { onComplete: (tags: string[]) => void }) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -80,15 +119,12 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
                 {INTERESTS.map(tag => {
                   const isSelected = selectedTags.includes(tag.id);
                   return (
-                    <Pressable 
-                      key={tag.id} 
+                    <TagPill 
+                      key={tag.id}
+                      tag={tag}
+                      isSelected={isSelected}
                       onPress={() => toggleTag(tag.id)}
-                      style={[styles.tag, isSelected && styles.tagActive]}
-                    >
-                      <Text style={[styles.tagText, isSelected && styles.tagTextActive]}>
-                        {tag.label} {tag.emoji}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
               </ScrollView>
@@ -98,14 +134,26 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
             <View style={styles.buttonRow}>
                <Pressable 
                  onPress={() => canProceed && onComplete(selectedTags)}
-                 style={[styles.nextBtn, canProceed ? styles.nextBtnActive : styles.nextBtnDisabled]}
+                 disabled={!canProceed}
+                 style={({ pressed }) => [
+                   styles.nextBtnWrapper,
+                   !canProceed && styles.nextBtnDisabled,
+                   pressed && canProceed && styles.btnPressed
+                 ]}
                >
-                 <Text style={styles.nextBtnText}>Finish & Start Reading</Text>
-                 <Ionicons 
-                    name="checkmark-done" 
-                    size={22} 
-                    color="#FFF" 
-                 />
+                 <LinearGradient
+                   colors={canProceed ? ['#6366F1', '#4F46E5'] : ['#1E293B', '#1E293B']}
+                   start={{ x: 0, y: 0 }}
+                   end={{ x: 1, y: 0 }}
+                   style={styles.nextBtn}
+                 >
+                   <Text style={styles.nextBtnText}>Finish & Start Reading</Text>
+                   <Ionicons 
+                      name="checkmark-done" 
+                      size={22} 
+                      color="#FFF" 
+                   />
+                 </LinearGradient>
                </Pressable>
             </View>
 
@@ -145,17 +193,23 @@ const styles = StyleSheet.create({
   tagTextActive: { color: '#FFF' },
 
   buttonRow: { height: scale(80), justifyContent: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: scale(10) },
+  nextBtnWrapper: { 
+    flex: 1, 
+    height: scale(56), 
+    borderRadius: scale(28), 
+    overflow: 'hidden',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   nextBtn: { 
     flex: 1, 
-    height: scale(64), 
-    borderRadius: scale(18), 
     flexDirection: 'row',
     justifyContent: 'center', 
     alignItems: 'center',
     gap: scale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    elevation: 4
   },
   nextBtnText: {
     color: '#FFF',
@@ -163,8 +217,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5
   },
-  nextBtnActive: { backgroundColor: '#334155', borderColor: 'rgba(255,255,255,0.1)' },
-  nextBtnDisabled: { opacity: 0.5 },
+  nextBtnDisabled: { opacity: 0.4 },
+  btnPressed: { opacity: 0.9, transform: [{ scale: 0.96 }] },
 
   bottomSpacer: { height: SCREEN_HEIGHT * 0.03 }
 });

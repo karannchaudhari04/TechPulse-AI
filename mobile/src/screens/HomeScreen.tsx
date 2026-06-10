@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, RefreshControl, Pressable, Dimensions, StyleSheet, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -13,9 +13,20 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
+import { useTheme } from '../utils/theme';
+import { networkTracker } from '../utils/network';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -45,6 +56,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [activeTabId, setActiveTabId] = useState('digest');
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [headerHeight, setHeaderHeight] = useState(110);
+  const { colors, isAmoled } = useTheme();
+  const [isOnline, setIsOnline] = useState(networkTracker.getIsOnline());
+  const streakPulse = useSharedValue(1);
+
+  // Listen to network status changes
+  useEffect(() => {
+    const unsubscribe = networkTracker.subscribe((status) => {
+      setIsOnline(status);
+    });
+    return unsubscribe;
+  }, []);
 
   // Fetch user's selected category names
   const { data: userPrefs } = useQuery({
@@ -107,7 +129,43 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   } = useBites(activeTab.type, (activeTab as any).cid);
   
   const { bookmarks, isBookmarked, toggleBookmark } = useBookmarks();
-  const { markAsViewed } = useViewedBites();
+  const { markAsViewed, readTodayIds } = useViewedBites();
+
+  const dailyCount = readTodayIds.length;
+
+  // Pulse streak container if daily goal is completed
+  useEffect(() => {
+    if (dailyCount >= 3) {
+      streakPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 800 }),
+          withTiming(1, { duration: 800 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      streakPulse.value = 1;
+    }
+  }, [dailyCount]);
+
+  const streakPulseStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: streakPulse.value }],
+      shadowOpacity: interpolate(streakPulse.value, [1, 1.15], [0.2, 0.5]),
+      shadowRadius: interpolate(streakPulse.value, [1, 1.15], [8, 16]),
+      elevation: interpolate(streakPulse.value, [1, 1.15], [3, 8]),
+    };
+  });
+
+  // Haptic feedback celebration the moment goal of 3 is reached
+  const prevCountRef = useRef(dailyCount);
+  useEffect(() => {
+    if (prevCountRef.current < 3 && dailyCount >= 3) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    prevCountRef.current = dailyCount;
+  }, [dailyCount]);
 
   const bitesData = useMemo(() => {
     return data ? data.pages.flatMap(page => page.content) : [];
@@ -121,8 +179,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       if (index !== null && index !== undefined) {
         if (index !== activeIndexRef.current) {
           activeIndexRef.current = index;
-          // Trigger a subtle, light feedback tap when snapping into the next card
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          // Haptics.impactAsync removed to satisfy scroll vibration removal
         }
         
         // Mark the active item as viewed
@@ -152,13 +209,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   ), [isBookmarked, toggleBookmark, itemHeight]);
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
         
+        {/* Offline Mode Banner */}
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <Ionicons name="cloud-offline" size={14} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.offlineBannerText}>Reading Offline Mode (Viewing Cached Bites)</Text>
+          </View>
+        )}
+
         {/* Sticky Header */}
         <View 
           onLayout={(e) => setHeaderHeight(Math.round(e.nativeEvent.layout.height))}
-          style={styles.header}
+          style={[styles.header, { backgroundColor: colors.background }]}
         >
           {/* Top Bar (Simplified, No Logo) */}
           <View style={styles.topBar}>
@@ -170,14 +235,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                      <Ionicons name="person" size={18} color="#94A3B8" />
                    )}
                 </Pressable>
-                <View style={styles.streakContainer}>
+                <Animated.View style={[styles.streakContainer, streakPulseStyle]}>
                    <Image 
                      source={require('../../assets/fire.png')} 
                      style={{ width: 18, height: 18, marginRight: 4 }} 
                      resizeMode="contain"
                    />
                    <Text style={styles.streakText}>{streak}</Text>
-                </View>
+                </Animated.View>
             </View>
 
             <View style={styles.topBarRight}>
@@ -188,6 +253,26 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                      resizeMode="contain"
                    />
                 </Pressable>
+            </View>
+          </View>
+
+          {/* Daily Goal Streak Progress Bar */}
+          <View style={[styles.dailyGoalContainer, { borderBottomColor: colors.border }]}>
+            <View style={styles.dailyGoalTextRow}>
+              <Text style={styles.dailyGoalLabel}>
+                {dailyCount >= 3 
+                  ? "🔥 Streak Locked! Daily goal reached." 
+                  : `Read ${3 - dailyCount} more bite${3 - dailyCount > 1 ? 's' : ''} today to lock your streak`}
+              </Text>
+              <Text style={styles.dailyGoalProgressText}>{dailyCount}/3</Text>
+            </View>
+            <View style={[styles.dailyProgressBarBg, { backgroundColor: isAmoled ? '#111' : 'rgba(255,255,255,0.08)' }]}>
+              <LinearGradient
+                colors={dailyCount >= 3 ? ['#10B981', '#059669'] : ['#818CF8', '#6366F1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.dailyProgressBarFill, { width: `${Math.min((dailyCount / 3) * 100, 100)}%` }]}
+              />
             </View>
           </View>
 
@@ -241,12 +326,19 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   );
 }
 
-const TabButton = ({ label, active, onPress }: { label: string, active: boolean, onPress: () => void }) => (
-  <Pressable onPress={onPress} style={styles.tabBtn}>
-    <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    {active && <View style={styles.tabIndicator} />}
-  </Pressable>
-);
+const TabButton = ({ label, active, onPress }: { label: string, active: boolean, onPress: () => void }) => {
+  const { colors, isAmoled } = useTheme();
+  return (
+    <Pressable onPress={onPress} style={styles.tabBtn}>
+      <Text style={[
+        styles.tabLabel, 
+        active && styles.tabLabelActive,
+        active && { color: isAmoled ? '#FFF' : '#F8FAFC' }
+      ]}>{label}</Text>
+      {active && <View style={[styles.tabIndicator, { backgroundColor: isAmoled ? '#8B5CF6' : '#00A3FF' }]} />}
+    </Pressable>
+  );
+};
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0F172A' },
@@ -317,5 +409,48 @@ const styles = StyleSheet.create({
   feed: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(60) },
   emptyTitle: { color: '#FFFFFF', fontSize: scale(22), fontWeight: '800', marginBottom: scale(12) },
-  emptyText: { color: '#94A3B8', fontSize: scale(16), textAlign: 'center', lineHeight: scale(24), fontWeight: '500' }
+  emptyText: { color: '#94A3B8', fontSize: scale(16), textAlign: 'center', lineHeight: scale(24), fontWeight: '500' },
+  dailyGoalContainer: {
+    paddingHorizontal: scale(22),
+    paddingBottom: scale(10),
+    borderBottomWidth: 1,
+  },
+  dailyGoalTextRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(6),
+  },
+  dailyGoalLabel: {
+    color: '#94A3B8',
+    fontSize: scale(12),
+    fontWeight: '700',
+  },
+  dailyGoalProgressText: {
+    color: '#FFF',
+    fontSize: scale(12),
+    fontWeight: '800',
+  },
+  dailyProgressBarBg: {
+    height: scale(6),
+    borderRadius: scale(3),
+    overflow: 'hidden',
+  },
+  dailyProgressBarFill: {
+    height: '100%',
+    borderRadius: scale(3),
+  },
+  offlineBanner: {
+    backgroundColor: '#EF4444',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: scale(6),
+    width: '100%',
+  },
+  offlineBannerText: {
+    color: '#FFF',
+    fontSize: scale(12),
+    fontWeight: '700',
+  },
 });

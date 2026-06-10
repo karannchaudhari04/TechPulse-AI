@@ -6,6 +6,7 @@ import BiteCard from '../components/BiteCard';
 import { getBiteById } from '../api';
 import { useBookmarks } from '../hooks/useBookmarks';
 import { auth } from '../utils/firebase';
+import { useTheme } from '../utils/theme';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -19,6 +20,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
   const params = route.params || {};
   const rawId = params.id;
   const id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+  const { colors, isAmoled } = useTheme();
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -45,9 +47,9 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 
   if (!id) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.errorText}>Invalid link or missing ID.</Text>
-        <Pressable onPress={handleBack} style={styles.backBtn}>
+        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border, borderWidth: isAmoled ? 1 : 0 }]}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </Pressable>
       </View>
@@ -56,7 +58,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color="#6366F1" />
       </View>
     );
@@ -64,9 +66,9 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 
   if (error || !bite) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.errorText}>Bite not found or link expired.</Text>
-        <Pressable onPress={handleBack} style={styles.backBtn}>
+        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border, borderWidth: isAmoled ? 1 : 0 }]}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </Pressable>
       </View>
@@ -74,8 +76,8 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
             <Pressable onPress={handleBack}>
                 <Text style={styles.headerBack}>← Back to Feed</Text>
