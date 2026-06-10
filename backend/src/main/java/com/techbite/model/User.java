@@ -73,6 +73,19 @@ public class User {
     )
     private Set<Bite> likedBites = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_viewed_bites",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "bite_id"),
+        indexes = {
+            @Index(name = "idx_viewed_user_bite", columnList = "user_id, bite_id"),
+            @Index(name = "idx_viewed_bite_id", columnList = "bite_id")
+        }
+    )
+    private Set<Bite> viewedBites = new HashSet<>();
+
+
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
