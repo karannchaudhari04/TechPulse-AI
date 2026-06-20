@@ -12,9 +12,9 @@ Notifications.setNotificationHandler({
 
 export const NotificationService = {
   /**
-   * Request permissions and initialize notifications
+   * Request permissions, initialize notifications, and retrieve push token
    */
-  async requestPermissions() {
+  async requestPermissions(): Promise<string | null> {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
@@ -25,7 +25,7 @@ export const NotificationService = {
     
     if (finalStatus !== 'granted') {
       console.warn('[Notifications] Permission not granted!');
-      return false;
+      return null;
     }
 
     if (Platform.OS === 'android') {
@@ -37,33 +37,14 @@ export const NotificationService = {
       });
     }
 
-    return true;
-  },
-
-  /**
-   * Schedule the daily reminder
-   */
-  async scheduleDailyReminder() {
-    // Clear any existing reminders first
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    const title = "🏜️ Your Daily CS Digest is ready";
-    const body = "Master today's high-yield tech bites in just 2 minutes.";
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: title,
-        body: body,
-        data: { screen: 'Home' },
-        sound: true,
-      },
-      trigger: {
-        hour: 9, // 9:00 AM
-        minute: 0,
-        repeats: true,
-      } as any,
-    });
-    
-    console.info('[Notifications] Daily reminder scheduled for 9:00 AM');
+    try {
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId: "b983c33c-0335-471b-9fe4-f7e2ff6b263f"
+      });
+      return tokenData.data;
+    } catch (error) {
+      console.error('[Notifications] Failed to get Expo push token:', error);
+      return null;
+    }
   }
 };

@@ -15,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     @EntityGraph(attributePaths = {"preferences"})
     Optional<User> findByEmail(String email);
+
+    @Query("SELECT u.pushToken FROM User u WHERE u.pushToken IS NOT NULL AND u.pushToken != ''")
+    java.util.List<String> findAllPushTokens();
 }

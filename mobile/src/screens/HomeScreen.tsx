@@ -24,6 +24,7 @@ import Animated, {
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import SkeletonCard from '../components/SkeletonCard';
+import { NotificationService } from '../utils/NotificationService';
 
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
@@ -157,6 +158,19 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     });
     return unsubscribe;
   }, []);
+
+  // Register push token when user is logged in
+  useEffect(() => {
+    if (user) {
+      NotificationService.requestPermissions().then((token) => {
+        if (token) {
+          userApi.registerPushToken(token)
+            .then(() => console.info('[Push] Token registered successfully.'))
+            .catch((err) => console.error('[Push] Failed to register token on server:', err));
+        }
+      });
+    }
+  }, [user]);
   
   const { 
     data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch, isRefetching 

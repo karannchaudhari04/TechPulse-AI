@@ -137,6 +137,21 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
+  const [isSendingPush, setIsSendingPush] = useState(false);
+
+  const handleTriggerPush = async () => {
+    if (isSendingPush) return;
+    setIsSendingPush(true);
+    try {
+      await userApi.triggerPushNotifications();
+      Alert.alert("Success", "Daily CS digest push campaign has been manually triggered on the server.");
+    } catch (error) {
+      Alert.alert("Error", "Failed to trigger push campaign.");
+    } finally {
+      setIsSendingPush(false);
+    }
+  };
+
   const stats = [
     { label: 'Saved', value: profile?.savedBitesCount || 0, image: require('../../assets/savebite.png'), color: '#7C3AED' },
   ];
@@ -304,6 +319,27 @@ export default function ProfileScreen({ navigation }: any) {
                   <Text style={styles.adminActionSub}>AI Processing & Content Refresh</Text>
                 </View>
                 {isIngesting ? <ActivityIndicator color="#FFF" /> : <Ionicons name="caret-forward" size={16} color="rgba(255,255,255,0.6)" />}
+              </LinearGradient>
+            </Pressable>
+
+            <Pressable 
+              onPress={handleTriggerPush}
+              style={({ pressed }) => [styles.adminActionCard, { marginTop: scale(12) }, pressed && styles.pressed]}
+            >
+              <LinearGradient
+                colors={['#8B5CF6', '#6366F1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.adminGradient}
+              >
+                <View style={styles.adminIconBox}>
+                    <Ionicons name="notifications-outline" size={24} color="#FFF" />
+                </View>
+                <View style={styles.adminActionText}>
+                  <Text style={styles.adminActionTitle}>Trigger Daily Push Campaign</Text>
+                  <Text style={styles.adminActionSub}>Send randomized hooks to all users</Text>
+                </View>
+                {isSendingPush ? <ActivityIndicator color="#FFF" /> : <Ionicons name="caret-forward" size={16} color="rgba(255,255,255,0.6)" />}
               </LinearGradient>
             </Pressable>
           </Animated.View>

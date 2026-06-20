@@ -22,15 +22,18 @@ public class UserController {
     private final com.techbite.repository.CategoryRepository categoryRepository;
     private final com.techbite.service.UserService userService;
     private final com.techbite.repository.BookmarkRepository bookmarkRepository;
+    private final com.techbite.service.PushScheduler pushScheduler;
 
     public UserController(com.techbite.repository.UserRepository userRepository, 
                           com.techbite.repository.CategoryRepository categoryRepository, 
                           com.techbite.service.UserService userService,
-                          com.techbite.repository.BookmarkRepository bookmarkRepository) {
+                          com.techbite.repository.BookmarkRepository bookmarkRepository,
+                          com.techbite.service.PushScheduler pushScheduler) {
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.userService = userService;
         this.bookmarkRepository = bookmarkRepository;
+        this.pushScheduler = pushScheduler;
     }
 
     /**
@@ -136,7 +139,23 @@ public class UserController {
 
         return ResponseEntity.ok(ApiResponse.success(data, "Profile fetched successfully"));
     }
+    @PostMapping("/push-token")
+    @Transactional
+    public ResponseEntity<ApiResponse<Void>> registerPushToken(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        String firebaseUid = getFirebaseUid();
+        User user = getCurrentUser();
+        user.setPushToken(token);
+        userRepository.save(user);
+        userService.evictUserCache(firebaseUid);
+        return ResponseEntity.ok(ApiResponse.success(null, "Push token registered successfully"));
+    }
 
+    @PostMapping("/push-test")
+    public ResponseEntity<ApiResponse<Void>> testPushNotifications() {
+        pushScheduler.sendDailyCSDigest();
+        return ResponseEntity.ok(ApiResponse.success(null, "Test push campaign triggered successfully"));
+    }
 
 
     private User getCurrentUser() {

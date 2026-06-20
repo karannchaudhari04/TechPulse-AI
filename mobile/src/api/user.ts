@@ -13,6 +13,14 @@ export const userApi = {
     return apiClient.get<any>('/users/profile');
   },
 
+  registerPushToken: async (token: string) => {
+    return apiClient.post<void>('/users/push-token', { token });
+  },
+
+  triggerPushNotifications: async () => {
+    return apiClient.post<void>('/users/push-test', {});
+  },
+
 
   getCategories: async () => {
     return apiClient.get<any[]>('/categories');

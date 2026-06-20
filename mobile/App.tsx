@@ -41,10 +41,8 @@ export default function App() {
     });
 
     // Request Notification Permissions
-    NotificationService.requestPermissions().then(granted => {
-      if (granted) {
-        NotificationService.scheduleDailyReminder(); // Initial schedule
-      }
+    NotificationService.requestPermissions().catch(err => {
+      console.warn('[Notifications] Failed to request permissions:', err);
     });
   }, []);
 
