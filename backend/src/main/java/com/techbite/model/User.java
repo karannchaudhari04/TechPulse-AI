@@ -37,11 +37,6 @@ public class User {
     @Column(columnDefinition = "ENUM('USER', 'ADMIN') DEFAULT 'USER'")
     private Role role = Role.USER;
 
-    @Column(name = "streak_count")
-    private Integer streakCount = 0;
-
-    @Column(name = "last_read_at")
-    private LocalDateTime lastReadAt;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

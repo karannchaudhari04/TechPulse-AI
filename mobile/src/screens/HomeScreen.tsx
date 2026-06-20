@@ -21,7 +21,61 @@ import Animated, {
   withSequence,
   withTiming,
   interpolate,
+  useAnimatedScrollHandler,
 } from 'react-native-reanimated';
+import SkeletonCard from '../components/SkeletonCard';
+
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
+
+const ScrollAnimatedItem = ({
+  scrollY,
+  index,
+  itemHeight,
+  children,
+}: {
+  scrollY: Animated.SharedValue<number>;
+  index: number;
+  itemHeight: number;
+  children: React.ReactNode;
+}) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    const cardPosition = index * itemHeight;
+    const offset = scrollY.value - cardPosition;
+
+    const scale = interpolate(
+      offset,
+      [-itemHeight, 0, itemHeight],
+      [0.94, 1.0, 0.94],
+      'clamp'
+    );
+
+    const opacity = interpolate(
+      offset,
+      [-itemHeight, 0, itemHeight],
+      [0.6, 1.0, 0.6],
+      'clamp'
+    );
+
+    const translateY = interpolate(
+      offset,
+      [-itemHeight, 0, itemHeight],
+      [15, 0, -15],
+      'clamp'
+    );
+
+    return {
+      transform: [{ scale }, { translateY }],
+      opacity,
+    };
+  });
+
+  return (
+    <Animated.View style={[{ height: itemHeight, width: SCREEN_WIDTH }, animatedStyle]}>
+      {children}
+    </Animated.View>
+  );
+};
+
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
@@ -58,7 +112,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [headerHeight, setHeaderHeight] = useState(110);
   const { colors, isAmoled } = useTheme();
   const [isOnline, setIsOnline] = useState(networkTracker.getIsOnline());
-  const streakPulse = useSharedValue(1);
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
 
   // Listen to network status changes
   useEffect(() => {
@@ -89,32 +149,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     return [...base, ...matchedTabs];
   }, [userPrefs]);
 
-  const queryClient = useQueryClient();
-
-  // Fetch user profile for real-time streak
-  const { data: profile } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => userApi.getProfile(),
-    enabled: !!user
-  });
-
-  const streak = profile?.streakCount || 0;
-
-  useEffect(() => {
-    // Update streak on mount if user is logged in
-    if (user) {
-      userApi.updateStreak().then((newStreak) => {
-        // Optimize: Update streak locally in-memory without making a redundant network fetch
-        queryClient.setQueryData(['userProfile'], (oldData: any) => {
-          if (!oldData) return oldData;
-          return { ...oldData, streakCount: newStreak };
-        });
-      }).catch((err) => {
-        console.error('[Streak] Update failed:', err);
-      });
-    }
-  }, [user]);
-
   const activeTab = dynamicTabs.find(t => t.id === activeTabId) || dynamicTabs[0];
 
   useEffect(() => {
@@ -129,43 +163,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   } = useBites(activeTab.type, (activeTab as any).cid);
   
   const { bookmarks, isBookmarked, toggleBookmark } = useBookmarks();
-  const { markAsViewed, readTodayIds } = useViewedBites();
-
-  const dailyCount = readTodayIds.length;
-
-  // Pulse streak container if daily goal is completed
-  useEffect(() => {
-    if (dailyCount >= 3) {
-      streakPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.15, { duration: 800 }),
-          withTiming(1, { duration: 800 })
-        ),
-        -1,
-        true
-      );
-    } else {
-      streakPulse.value = 1;
-    }
-  }, [dailyCount]);
-
-  const streakPulseStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: streakPulse.value }],
-      shadowOpacity: interpolate(streakPulse.value, [1, 1.15], [0.2, 0.5]),
-      shadowRadius: interpolate(streakPulse.value, [1, 1.15], [8, 16]),
-      elevation: interpolate(streakPulse.value, [1, 1.15], [3, 8]),
-    };
-  });
-
-  // Haptic feedback celebration the moment goal of 3 is reached
-  const prevCountRef = useRef(dailyCount);
-  useEffect(() => {
-    if (prevCountRef.current < 3 && dailyCount >= 3) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    }
-    prevCountRef.current = dailyCount;
-  }, [dailyCount]);
+  const { markAsViewed } = useViewedBites();
 
   const bitesData = useMemo(() => {
     return data ? data.pages.flatMap(page => page.content) : [];
@@ -197,16 +195,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const itemHeight = SCREEN_HEIGHT - headerHeight;
 
-  const renderItem = useCallback(({ item }: { item: Bite }) => (
-    <View style={{ height: itemHeight, width: SCREEN_WIDTH }}>
+  const renderItem = useCallback(({ item, index }: { item: Bite; index: number }) => (
+    <ScrollAnimatedItem scrollY={scrollY} index={index} itemHeight={itemHeight}>
       <BiteCard 
         item={item} 
         isBookmarked={isBookmarked(item.id)} 
         onToggleBookmark={toggleBookmark} 
         cardHeight={itemHeight}
       />
-    </View>
-  ), [isBookmarked, toggleBookmark, itemHeight]);
+    </ScrollAnimatedItem>
+  ), [isBookmarked, toggleBookmark, itemHeight, scrollY]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -235,14 +233,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                      <Ionicons name="person" size={18} color="#94A3B8" />
                    )}
                 </Pressable>
-                <Animated.View style={[styles.streakContainer, streakPulseStyle]}>
-                   <Image 
-                     source={require('../../assets/fire.png')} 
-                     style={{ width: 18, height: 18, marginRight: 4 }} 
-                     resizeMode="contain"
-                   />
-                   <Text style={styles.streakText}>{streak}</Text>
-                </Animated.View>
             </View>
 
             <View style={styles.topBarRight}>
@@ -253,26 +243,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                      resizeMode="contain"
                    />
                 </Pressable>
-            </View>
-          </View>
-
-          {/* Daily Goal Streak Progress Bar */}
-          <View style={[styles.dailyGoalContainer, { borderBottomColor: colors.border }]}>
-            <View style={styles.dailyGoalTextRow}>
-              <Text style={styles.dailyGoalLabel}>
-                {dailyCount >= 3 
-                  ? "🔥 Streak Locked! Daily goal reached." 
-                  : `Read ${3 - dailyCount} more bite${3 - dailyCount > 1 ? 's' : ''} today to lock your streak`}
-              </Text>
-              <Text style={styles.dailyGoalProgressText}>{dailyCount}/3</Text>
-            </View>
-            <View style={[styles.dailyProgressBarBg, { backgroundColor: isAmoled ? '#111' : 'rgba(255,255,255,0.08)' }]}>
-              <LinearGradient
-                colors={dailyCount >= 3 ? ['#10B981', '#059669'] : ['#818CF8', '#6366F1']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.dailyProgressBarFill, { width: `${Math.min((dailyCount / 3) * 100, 100)}%` }]}
-              />
             </View>
           </View>
 
@@ -298,11 +268,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         {/* Feed Area */}
         <View style={styles.feed}>
           {isLoading && bitesData.length === 0 ? (
-            <View style={styles.center}>
-              <ActivityIndicator color="#6366F1" size="large" />
-            </View>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              pagingEnabled
+              decelerationRate="fast"
+              snapToInterval={itemHeight}
+            >
+              {[1, 2, 3].map((key) => (
+                <SkeletonCard key={key} cardHeight={itemHeight} />
+              ))}
+            </ScrollView>
           ) : (
-            <FlashList
+            <AnimatedFlashList
               data={bitesData}
               renderItem={renderItem}
               estimatedItemSize={itemHeight}
@@ -311,13 +288,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               snapToAlignment="start"
               decelerationRate="fast"
               showsVerticalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item: Bite) => item.id.toString()}
               onEndReached={() => hasNextPage && !isFetchingNextPage && fetchNextPage()}
               refreshControl={
                 <RefreshControl refreshing={isRefetching && !isLoading} onRefresh={refetch} tintColor="#6366F1" />
               }
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
             />
           )}
         </View>
@@ -384,22 +363,6 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   addIcon: { width: scale(22), height: scale(22) },
-  streakContainer: { 
-    flexDirection: 'row', 
-    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
-    paddingHorizontal: scale(12), 
-    paddingVertical: scale(6), 
-    borderRadius: scale(100), 
-    alignItems: 'center', 
-    gap: scale(6),
-    borderWidth: 1.5,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  streakText: { color: '#FBBF24', fontWeight: '900', fontSize: scale(15), letterSpacing: -0.5 },
   tabWrapper: { marginTop: scale(4) },
   tabScroll: { paddingHorizontal: scale(20), gap: scale(24), paddingBottom: scale(10) },
   tabBtn: { paddingBottom: scale(8), alignItems: 'center', minWidth: scale(40) },
@@ -410,36 +373,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(60) },
   emptyTitle: { color: '#FFFFFF', fontSize: scale(22), fontWeight: '800', marginBottom: scale(12) },
   emptyText: { color: '#94A3B8', fontSize: scale(16), textAlign: 'center', lineHeight: scale(24), fontWeight: '500' },
-  dailyGoalContainer: {
-    paddingHorizontal: scale(22),
-    paddingBottom: scale(10),
-    borderBottomWidth: 1,
-  },
-  dailyGoalTextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(6),
-  },
-  dailyGoalLabel: {
-    color: '#94A3B8',
-    fontSize: scale(12),
-    fontWeight: '700',
-  },
-  dailyGoalProgressText: {
-    color: '#FFF',
-    fontSize: scale(12),
-    fontWeight: '800',
-  },
-  dailyProgressBarBg: {
-    height: scale(6),
-    borderRadius: scale(3),
-    overflow: 'hidden',
-  },
-  dailyProgressBarFill: {
-    height: '100%',
-    borderRadius: scale(3),
-  },
   offlineBanner: {
     backgroundColor: '#EF4444',
     flexDirection: 'row',

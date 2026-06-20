@@ -13,9 +13,6 @@ export const userApi = {
     return apiClient.get<any>('/users/profile');
   },
 
-  updateStreak: async () => {
-    return apiClient.post<number>('/users/streak/update', {});
-  },
 
   getCategories: async () => {
     return apiClient.get<any[]>('/categories');

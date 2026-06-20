@@ -127,7 +127,6 @@ public class UserController {
         User user = getCurrentUser();
 
         Map<String, Object> data = new HashMap<>();
-        data.put("streakCount", user.getStreakCount());
         data.put("email", user.getEmail());
         data.put("displayName", user.getDisplayName());
         data.put("photoURL", user.getProfilePictureUrl());
@@ -138,56 +137,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(data, "Profile fetched successfully"));
     }
 
-    @PostMapping("/streak/update")
-    @Transactional
-    public ResponseEntity<ApiResponse<Integer>> updateStreak(
-            @RequestHeader(value = "X-User-Timezone", required = false) String userTimezone) {
-        String firebaseUid = getFirebaseUid();
-        User user = getCurrentUser();
 
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime lastRead = user.getLastReadAt();
-        
-        // 1. Resolve client timezone with safe fallbacks
-        java.time.ZoneId userZone = java.time.ZoneId.systemDefault();
-        if (userTimezone != null && !userTimezone.isBlank()) {
-            try {
-                userZone = java.time.ZoneId.of(userTimezone);
-            } catch (Exception e) {
-                // Fallback to UTC if timezone is invalid
-                userZone = java.time.ZoneId.of("UTC");
-            }
-        }
-
-        // 2. Project current time into user's timezone date
-        java.time.LocalDate nowLocalDate = java.time.LocalDate.now(userZone);
-        
-        if (lastRead == null) {
-            // First time reading
-            user.setStreakCount(1);
-        } else {
-            // 3. Project database timestamp (saved in server default timezone) into user's localized date
-            java.time.ZonedDateTime lastReadZoned = lastRead.atZone(java.time.ZoneId.systemDefault());
-            java.time.LocalDate lastReadLocalDate = lastReadZoned.withZoneSameInstant(userZone).toLocalDate();
-
-            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(lastReadLocalDate, nowLocalDate);
-            
-            if (daysBetween == 1) {
-                // Consecutive day in user's timezone!
-                user.setStreakCount(user.getStreakCount() + 1);
-            } else if (daysBetween > 1) {
-                // Missed a day in user's timezone, reset
-                user.setStreakCount(1);
-            }
-            // If daysBetween == 0, they already read today, so keep current streak
-        }
-        
-        user.setLastReadAt(now);
-        userRepository.save(user);
-        userService.evictUserCache(firebaseUid);
-        
-        return ResponseEntity.ok(ApiResponse.success(user.getStreakCount(), "Streak updated"));
-    }
 
     private User getCurrentUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();

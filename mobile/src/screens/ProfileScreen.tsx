@@ -138,7 +138,6 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   const stats = [
-    { label: 'Streak', value: profile?.streakCount || 0, image: require('../../assets/fire.png'), color: '#F59E0B' },
     { label: 'Saved', value: profile?.savedBitesCount || 0, image: require('../../assets/savebite.png'), color: '#7C3AED' },
   ];
 

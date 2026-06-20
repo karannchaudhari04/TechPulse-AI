@@ -41,20 +41,14 @@ export const NotificationService = {
   },
 
   /**
-   * Schedule the daily streak reminder
-   * @param streakCount The user's current streak count
+   * Schedule the daily reminder
    */
-  async scheduleDailyReminder(streakCount: number = 0) {
+  async scheduleDailyReminder() {
     // Clear any existing reminders first
     await Notifications.cancelAllScheduledNotificationsAsync();
 
-    const title = streakCount > 0 
-      ? `🔥 ${streakCount}-Day Streak!` 
-      : "🏜️ Your Daily CS Digest is ready";
-    
-    const body = streakCount > 0
-      ? `Keep your ${streakCount}-day streak alive! Master today's tech bites now.`
-      : "Master today's high-yield tech bites in just 2 minutes.";
+    const title = "🏜️ Your Daily CS Digest is ready";
+    const body = "Master today's high-yield tech bites in just 2 minutes.";
 
     await Notifications.scheduleNotificationAsync({
       content: {

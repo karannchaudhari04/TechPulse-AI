@@ -43,7 +43,7 @@ export default function App() {
     // Request Notification Permissions
     NotificationService.requestPermissions().then(granted => {
       if (granted) {
-        NotificationService.scheduleDailyReminder(0); // Initial schedule
+        NotificationService.scheduleDailyReminder(); // Initial schedule
       }
     });
   }, []);

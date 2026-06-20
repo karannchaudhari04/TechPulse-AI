@@ -202,30 +202,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
           </View>
         </View>
 
-        {/* Explain Simply Premium Floating Bot Button */}
-        <Pressable 
-          onPress={handleExplainSimply}
-          onPressIn={() => { explainBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
-          onPressOut={() => { explainBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
-          style={styles.explainBtnWrapper}
-        >
-          <Animated.View style={[styles.explainBtn, explainBtnGlowStyle]}>
-            <LinearGradient
-              colors={['#8B5CF6', '#6366F1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.explainGradient}
-            >
-              <Animated.View style={[rotateStyle, { position: 'absolute', opacity: 0.45 }]}>
-                <Ionicons name="sparkles" size={32} color="#FFF" />
-              </Animated.View>
-              <MaterialCommunityIcons name="robot" size={24} color="#FFF" />
-            </LinearGradient>
-          </Animated.View>
-        </Pressable>
-
         {/* Action Bar */}
-        <View style={[styles.actionBar, { backgroundColor: isAmoled ? '#000000' : 'rgba(15, 23, 42, 0.8)', borderTopColor: colors.border }]}>
+        <View style={[styles.actionBar, { backgroundColor: isAmoled ? 'rgba(17, 17, 17, 0.85)' : 'rgba(30, 41, 59, 0.8)', borderColor: colors.border }]}>
             <View style={styles.leftActions}>
                <Pressable onPress={handleToggleBookmark} style={styles.actionBtn}>
                   <Animated.View style={saveAnimatedStyle}>
@@ -238,6 +216,28 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
                   <Text style={[styles.actionText, localBookmarked && { color: '#6366F1' }]}>Save</Text>
                </Pressable>
             </View>
+
+            {/* Central Unified Mascot Bot Button */}
+            <Pressable 
+              onPress={handleExplainSimply}
+              onPressIn={() => { explainBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
+              onPressOut={() => { explainBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+              style={styles.centerExplainBtnWrapper}
+            >
+              <Animated.View style={[styles.centerExplainBtn, explainBtnGlowStyle]}>
+                <LinearGradient
+                  colors={['#8B5CF6', '#6366F1']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.explainGradient}
+                >
+                  <Animated.View style={[rotateStyle, { position: 'absolute', opacity: 0.45 }]}>
+                    <Ionicons name="sparkles" size={32} color="#FFF" />
+                  </Animated.View>
+                  <MaterialCommunityIcons name="robot" size={24} color="#FFF" />
+                </LinearGradient>
+              </Animated.View>
+            </Pressable>
 
             <View style={styles.rightActions}>
                 <Pressable onPress={handleOpenSource} style={styles.actionBtn}>
@@ -312,17 +312,25 @@ const styles = StyleSheet.create({
   sourceText: { color: '#6366F1', fontSize: scale(14), fontWeight: '700', letterSpacing: 0.5 },
   
   actionBar: { 
+    position: 'absolute',
+    bottom: scale(16),
+    left: scale(16),
+    right: scale(16),
+    borderRadius: scale(20),
+    borderWidth: 1,
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingHorizontal: scale(24), 
-    paddingVertical: scale(18),
-    borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)'
+    paddingHorizontal: scale(20), 
+    paddingVertical: scale(12),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  leftActions: { flexDirection: 'row', alignItems: 'center', gap: scale(20) },
-  rightActions: { flexDirection: 'row', alignItems: 'center', gap: scale(12) },
+  leftActions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-start', alignItems: 'center' },
+  rightActions: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: scale(16) },
   statText: { color: '#94A3B8', fontSize: scale(13), fontWeight: '700', marginTop: 2 },
   actionBtn: { alignItems: 'center', gap: scale(4) },
   actionText: { color: '#94A3B8', fontSize: scale(11), fontWeight: '700', marginTop: 2 },
@@ -330,15 +338,16 @@ const styles = StyleSheet.create({
 
   progressBar: { height: 2, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
   progressFill: { height: '100%', backgroundColor: '#6366F1', shadowColor: '#6366F1', shadowRadius: 4, shadowOpacity: 0.5 },
-  explainBtnWrapper: {
+  centerExplainBtnWrapper: {
     position: 'absolute',
-    bottom: scale(80),
-    right: scale(20),
+    top: scale(-16),
+    left: '50%',
+    marginLeft: scale(-28),
     width: scale(56),
     height: scale(56),
     zIndex: 10,
   },
-  explainBtn: {
+  centerExplainBtn: {
     width: '100%',
     height: '100%',
     borderRadius: scale(28),
