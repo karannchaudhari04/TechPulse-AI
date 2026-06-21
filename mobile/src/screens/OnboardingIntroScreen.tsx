@@ -120,7 +120,6 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
             <Pressable 
                onPress={onNext}
                style={({ pressed }) => [
-                 styles.startBtnWrapper, 
                  pressed && styles.btnPressed
                ]}
             >
@@ -128,7 +127,7 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
                  colors={['#6366F1', '#4F46E5']}
                  start={{ x: 0, y: 0 }}
                  end={{ x: 1, y: 0 }}
-                 style={styles.startBtn}
+                 style={[styles.startBtn, styles.startBtnWrapper]}
                >
                  <Text style={styles.btnText}>Let's start</Text>
                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
@@ -193,7 +192,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   startBtn: { 
-    flex: 1,
+    width: '100%',
+    height: '100%',
     flexDirection: 'row', 
     justifyContent: 'center', 
     alignItems: 'center', 

@@ -136,8 +136,7 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
                  onPress={() => canProceed && onComplete(selectedTags)}
                  disabled={!canProceed}
                  style={({ pressed }) => [
-                   styles.nextBtnWrapper,
-                   !canProceed && styles.nextBtnDisabled,
+                   { width: '100%' },
                    pressed && canProceed && styles.btnPressed
                  ]}
                >
@@ -145,7 +144,11 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
                    colors={canProceed ? ['#6366F1', '#4F46E5'] : ['#1E293B', '#1E293B']}
                    start={{ x: 0, y: 0 }}
                    end={{ x: 1, y: 0 }}
-                   style={styles.nextBtn}
+                   style={[
+                     styles.nextBtn,
+                     styles.nextBtnWrapper,
+                     !canProceed && styles.nextBtnDisabled
+                   ]}
                  >
                    <Text style={styles.nextBtnText}>Finish & Start Reading</Text>
                    <Ionicons 
@@ -160,8 +163,6 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
           </View>
         </View>
       </View>
-
-      <View style={styles.bottomSpacer} />
     </View>
   );
 }
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: scale(10) },
   progressText: { color: '#FFF', fontSize: scale(16), fontWeight: '700' },
 
-  cardContainer: { paddingHorizontal: scale(16), height: SCREEN_HEIGHT * 0.92 },
+  cardContainer: { flex: 1, paddingHorizontal: scale(16), marginBottom: Platform.OS === 'ios' ? scale(20) : scale(16) },
   card: { flex: 1, borderRadius: scale(32), overflow: 'hidden', borderWidth: 1, borderColor: '#27272A' },
   cardContent: { flex: 1, padding: scale(24) },
 
@@ -192,9 +193,16 @@ const styles = StyleSheet.create({
   tagText: { color: '#E2E8F0', fontSize: scale(15), fontWeight: '600' },
   tagTextActive: { color: '#FFF' },
 
-  buttonRow: { height: scale(80), justifyContent: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.03)', marginTop: scale(10) },
+  buttonRow: { 
+    height: scale(80), 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderTopWidth: 1, 
+    borderTopColor: 'rgba(255,255,255,0.03)', 
+    marginTop: scale(10) 
+  },
   nextBtnWrapper: { 
-    flex: 1, 
+    width: '100%', 
     height: scale(56), 
     borderRadius: scale(28), 
     overflow: 'hidden',
@@ -205,7 +213,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   nextBtn: { 
-    flex: 1, 
+    width: '100%', 
+    height: '100%', 
     flexDirection: 'row',
     justifyContent: 'center', 
     alignItems: 'center',
@@ -218,7 +227,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   nextBtnDisabled: { opacity: 0.4 },
-  btnPressed: { opacity: 0.9, transform: [{ scale: 0.96 }] },
-
-  bottomSpacer: { height: SCREEN_HEIGHT * 0.03 }
+  btnPressed: { opacity: 0.9, transform: [{ scale: 0.96 }] }
 });
