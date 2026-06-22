@@ -15,6 +15,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
 import { useTheme } from '../utils/theme';
 import * as Haptics from 'expo-haptics';
+import { auth } from '../utils/firebase';
+import { useNavigation } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -41,7 +43,9 @@ interface PersonalizationScreenProps {
 
 export default function PersonalizationScreen({ onClose }: PersonalizationScreenProps) {
   const queryClient = useQueryClient();
-  const { isAmoled, setAmoled } = useTheme();
+  const { isAmoled, setAmoled, colors } = useTheme();
+  const navigation = useNavigation<any>();
+  const user = auth.currentUser;
   
   // 1. Fetch real categories from backend
   const { data: allCategories, isLoading: loadingCats } = useQuery({
@@ -124,6 +128,40 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
       </View>
     );
   };
+
+  if (!user) {
+    return (
+      <View style={[styles.root, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.safeArea}>
+          {/* Header to allow closing the personalization modal */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Personalization</Text>
+            <Pressable onPress={onClose} style={styles.closeBtn}>
+              <Image 
+                source={require('../../assets/cross.png')} 
+                style={styles.crossIcon}
+                resizeMode="contain"
+              />
+            </Pressable>
+          </View>
+          <View style={styles.guestContainer}>
+            <Ionicons name="person-circle-outline" size={100} color="#334155" />
+            <Text style={styles.guestTitle}>Guest Mode</Text>
+            <Text style={styles.guestSubtitle}>Sign in to sync your progress and bookmarks across devices.</Text>
+            <Pressable 
+              onPress={() => {
+                onClose(); // Close modal first
+                navigation.navigate('Welcome');
+              }} 
+              style={styles.signInBtn}
+            >
+              <Text style={styles.signInText}>Sign In with Google</Text>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -257,5 +295,17 @@ const styles = StyleSheet.create({
     borderColor: '#334155'
   },
   followBtnText: { color: '#000', fontSize: scale(14), fontWeight: '800' },
-  followingBtnText: { color: '#FFF' }
+  followingBtnText: { color: '#FFF' },
+  
+  guestContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: scale(40) },
+  guestTitle: { fontSize: scale(24), fontWeight: '900', color: '#F1F5F9', marginTop: scale(20) },
+  guestSubtitle: { fontSize: scale(14), color: '#64748B', textAlign: 'center', marginTop: scale(10), marginBottom: scale(30), lineHeight: scale(20) },
+  signInBtn: {
+    backgroundColor: '#7C3AED',
+    width: '100%',
+    paddingVertical: scale(18),
+    borderRadius: scale(24),
+    alignItems: 'center',
+  },
+  signInText: { color: '#FFF', fontWeight: '900', fontSize: scale(16) }
 });
