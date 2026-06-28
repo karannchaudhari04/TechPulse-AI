@@ -258,7 +258,11 @@ const styles = StyleSheet.create({
   welcomeSubtitle: { color: '#94A3B8', fontSize: scale(14), lineHeight: scale(20), fontWeight: '500', textAlign: 'center', marginBottom: scale(24) },
 
   submitBtn: { width: '100%', height: scale(50), borderRadius: scale(25), overflow: 'hidden', shadowColor: '#6366F1', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
-  submitGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  submitGradient: {
+    height: scale(50),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   submitBtnText: { color: '#FFFFFF', fontSize: scale(16), fontWeight: '800', letterSpacing: 0.5 },
 
   googleContent: { flexDirection: 'row', alignItems: 'center', gap: scale(10) },
