@@ -1,7 +1,7 @@
 <div align="center">
-  <h1>TechBite</h1>
-  <p><b>Master High-Yield Tech News in 2 Minutes a Day.</b></p>
-  <p><i>A mobile-first, AI-powered short news app designed for Computer Science students and software engineers.</i></p>
+  <h1>TechPulse AI</h1>
+  <p><b>AI-powered Technology Intelligence Platform for Developers.</b></p>
+  <p><i>An autonomous multi-agent platform that continuously monitors, discovers, cleans, deduplicates, and ranks technology updates to deliver high-quality personalized technology intelligence.</i></p>
 
   [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](#)
   [![Spring Boot](https://img.shields.io/badge/Spring_Boot-F2F4F9?style=for-the-badge&logo=spring-boot)](#)
@@ -14,20 +14,25 @@
 
 ## 📖 Overview
 
-**TechBite** solves the "information overload" problem for tech professionals and students. Instead of scrolling through endless articles, TechBite automatically scrapes top tech blogs, uses **Google Gemini AI** to summarize them into 80-150 word "bites", and delivers them in a highly addictive, frictionless vertical scrolable feed.
+**TechPulse AI** solves the "information overload" and fragmentation problem for developers, software engineers, and tech enthusiasts. Instead of checking dozens of official company blogs, GitHub releases, Reddit, Hacker News, and research papers, TechPulse AI continuously and autonomously aggregates, validates, deduplicates, and summarizes the technology ecosystem in real time.
 
-Engineered as a **production-ready distributed system**, TechBite is capable of high-concurrency traffic through horizontal scaling, database read/write splitting, and aggressive caching.
+Engineered as a **production-ready distributed system**, TechPulse AI is capable of high-concurrency traffic through horizontal scaling, database read/write splitting, and aggressive caching.
 
 ---
 
-## ✨ Features
+## 🏗️ Multi-Agent Architecture
 
-- **⚡ 60 FPS Vertical Feed**: Hyper-optimized native scrolling using Shopify's `FlashList` and Reanimated.
-- **🤖 AI-Powered Summaries**: Automated background ingestion pipeline utilizing Gemini AI to extract key insights.
-- **🧠 Personalized "For You"**: Tailored content delivery based on user-selected interests (DSA, AI, Web Dev, etc.).
-- **🔥 Daily Streaks & Gamification**: Push notifications and streak tracking to build consistent learning habits.
-- **🔖 Bookmarks**: Save crucial interview prep tips.
-- **🔐 Secure Stateless Auth**: Seamless Google Sign-In backed by Firebase Admin SDK and stateless JWT verification.
+The platform uses a pipeline of specialized, modular agent components:
+
+1. **Discovery Agent**: Aggregates technology updates from RSS feeds and online sources.
+2. **Content Cleaning Agent**: Sanitizes and normalizes raw content using JSoup.
+3. **Classification Agent**: Categorizes updates deterministically into core domains (AI, Web Dev, Mobile, Cloud, Security, etc.).
+4. **Duplicate Detection Agent**: Filters out overlapping stories using Jaro-Winkler title similarity and URL normalization.
+5. **Credibility Judge Agent**: Assesses source trustworthiness using a rule-based tier list.
+6. **Importance Ranking Agent**: Calculates significance scores taking source tiers, duplicate counts, and time decay into account.
+7. **Summarization Agent**: Uses Google Gemini to generate clean, high-yield summaries.
+8. **Explain Agent**: Generates beginner-friendly explanations on demand.
+9. **Recommendation Agent**: Personalizes user feeds based on category preferences and reading history.
 
 ---
 
@@ -38,29 +43,16 @@ Engineered as a **production-ready distributed system**, TechBite is capable of 
 | **Mobile Client** | React Native (Expo), TypeScript, FlashList, Reanimated, React Query, NativeWind (Tailwind) |
 | **Backend API** | Java 17, Spring Boot 3.2, Spring Security, Spring AI, Rome (RSS), Bucket4j |
 | **Database & Cache** | TiDB (MySQL Dialect), Redis |
-| **DevOps & Cloud** | Docker, Nginx (Load Balancer), Render (PaaS), EAS (Expo Application Services) |
+| **DevOps & Cloud** | Docker, Nginx (Load Balancer), Render (PaaS) |
 
 ---
 
-## 🏗️ Architecture & Production Highlights
+## 🏗️ Production Highlights
 
-This project moves beyond standard CRUD apps by implementing **Enterprise-grade distributed patterns**:
-
-### 1. Horizontal Scaling & High Availability (AP-Mode)
-- The backend is fully **stateless**. Session state is managed via JWTs, allowing an **Nginx Load Balancer** to distribute traffic via Round-Robin across multiple Spring Boot instances.
-- **TiDB Read/Write Splitting**: Implemented custom `AbstractRoutingDataSource` and Spring AOP to route heavy feed queries to TiDB Read Replicas (`tidb_replica_read = 'leader-and-follower'`), prioritizing system availability over strict consistency (CAP Theorem AP-Mode).
-
-### 2. The AI Ingestion Pipeline
-- A scheduled Spring Boot cron job reads RSS feeds via **Rome**.
-- Raw HTML is sanitized using **JSoup** to prevent prompt injection.
-- Clean text is sent to **Google Gemini** via `spring-ai`, prompting it to return structured JSON containing a concise summary and category classification.
-
-### 3. Fail-Safe Caching Strategy
-- The primary feed is aggressively cached in **Redis**. 
-- Implemented a custom `CacheErrorHandler` ensuring that if the Redis node goes down, the application gracefully falls back to database reads instead of throwing 500 Internal Server Errors.
-
-### 4. Extreme Mobile Optimization
-- **Instant TTI (Time to Interactive)**: UI rendering is decoupled from network requests using React Query with local Async Storage persistence. 
+- **Horizontal Scaling & High Availability**: Fully stateless backend API instances distributed by an Nginx Load Balancer using JWT security.
+- **TiDB Read/Write Splitting**: Custom `AbstractRoutingDataSource` and Spring AOP to route heavy feed queries to TiDB replicas.
+- **Fail-Safe Caching**: Aggressive Redis caching with fallback handlers to read directly from database if cache node fails.
+- **Mobile Optimization**: Zero-latency scrolling using Shopify's `FlashList` and local async persistence.
 
 ---
 
@@ -72,13 +64,11 @@ This project moves beyond standard CRUD apps by implementing **Enterprise-grade 
 - Firebase Project & Google Gemini API Key
 
 ### 1. Run Backend Locally (Docker)
-The backend is fully containerized for a zero-config setup.
 ```bash
 cd backend
-# Rename .env.example to .env and add your Gemini & Firebase keys
+# Setup .env from .env.example
 docker compose up -d
 ```
-*This starts MySQL (TiDB local), Redis, 3 Spring Boot instances, and the Nginx Load Balancer on `localhost:8080`.*
 
 ### 2. Run Mobile App
 ```bash
@@ -86,31 +76,3 @@ cd mobile
 npm install
 npx expo start
 ```
-*Use the Expo Go app or an Android Emulator to view the app.*
-
----
-
-## 🎯 Resume & Interview Talking Points
-
-If you are a recruiter reviewing this project, here are the key engineering challenges solved:
-
-* **Distributed Systems**: Architected a horizontally scaled, stateless Spring Boot backend using Nginx load balancing and JWT authentication, supporting high-concurrency mobile traffic.
-* **Database Optimization**: Engineered a custom Database Routing layer using Spring AOP to split Read/Write traffic, leveraging TiDB Follower Reads to achieve CAP Theorem AP-mode availability.
-* **Mobile Performance**: Optimized React Native performance by implementing ABI Splitting, Hermes engine, and FlashList, reducing final APK size by 75% and achieving 60fps scrolling.
-* **Automated AI Pipeline**: Designed an automated data pipeline using Rome RSS and Google Gemini AI to scrape, summarize, and categorize high-yield tech news, aggressively cached via Redis.
-* **Viral Acquisition**: Built a seamless viral acquisition loop utilizing deep linking, Server-Side Rendered (Thymeleaf) dynamic landing pages, and Expo Push Notifications.
-
----
-
-## 🗺️ Future Roadmap
-
-- [ ] **iOS Native Build**: Configure EAS for App Store release.
-- [ ] **Web Dashboard**: Next.js admin panel for manual bite curation.
-- [ ] **Audio Bites**: Integration with Text-to-Speech APIs for podcast-style listening.
-- [ ] **Offline Mode**: Comprehensive SQLite sync for reading without an internet connection.
-
----
-
-<div align="center">
-  <i>Made with ❤️ by developer, for developers.</i>
-</div>

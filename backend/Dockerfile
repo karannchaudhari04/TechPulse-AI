@@ -21,8 +21,8 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Create a non-root user for security
-RUN addgroup -S techbite && adduser -S techbite -G techbite
-USER techbite
+RUN addgroup -S techpulse && adduser -S techpulse -G techpulse
+USER techpulse
 
 # Copy the built JAR from stage 1
 COPY --from=builder /app/target/*.jar app.jar

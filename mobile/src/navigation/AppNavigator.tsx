@@ -18,7 +18,7 @@ import ArticleScreen from '../screens/ArticleScreen';
 import { userApi } from '../api/user';
 
 const linking = {
-  prefixes: ['techbite://', 'https://techbite.onrender.com'],
+  prefixes: ['techpulse://', 'https://techpulse.onrender.com'],
 
   config: {
     screens: {

@@ -16,7 +16,7 @@ set -e  # Exit on any error
 
 echo ""
 echo "╔══════════════════════════════════════╗"
-echo "║   TechBite Oracle Cloud Deployment   ║"
+echo "║  TechPulse AI Oracle Cloud Deployment║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
@@ -61,12 +61,12 @@ if [ ! -f ".env" ]; then
 fi
 
 # ── Step 6: Build the Docker image ───────────────────────────
-echo "▶ Building TechBite Docker image..."
-docker build -t techbite-backend:latest .
+echo "▶ Building TechPulse AI Docker image..."
+docker build -t techpulse-backend:latest .
 echo "✅ Image built"
 
 # ── Step 7: Start the stack ──────────────────────────────────
-echo "▶ Starting TechBite stack..."
+echo "▶ Starting TechPulse AI stack..."
 docker compose -f docker-compose.prod.yml --env-file .env up -d
 echo "✅ Stack started"
 
@@ -102,4 +102,4 @@ echo "📋 Useful commands:"
 echo "   View logs:    docker compose -f docker-compose.prod.yml logs -f backend"
 echo "   Restart:      docker compose -f docker-compose.prod.yml restart backend"
 echo "   Stop all:     docker compose -f docker-compose.prod.yml down"
-echo "   Update app:   docker build -t techbite-backend:latest . && docker compose -f docker-compose.prod.yml up -d --no-deps backend"
+echo "   Update app:   docker build -t techpulse-backend:latest . && docker compose -f docker-compose.prod.yml up -d --no-deps backend"

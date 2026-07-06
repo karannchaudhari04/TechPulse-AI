@@ -45,7 +45,7 @@ firebase:
 
 logging:
   level:
-    com.techbite: DEBUG
+    com.techpulse: DEBUG
     org.hibernate.SQL: DEBUG
     org.springframework.jdbc.datasource: DEBUG
 
@@ -62,6 +62,142 @@ management:
       enabled: false
     redis:
       enabled: false
+
+app:
+  classification:
+    keywords:
+      DSA_PROBLEM_SOLVING:
+        - "dsa"
+        - "leetcode"
+        - "algorithms"
+        - "sorting"
+        - "binary tree"
+        - "graph"
+        - "array"
+        - "search"
+      WEB_DEVELOPMENT:
+        - "react"
+        - "next.js"
+        - "angular"
+        - "html"
+        - "css"
+        - "tailwind"
+        - "typescript"
+        - "javascript"
+        - "web"
+      MOBILE_DEVELOPMENT:
+        - "ios"
+        - "android"
+        - "swift"
+        - "kotlin"
+        - "react native"
+        - "flutter"
+        - "mobile"
+      AI_MACHINE_LEARNING:
+        - "gpt"
+        - "llm"
+        - "gemini"
+        - "claude"
+        - "openai"
+        - "anthropic"
+        - "ai"
+        - "machine learning"
+        - "deep learning"
+        - "neural network"
+      CLOUD_DEVOPS:
+        - "aws"
+        - "azure"
+        - "gcp"
+        - "docker"
+        - "kubernetes"
+        - "ci/cd"
+        - "terraform"
+        - "devops"
+      SYSTEM_DESIGN_BACKEND:
+        - "system design"
+        - "load balancer"
+        - "backend"
+        - "microservices"
+        - "scalability"
+        - "database"
+      CYBERSECURITY:
+        - "cybersecurity"
+        - "security"
+        - "exploit"
+        - "vulnerability"
+        - "backdoor"
+        - "encryption"
+      DATA_SCIENCE_ANALYTICS:
+        - "data science"
+        - "pandas"
+        - "numpy"
+        - "analytics"
+        - "visualization"
+        - "python"
+      PRODUCT_UI_UX:
+        - "figma"
+        - "ui/ux"
+        - "ui"
+        - "ux"
+        - "design"
+        - "prototype"
+      OPEN_SOURCE_GITHUB:
+        - "open source"
+        - "github"
+        - "git"
+        - "repository"
+      CAREER_PLACEMENTS:
+        - "interview"
+        - "placement"
+        - "resume"
+        - "career"
+        - "internship"
+      EMERGING_TECH:
+        - "quantum"
+        - "blockchain"
+        - "web3"
+        - "crypto"
+        - "nvidla"
+        - "emerging"
+
+  credibility:
+    sources:
+      techcrunch:
+        organization: "TechCrunch"
+        type: "TIER_1_TECH_NEWS"
+        baselineWeight: 0.90
+        official: false
+      github:
+        organization: "GitHub"
+        type: "OFFICIAL_VENDOR"
+        baselineWeight: 1.00
+        official: true
+      aws:
+        organization: "Amazon Web Services"
+        type: "OFFICIAL_VENDOR"
+        baselineWeight: 1.00
+        official: true
+      google:
+        organization: "Google"
+        type: "OFFICIAL_VENDOR"
+        baselineWeight: 1.00
+        official: true
+      apple:
+        organization: "Apple Developer"
+        type: "OFFICIAL_VENDOR"
+        baselineWeight: 1.00
+        official: true
+      medium:
+        organization: "Medium Blogs"
+        type: "COMMUNITY_BLOG"
+        baselineWeight: 0.60
+        official: false
+    clickbaitKeywords:
+      - "shocking"
+      - "believe"
+      - "secret"
+      - "mind-blowing"
+      - "won't believe"
 
 ---
 spring:

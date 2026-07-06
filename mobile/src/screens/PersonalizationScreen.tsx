@@ -10,6 +10,7 @@ import {
   StatusBar 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
@@ -153,9 +154,26 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
                 onClose(); // Close modal first
                 navigation.navigate('Welcome');
               }} 
-              style={styles.signInBtn}
+              style={({ pressed }) => [
+                styles.signInBtn,
+                pressed && styles.pressed
+              ]}
             >
-              <Text style={styles.signInText}>Sign In with Google</Text>
+              <LinearGradient
+                colors={['#6366F1', '#4F46E5']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.signInGradient}
+              >
+                <View style={styles.googleContent}>
+                  <Image 
+                    source={require('../../assets/google.png')}
+                    style={styles.googleIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.signInText}>Continue with Google</Text>
+                </View>
+              </LinearGradient>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -301,11 +319,32 @@ const styles = StyleSheet.create({
   guestTitle: { fontSize: scale(24), fontWeight: '900', color: '#F1F5F9', marginTop: scale(20) },
   guestSubtitle: { fontSize: scale(14), color: '#64748B', textAlign: 'center', marginTop: scale(10), marginBottom: scale(30), lineHeight: scale(20) },
   signInBtn: {
-    backgroundColor: '#7C3AED',
     width: '100%',
-    paddingVertical: scale(18),
-    borderRadius: scale(24),
+    height: scale(50),
+    borderRadius: scale(25),
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  signInGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: scale(25),
+    overflow: 'hidden',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  signInText: { color: '#FFF', fontWeight: '900', fontSize: scale(16) }
+  googleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  googleIcon: {
+    width: scale(20),
+    height: scale(20),
+  },
+  signInText: { color: '#FFF', fontWeight: '800', fontSize: scale(16), letterSpacing: 0.5 },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.97 }] }
 });

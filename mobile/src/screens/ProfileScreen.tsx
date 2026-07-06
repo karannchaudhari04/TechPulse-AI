@@ -13,7 +13,11 @@ import Animated, {
   FadeInDown, 
   useSharedValue, 
   useAnimatedStyle, 
-  withSpring 
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing
 } from 'react-native-reanimated';
 import { useTheme } from '../utils/theme';
 
@@ -69,6 +73,36 @@ export default function ProfileScreen({ navigation }: any) {
   const user = auth.currentUser;
   const { colors, isAmoled } = useTheme();
 
+  const badgeScale = useSharedValue(1);
+  const badgeGlow = useSharedValue(0.4);
+
+  const badgeAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: badgeScale.value }],
+      opacity: badgeGlow.value + 0.2,
+    };
+  });
+
+  useEffect(() => {
+    badgeScale.value = withRepeat(
+      withSequence(
+        withTiming(1.03, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+
+    badgeGlow.value = withRepeat(
+      withSequence(
+        withTiming(0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.4, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
@@ -97,7 +131,7 @@ export default function ProfileScreen({ navigation }: any) {
   const handleSignOut = () => {
     Alert.alert(
       "Sign Out",
-      "Are you sure you want to log out of TechBite?",
+      "Are you sure you want to log out of TechPulse AI?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -163,8 +197,28 @@ export default function ProfileScreen({ navigation }: any) {
           <Ionicons name="person-circle-outline" size={100} color="#334155" />
           <Text style={styles.guestTitle}>Guest Mode</Text>
           <Text style={styles.guestSubtitle}>Sign in to sync your progress and bookmarks across devices.</Text>
-          <Pressable onPress={() => navigation.navigate('Welcome')} style={styles.signInBtn}>
-            <Text style={styles.signInText}>Sign In with Google</Text>
+          <Pressable 
+            onPress={() => navigation.navigate('Welcome')} 
+            style={({ pressed }) => [
+              styles.signInBtn,
+              pressed && styles.pressed
+            ]}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#4F46E5']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.signInGradient}
+            >
+              <View style={styles.googleContent}>
+                <Image 
+                  source={require('../../assets/google.png')}
+                  style={styles.googleIcon}
+                  contentFit="contain"
+                />
+                <Text style={styles.signInText}>Continue with Google</Text>
+              </View>
+            </LinearGradient>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -244,14 +298,14 @@ export default function ProfileScreen({ navigation }: any) {
                 </View>
               </View>
 
-              <View style={[styles.badge, isAdmin && styles.adminBadge]}>
+              <Animated.View style={[styles.badge, isAdmin && styles.adminBadge, badgeAnimatedStyle]}>
                 <Image 
                   source={isAdmin ? require('../../assets/bolt.png') : require('../../assets/crown.png')} 
                   style={{ width: 14, height: 14, marginRight: 6 }} 
                   contentFit="contain"
                 />
                 <Text style={styles.badgeText}>{isAdmin ? 'ROOT ADMIN' : 'ELITE MEMBER'}</Text>
-              </View>
+              </Animated.View>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -351,7 +405,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Ionicons name="power-outline" size={20} color="#F87171" />
             <Text style={styles.logoutText}>End Session</Text>
           </Pressable>
-          <Text style={styles.versionText}>TECHBITE OS V2.0 // BUILD 105</Text>
+          <Text style={styles.versionText}>TECHPULSE OS V2.0 // BUILD 105</Text>
         </Animated.View>
 
       </ScrollView>
@@ -454,8 +508,16 @@ const styles = StyleSheet.create({
     borderRadius: scale(8),
     borderWidth: 1,
     borderColor: 'rgba(124, 58, 237, 0.3)',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
-  adminBadge: { borderColor: 'rgba(245, 158, 11, 0.4)', backgroundColor: 'rgba(245, 158, 11, 0.1)' },
+  adminBadge: { 
+    borderColor: 'rgba(245, 158, 11, 0.4)', 
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    shadowColor: '#F59E0B',
+  },
   badgeText: { color: '#7C3AED', fontSize: scale(9), fontWeight: '900', letterSpacing: 1 },
   statsRow: {
     flexDirection: 'row',
@@ -535,13 +597,33 @@ const styles = StyleSheet.create({
   guestTitle: { fontSize: scale(24), fontWeight: '900', color: '#F1F5F9', marginTop: scale(20) },
   guestSubtitle: { fontSize: scale(14), color: '#64748B', textAlign: 'center', marginTop: scale(10), marginBottom: scale(30), lineHeight: scale(20) },
   signInBtn: {
-    backgroundColor: '#7C3AED',
     width: '100%',
-    paddingVertical: scale(18),
-    borderRadius: scale(24),
+    height: scale(50),
+    borderRadius: scale(25),
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  signInGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: scale(25),
+    overflow: 'hidden',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  signInText: { color: '#FFF', fontWeight: '900', fontSize: scale(16) },
+  googleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  googleIcon: {
+    width: scale(20),
+    height: scale(20),
+  },
+  signInText: { color: '#FFF', fontWeight: '800', fontSize: scale(16), letterSpacing: 0.5 },
   pressed: { opacity: 0.8 },
 });
 

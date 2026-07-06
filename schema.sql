@@ -1,5 +1,5 @@
 -- ===========================================================================
--- TechBite Database Schema
+-- TechPulse AI Database Schema
 -- Focus: Fast read performance, foreign key integrity, and easy pagination.
 -- ===========================================================================
 
@@ -80,5 +80,36 @@ CREATE TABLE user_viewed_bites (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (bite_id) REFERENCES bites(id) ON DELETE CASCADE,
     INDEX idx_user_viewed (user_id)
+);
+
+-- 7. Raw Ingestion Table
+-- Persists raw technology updates fetched from various internet sources.
+CREATE TABLE raw_ingestion (
+    id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
+    source_name VARCHAR(150) NOT NULL,
+    source_type VARCHAR(50) NOT NULL,
+    title TEXT NOT NULL,
+    raw_content LONGTEXT NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    canonical_url VARCHAR(512),
+    published_at TIMESTAMP NULL,
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processing_status VARCHAR(50) DEFAULT 'NEW',
+    event_id VARCHAR(36),
+    credibility_score DOUBLE DEFAULT 0.0,
+    credibility_level VARCHAR(50),
+    credibility_confidence DOUBLE DEFAULT 0.0,
+    score_baseline DOUBLE DEFAULT 0.0,
+    score_official_bonus DOUBLE DEFAULT 0.0,
+    score_agreement_bonus DOUBLE DEFAULT 0.0,
+    score_clickbait_penalty DOUBLE DEFAULT 0.0,
+    is_official BOOLEAN DEFAULT FALSE,
+    INDEX idx_raw_run_id (run_id),
+    INDEX idx_raw_status (processing_status),
+    INDEX idx_raw_event_id (event_id),
+    INDEX idx_raw_canonical_url (canonical_url),
+    INDEX idx_raw_published_at (published_at),
+    INDEX idx_raw_fetched_at (fetched_at)
 );
 

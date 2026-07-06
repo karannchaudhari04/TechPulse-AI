@@ -7,7 +7,7 @@
 services:
 
   backend:
-    image: ${DOCKER_IMAGE:-techbite-backend:latest}
+    image: ${DOCKER_IMAGE:-techpulse-backend:latest}
     restart: always
     environment:
       SPRING_DATASOURCE_WRITER_URL: ${DATABASE_WRITER_URL}
@@ -36,7 +36,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: techbite-redis-prod
+    container_name: techpulse-redis-prod
     restart: always
     # Ports usually not exposed in prod for Redis unless needed
     # expose:
@@ -45,7 +45,7 @@ services:
   # Nginx reverse proxy — handles HTTPS + port 80 forwarding
   nginx:
     image: nginx:alpine
-    container_name: techbite-nginx-prod
+    container_name: techpulse-nginx-prod
     restart: always
     depends_on:
       - backend

@@ -94,7 +94,7 @@ export default function OnboardingIntroScreen({ onNext }: OnboardingIntroScreenP
                     style={styles.logo}
                     resizeMode="contain"
                 />
-                <Text style={styles.brandName}>TechBite</Text>
+                <Text style={styles.brandName}>TechPulse AI</Text>
               </View>
 
               <Text style={styles.description}>

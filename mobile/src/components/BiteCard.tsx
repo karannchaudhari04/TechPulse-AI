@@ -43,13 +43,30 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
   const queryClient = useQueryClient();
   const { isAmoled, colors } = useTheme();
   const [localBookmarked, setLocalBookmarked] = React.useState(isBookmarked);
+  const [logoError, setLogoError] = React.useState(false);
 
   // Sync states when FlashList recycles this card for a new item (separates likes/bookmarks per bite)
   React.useEffect(() => {
     setLocalBookmarked(isBookmarked);
+    setLogoError(false);
   }, [item.id, isBookmarked]);
 
+  const domain = React.useMemo(() => {
+    try {
+      const matches = item.originalSourceUrl.match(/^https?:\/\/([^/?#]+)(?:[/?#]|$)/i);
+      return matches && matches[1] ? matches[1] : '';
+    } catch (e) {
+      return '';
+    }
+  }, [item.originalSourceUrl]);
+
+  const logoUrl = `https://www.google.com/s2/favicons?sz=128&domain=${domain}`;
+  const sourceImage = logoError || !domain
+    ? require('../../assets/source.png')
+    : { uri: logoUrl };
+
   const explainBtnScale = useSharedValue(1);
+  const sourceBtnScale = useSharedValue(1);
   const explainGlow = useSharedValue(0);
   const botBob = useSharedValue(0);
   const sparkleScale = useSharedValue(0.8);
@@ -96,34 +113,18 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     );
   }, []);
 
-  const explainBtnGlowStyle = useAnimatedStyle(() => {
+  const sourceBtnAnimatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ scale: explainBtnScale.value }],
-      shadowColor: '#8B5CF6',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: interpolate(explainGlow.value, [0, 1], [0.35, 0.7]),
-      shadowRadius: interpolate(explainGlow.value, [0, 1], [6, 12]),
-      elevation: interpolate(explainGlow.value, [0, 1], [4, 8]),
+      transform: [{ scale: sourceBtnScale.value }]
     };
   });
 
-  const botBobStyle = useAnimatedStyle(() => {
+  const explainBtnAnimatedStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateY: botBob.value }]
-    };
-  });
-
-  const sparkleStyle1 = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: sparkleScale.value }],
-      opacity: sparkleOpacity.value
-    };
-  });
-
-  const sparkleStyle2 = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: interpolate(sparkleScale.value, [0.7, 1.3], [1.3, 0.7]) }],
-      opacity: interpolate(sparkleOpacity.value, [0.3, 1], [1, 0.3])
+      transform: [
+        { scale: explainBtnScale.value },
+        { translateY: botBob.value }
+      ]
     };
   });
 
@@ -241,46 +242,35 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
                </Pressable>
             </View>
 
-            {/* Central Unified Mascot Bot Button */}
+            {/* Central Floating Source Button with Logo */}
             <Pressable 
-              onPress={handleExplainSimply}
-              onPressIn={() => { explainBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
-              onPressOut={() => { explainBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
-              style={styles.centerExplainBtnWrapper}
+              onPress={handleOpenSource}
+              onPressIn={() => { sourceBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
+              onPressOut={() => { sourceBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+              style={styles.centerSourceBtnWrapper}
             >
-              <Animated.View style={[styles.centerExplainBtn, explainBtnGlowStyle]}>
-                <LinearGradient
-                  colors={['#8B5CF6', '#6366F1']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.explainGradient}
-                >
-                  {/* Top-Left Sparkle */}
-                  <Animated.View style={[sparkleStyle1, { position: 'absolute', top: scale(8), left: scale(8) }]}>
-                    <Ionicons name="sparkles" size={10} color="#FFF" />
-                  </Animated.View>
-
-                  {/* Bottom-Right Sparkle */}
-                  <Animated.View style={[sparkleStyle2, { position: 'absolute', bottom: scale(8), right: scale(8) }]}>
-                    <Ionicons name="sparkles" size={10} color="#FFF" />
-                  </Animated.View>
-
-                  {/* Bobbing Robot Mascot Head */}
-                  <Animated.View style={botBobStyle}>
-                    <MaterialCommunityIcons name="robot" size={24} color="#FFF" />
-                  </Animated.View>
-                </LinearGradient>
+              <Animated.View style={[styles.centerSourceBtn, sourceBtnAnimatedStyle]}>
+                <Image 
+                  source={sourceImage}
+                  style={styles.sourceLogoImage}
+                  contentFit="contain"
+                  onError={() => setLogoError(true)}
+                />
               </Animated.View>
+              <Text style={styles.centerSourceText}>Source</Text>
             </Pressable>
 
             <View style={styles.rightActions}>
-                <Pressable onPress={handleOpenSource} style={styles.actionBtn}>
-                  <Image 
-                    source={require('../../assets/source.png')} 
-                    style={styles.iconAsset} 
-                    contentFit="contain"
-                  />
-                  <Text style={styles.actionText}>Source</Text>
+                <Pressable 
+                  onPress={handleExplainSimply}
+                  onPressIn={() => { explainBtnScale.value = withSpring(0.90, { damping: 15, stiffness: 200 }); }}
+                  onPressOut={() => { explainBtnScale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+                  style={styles.actionBtn}
+                >
+                  <Animated.View style={explainBtnAnimatedStyle}>
+                    <MaterialCommunityIcons name="robot" size={24} color="#8B5CF6" />
+                  </Animated.View>
+                  <Text style={styles.actionText}>Explain</Text>
                 </Pressable>
             </View>
         </View>
@@ -363,26 +353,41 @@ const styles = StyleSheet.create({
 
   progressBar: { height: 2, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
   progressFill: { height: '100%', backgroundColor: '#6366F1', shadowColor: '#6366F1', shadowRadius: 4, shadowOpacity: 0.5 },
-  centerExplainBtnWrapper: {
+  centerSourceBtnWrapper: {
     position: 'absolute',
-    top: scale(-16),
+    top: scale(-20),
     left: '50%',
     marginLeft: scale(-28),
     width: scale(56),
-    height: scale(56),
+    alignItems: 'center',
     zIndex: 10,
   },
-  centerExplainBtn: {
-    width: '100%',
-    height: '100%',
+  centerSourceBtn: {
+    width: scale(56),
+    height: scale(56),
     borderRadius: scale(28),
-    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 5,
+    padding: scale(6),
   },
-  explainGradient: {
+  sourceLogoImage: {
     width: '100%',
     height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: scale(22),
+  },
+  centerSourceText: {
+    color: '#94A3B8',
+    fontSize: scale(11),
+    fontWeight: '700',
+    marginTop: scale(4),
   },
 });
 

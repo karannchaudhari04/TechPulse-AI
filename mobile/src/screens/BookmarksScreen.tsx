@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+import { LinearGradient } from 'expo-linear-gradient';
 import BiteCard from '../components/BiteCard';
 import { Bite } from '../types';
 import { useBookmarks } from '../hooks/useBookmarks';
 import { useTheme } from '../utils/theme';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 export default function BookmarksScreen({ navigation }: any) {
   const { bookmarks, isLoading, isBookmarked, toggleBookmark } = useBookmarks();
@@ -74,9 +76,19 @@ export default function BookmarksScreen({ navigation }: any) {
             
             <Pressable 
               onPress={() => navigation.navigate('Home')}
-              style={({ pressed }) => [styles.exploreBtn, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.exploreBtn,
+                pressed && styles.pressed
+              ]}
             >
-              <Text style={styles.exploreText}>EXPLORE FEED</Text>
+              <LinearGradient
+                colors={['#6366F1', '#4F46E5']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.exploreGradient}
+              >
+                <Text style={styles.exploreText}>EXPLORE FEED</Text>
+              </LinearGradient>
             </Pressable>
           </View>
         ) : (
@@ -135,7 +147,25 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 22, fontWeight: '900', color: '#F1F5F9', marginBottom: 8 },
   emptySub: { color: '#94A3B8', textAlign: 'center', lineHeight: 24, fontWeight: '500' },
-  exploreBtn: { marginTop: 32, backgroundColor: '#7C3AED', paddingHorizontal: 32, paddingVertical: 18, borderRadius: 24 },
+  exploreBtn: {
+    marginTop: 32,
+    width: scale(200),
+    height: scale(50),
+    borderRadius: scale(25),
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  exploreGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: scale(25),
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   exploreText: { color: '#FFFFFF', fontWeight: '900', fontSize: 13, letterSpacing: 1 },
-  pressed: { opacity: 0.7 }
+  pressed: { opacity: 0.88, transform: [{ scale: 0.97 }] }
 });

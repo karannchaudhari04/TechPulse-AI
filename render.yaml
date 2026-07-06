@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: techbite
+    name: techpulse
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
