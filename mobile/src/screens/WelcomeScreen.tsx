@@ -257,8 +257,17 @@ const styles = StyleSheet.create({
   welcomeTitle: { color: '#FFFFFF', fontSize: scale(22), fontWeight: '900', letterSpacing: -0.5, marginBottom: scale(8), textAlign: 'center' },
   welcomeSubtitle: { color: '#94A3B8', fontSize: scale(14), lineHeight: scale(20), fontWeight: '500', textAlign: 'center', marginBottom: scale(24) },
 
+<<<<<<< HEAD
   submitBtn: { width: '100%', height: scale(50), borderRadius: scale(25), shadowColor: '#6366F1', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
   submitGradient: { width: '100%', height: '100%', borderRadius: scale(25), overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+=======
+  submitBtn: { width: '100%', height: scale(50), borderRadius: scale(25), overflow: 'hidden', shadowColor: '#6366F1', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
+  submitGradient: {
+    height: scale(50),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+>>>>>>> 9c13427fc83247055d57d1d5dff3f7b08b3c1097
   submitBtnText: { color: '#FFFFFF', fontSize: scale(16), fontWeight: '800', letterSpacing: 0.5 },
 
   googleContent: { flexDirection: 'row', alignItems: 'center', gap: scale(10) },
