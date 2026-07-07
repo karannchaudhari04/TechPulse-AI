@@ -76,6 +76,30 @@ public class RawIngestion {
     @Column(name = "is_official")
     private Boolean isOfficial = false;
 
+    @Column(name = "importance_score")
+    private Double importanceScore = 0.0;
+
+    @Column(name = "importance_level", length = 50)
+    private String importanceLevel;
+
+    @Column(name = "importance_confidence")
+    private Double importanceConfidence = 0.0;
+
+    @Column(name = "importance_breakdown_json", columnDefinition = "TEXT")
+    private String importanceBreakdownJson;
+
+    @Column(name = "importance_reasons_json", columnDefinition = "TEXT")
+    private String importanceReasonsJson;
+
+    @Column(name = "event_first_seen")
+    private LocalDateTime eventFirstSeen;
+
+    @Column(name = "event_last_updated")
+    private LocalDateTime eventLastUpdated;
+
+    @Column(name = "event_source_count")
+    private Integer eventSourceCount = 1;
+
     public enum ProcessingStatus {
         NEW,
         CLEANED,

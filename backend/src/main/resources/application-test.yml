@@ -1,0 +1,30 @@
+# application-test.yml
+spring:
+  datasource:
+    writer:
+      url: jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL
+      username: sa
+      password:
+    replica:
+      url: jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL
+      username: sa
+      password:
+
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  cache:
+    type: none
+
+  flyway:
+    enabled: false
+
+app:
+  gemini:
+    model: mock-model

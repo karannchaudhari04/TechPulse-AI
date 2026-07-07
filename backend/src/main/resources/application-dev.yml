@@ -1,0 +1,25 @@
+# application-dev.yml
+spring:
+  datasource:
+    writer:
+      url: ${DATABASE_WRITER_URL:jdbc:mysql://localhost:3306/techpulse}
+      username: ${DATABASE_WRITER_USER:root}
+      password: ${DATABASE_WRITER_PASSWORD:}
+    replica:
+      url: ${DATABASE_REPLICA_URL:jdbc:mysql://localhost:3306/techpulse}
+      username: ${DATABASE_REPLICA_USER:root}
+      password: ${DATABASE_REPLICA_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+app:
+  gemini:
+    model: gemini-1.5-flash

@@ -21,6 +21,8 @@ graph TB
         Orchestrator -->|Parses & Cleans| Cleaner[ContentCleaningAgent]
         Orchestrator -->|Rule Engine| Classifier[ClassificationAgent]
         Orchestrator -->|Title Similarity| Deduplicator[DuplicateDetectionAgent]
+        Orchestrator -->|Credibility Heuristics| Credibility[CredibilityJudgeAgent]
+        Orchestrator -->|Importance Ranking| Importance[ImportanceRankingAgent]
     end
     
     Orchestrator -->|Persists Raw Updates| DB[(TiDB / MySQL Cloud Cluster)]
@@ -40,6 +42,6 @@ The architecture of the TechPulse AI ingestion pipeline is strictly designed aro
 3. **Liskov Substitution Principle (LSP)**:
    - Collectors implement the `SourceCollector` interface, and agents implement `Agent<I, O>`. Any implementation can be substituted cleanly without breaking the orchestration flow.
 4. **Interface Segregation Principle (ISP)**:
-   - Small, single-purpose interfaces are used (e.g., `Agent`, `SourceCollector`, `SourceRegistry`) instead of bloated, monolithic service interfaces.
+   - Small, single-purpose interfaces are used (e.g., `Agent`, `SourceCollector`, `SourceRegistry`) instead of bloated, monolithic interfaces. The shared `ScoreAssessment` abstraction ensures unified scoring structures for credibility and importance.
 5. **Dependency Inversion Principle (DIP)**:
    - High-level orchestrators and controllers depend on interfaces (`Agent`, `SourceRegistry`), not on concrete collector classes. Spring Boot dependency injection manages life cycles.

@@ -23,17 +23,20 @@ public class UserController {
     private final com.techpulse.service.UserService userService;
     private final com.techpulse.repository.BookmarkRepository bookmarkRepository;
     private final com.techpulse.service.PushScheduler pushScheduler;
+    private final com.techpulse.repository.LoginAuditRepository loginAuditRepository;
 
     public UserController(com.techpulse.repository.UserRepository userRepository, 
                           com.techpulse.repository.CategoryRepository categoryRepository, 
                           com.techpulse.service.UserService userService,
                           com.techpulse.repository.BookmarkRepository bookmarkRepository,
-                          com.techpulse.service.PushScheduler pushScheduler) {
+                          com.techpulse.service.PushScheduler pushScheduler,
+                          com.techpulse.repository.LoginAuditRepository loginAuditRepository) {
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.userService = userService;
         this.bookmarkRepository = bookmarkRepository;
         this.pushScheduler = pushScheduler;
+        this.loginAuditRepository = loginAuditRepository;
     }
 
     /**
@@ -42,15 +45,23 @@ public class UserController {
      */
     @PostMapping("/register-or-login")
     public ResponseEntity<ApiResponse<Map<String, Object>>> registerOrLogin(
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> requestBody,
+            jakarta.servlet.http.HttpServletRequest request) {
 
         String firebaseUid = getFirebaseUid();
-        String email = request.get("email");
-        String displayName = request.get("displayName");
-        String photoUrl = request.get("photoUrl");
+        String email = requestBody.get("email");
+        String displayName = requestBody.get("displayName");
+        String photoUrl = requestBody.get("photoUrl");
 
-        // Delegate to service for atomic find-or-create logic
         User user = userService.syncUserWithBackend(firebaseUid, email, displayName, photoUrl);
+
+        com.techpulse.model.LoginAudit audit = com.techpulse.model.LoginAudit.builder()
+                .userId(user.getId())
+                .firebaseUid(firebaseUid)
+                .ipAddress(request.getRemoteAddr())
+                .status("SUCCESS")
+                .build();
+        loginAuditRepository.save(audit);
 
         boolean hasPreferences = user.getPreferences() != null && !user.getPreferences().isEmpty();
 

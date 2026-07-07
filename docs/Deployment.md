@@ -16,6 +16,8 @@ All configuration is externalized in `application.yml` and can be overridden usi
 | `spring.data.redis.host` | `SPRING_DATA_REDIS_HOST` | `localhost` | Redis host for caching. |
 | `spring.data.redis.port` | `SPRING_DATA_REDIS_PORT` | `6379` | Redis port. |
 | `app.classification.keywords.*` | - | Configured Keywords | Keyword maps for the classification engine. |
+| `app.credibility.*` | - | Configured Credibility baselines | baseline metadata configuration mappings. |
+| `app.importance.*` | - | Configured Importance weights | Mappings for category weights, freshness scores, and bonuses. |
 
 ---
 

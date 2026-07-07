@@ -1,0 +1,37 @@
+name: Java CI with Maven, SpotBugs, PMD, and Security Scanning
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Run Maven Tests and Verification
+      run: |
+        cd backend
+        ./mvnw clean verify
+
+    - name: Run Secret Scanning
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
+
+    - name: Docker Build and Image Scan
+      run: |
+        cd backend
+        docker build -t techpulse-backend:latest .

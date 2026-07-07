@@ -9,6 +9,6 @@ import java.util.Map;
 public record PipelineExecutionReport(
     String runId,
     PipelineMetrics metrics,
-    List<CredibilityAssessedUpdateDTO> processedUpdates,
+    List<TechnologyEventDTO> processedUpdates,
     Map<String, String> errors
 ) {}

@@ -28,6 +28,9 @@ public class BenchmarkService {
     private final ClassificationAgent classificationAgent;
     private final DuplicateDetectionAgent duplicateDetectionAgent;
     private final CredibilityJudgeAgent credibilityJudgeAgent;
+    private final ImportanceRankingAgent importanceRankingAgent;
+    private final EntityExtractionAgent entityExtractionAgent;
+    private final EventFusionAgent eventFusionAgent;
     private final PipelineOrchestrator pipelineOrchestrator;
     private final ObjectMapper objectMapper;
 
@@ -35,11 +38,17 @@ public class BenchmarkService {
                             ClassificationAgent classificationAgent,
                             DuplicateDetectionAgent duplicateDetectionAgent,
                             CredibilityJudgeAgent credibilityJudgeAgent,
+                            ImportanceRankingAgent importanceRankingAgent,
+                            EntityExtractionAgent entityExtractionAgent,
+                            EventFusionAgent eventFusionAgent,
                             PipelineOrchestrator pipelineOrchestrator) {
         this.contentCleaningAgent = contentCleaningAgent;
         this.classificationAgent = classificationAgent;
         this.duplicateDetectionAgent = duplicateDetectionAgent;
         this.credibilityJudgeAgent = credibilityJudgeAgent;
+        this.importanceRankingAgent = importanceRankingAgent;
+        this.entityExtractionAgent = entityExtractionAgent;
+        this.eventFusionAgent = eventFusionAgent;
         this.pipelineOrchestrator = pipelineOrchestrator;
         this.objectMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     }
@@ -107,16 +116,31 @@ public class BenchmarkService {
         long duplicateTime = System.currentTimeMillis() - t3;
 
         long t4 = System.currentTimeMillis();
-        List<CredibilityAssessedUpdateDTO> assessed = credibilityJudgeAgent.process(validated);
+        List<CredibilityAssessedUpdateDTO> credibilityAssessed = credibilityJudgeAgent.process(validated);
         long credibilityTime = System.currentTimeMillis() - t4;
 
-        long processingTime = cleaningTime + classificationTime + duplicateTime + credibilityTime;
+        long t5 = System.currentTimeMillis();
+        List<ImportanceAssessedUpdateDTO> importanceAssessed = importanceRankingAgent.process(credibilityAssessed);
+        long importanceTime = System.currentTimeMillis() - t5;
+
+        long t6 = System.currentTimeMillis();
+        List<EntityExtractedUpdateDTO> entityExtracted = entityExtractionAgent.process(importanceAssessed);
+        long entityExtractionTime = System.currentTimeMillis() - t6;
+
+        long t7 = System.currentTimeMillis();
+        List<TechnologyEventDTO> fusedEvents = eventFusionAgent.process(entityExtracted);
+        long eventFusionTime = System.currentTimeMillis() - t7;
+
+        long processingTime = cleaningTime + classificationTime + duplicateTime + credibilityTime + importanceTime + entityExtractionTime + eventFusionTime;
         double rate = processingTime > 0 ? (size * 1000.0) / processingTime : 0.0;
 
         results.put("cleaningTimeMs", cleaningTime);
         results.put("classificationTimeMs", classificationTime);
         results.put("duplicateDetectionTimeMs", duplicateTime);
         results.put("credibilityJudgeTimeMs", credibilityTime);
+        results.put("importanceRankingTimeMs", importanceTime);
+        results.put("entityExtractionTimeMs", entityExtractionTime);
+        results.put("eventFusionTimeMs", eventFusionTime);
         results.put("totalProcessingTimeMs", processingTime);
         results.put("processingRatePerSec", Math.round(rate * 100.0) / 100.0);
         results.put("processedCount", size);
@@ -174,12 +198,10 @@ public class BenchmarkService {
 
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             
-            // 1. Export JSON
             File jsonFile = new File(dir, "report_" + timestamp + ".json");
             objectMapper.writeValue(jsonFile, results);
             log.info("[BenchmarkService] Exported JSON benchmark report to: {}", jsonFile.getAbsolutePath());
 
-            // 2. Export CSV
             File csvFile = new File(dir, "report_" + timestamp + ".csv");
             try (FileWriter writer = new FileWriter(csvFile)) {
                 StringBuilder header = new StringBuilder();

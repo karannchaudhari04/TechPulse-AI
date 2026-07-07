@@ -45,28 +45,40 @@ public class DatabaseConfig {
     @Bean
     public DataSource writerDataSource() {
         HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl(writerUrl);
-        ds.setUsername(writerUser);
-        ds.setPassword(writerPassword);
-        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        ds.setMaximumPoolSize(10);
-        ds.setMaxLifetime(300000); // 5 minutes to prevent connection pool validation warnings
-        ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1");
+        if (writerUrl == null || writerUrl.trim().isEmpty() || writerUrl.startsWith("jdbc:h2:")) {
+            ds.setJdbcUrl(writerUrl != null && !writerUrl.trim().isEmpty() ? writerUrl : "jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL");
+            ds.setUsername(writerUser != null && !writerUser.trim().isEmpty() ? writerUser : "sa");
+            ds.setPassword(writerPassword != null ? writerPassword : "");
+            ds.setDriverClassName("org.h2.Driver");
+        } else {
+            ds.setJdbcUrl(writerUrl);
+            ds.setUsername(writerUser);
+            ds.setPassword(writerPassword);
+            ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            ds.setMaximumPoolSize(10);
+            ds.setMaxLifetime(300000);
+            ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1");
+        }
         return ds;
     }
 
     @Bean
     public DataSource replicaDataSource() {
         HikariDataSource ds = new HikariDataSource();
-        ds.setJdbcUrl(replicaUrl != null && !replicaUrl.isEmpty() ? replicaUrl : writerUrl);
-        ds.setUsername(replicaUser != null && !replicaUser.isEmpty() ? replicaUser : writerUser);
-        ds.setPassword(replicaPassword != null && !replicaPassword.isEmpty() ? replicaPassword : writerPassword);
-        ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        ds.setMaximumPoolSize(20);
-        ds.setMaxLifetime(300000); // 5 minutes to prevent connection pool validation warnings
-        
-        ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1, tidb_replica_read = 'leader-and-follower'");
-        
+        if (writerUrl == null || writerUrl.trim().isEmpty() || writerUrl.startsWith("jdbc:h2:")) {
+            ds.setJdbcUrl(writerUrl != null && !writerUrl.trim().isEmpty() ? writerUrl : "jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL");
+            ds.setUsername(writerUser != null && !writerUser.trim().isEmpty() ? writerUser : "sa");
+            ds.setPassword(writerPassword != null ? writerPassword : "");
+            ds.setDriverClassName("org.h2.Driver");
+        } else {
+            ds.setJdbcUrl(replicaUrl != null && !replicaUrl.isEmpty() ? replicaUrl : writerUrl);
+            ds.setUsername(replicaUser != null && !replicaUser.isEmpty() ? replicaUser : writerUser);
+            ds.setPassword(replicaPassword != null && !replicaPassword.isEmpty() ? replicaPassword : writerPassword);
+            ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            ds.setMaximumPoolSize(20);
+            ds.setMaxLifetime(300000);
+            ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1, tidb_replica_read = 'leader-and-follower'");
+        }
         return ds;
     }
 
@@ -104,7 +116,11 @@ public class DatabaseConfig {
         em.setJpaVendorAdapter(vendorAdapter);
 
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        if (writerUrl == null || writerUrl.trim().isEmpty() || writerUrl.startsWith("jdbc:h2:")) {
+            properties.setProperty("hibernate.dialect", "org.hibernate.dialect.H2Dialect");
+        } else {
+            properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        }
         properties.setProperty("hibernate.temp.use_jdbc_metadata_defaults", "false");
         properties.setProperty("hibernate.hbm2ddl.auto", ddlAuto);
         properties.setProperty("hibernate.show_sql", "false");
@@ -118,5 +134,16 @@ public class DatabaseConfig {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
         transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
         return transactionManager;
+    }
+
+    @Bean
+    public org.flywaydb.core.Flyway flyway(@Qualifier("writerDataSource") DataSource writerDataSource) {
+        org.flywaydb.core.Flyway flyway = org.flywaydb.core.Flyway.configure()
+                .dataSource(writerDataSource)
+                .baselineOnMigrate(true)
+                .locations("classpath:db/migration")
+                .load();
+        flyway.migrate();
+        return flyway;
     }
 }

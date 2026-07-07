@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: dev
   datasource:
     writer:
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -27,12 +29,12 @@ spring:
 
   ai:
     openai:
-      api-key: ${GEMINI_API_KEY}
+      api-key: ${GEMINI_API_KEY:mock-gemini-key}
       base-url: https://generativelanguage.googleapis.com/v1beta/openai/
-      explain-api-key: ${GEMINI_EXPLAIN_API_KEY:${GEMINI_API_KEY}}
+      explain-api-key: ${GEMINI_EXPLAIN_API_KEY:${GEMINI_API_KEY:mock-gemini-key}}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:9a76a1c84b5c7f8a9e102b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e}
   expiration: 86400000
 
 android:
@@ -53,15 +55,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, prometheus
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
   health:
     db:
-      enabled: false
+      enabled: true
     redis:
-      enabled: false
+      enabled: true
 
 app:
   classification:
@@ -199,11 +203,28 @@ app:
       - "mind-blowing"
       - "won't believe"
 
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-  jpa:
-    hibernate:
-      ddl-auto: validate
+  importance:
+    categoryWeights:
+      AI: 1.00
+      SECURITY: 1.00
+      CLOUD: 0.90
+      DEVOPS: 0.85
+      JAVA: 0.80
+      DATABASE: 0.75
+      WEB: 0.70
+      MOBILE: 0.65
+      OPEN_SOURCE: 0.80
+      PROGRAMMING: 0.60
+      STARTUPS: 0.50
+      SOFTWARE_ENGINEERING: 0.80
+      DATA_SCIENCE: 0.90
+    freshness:
+      firstHour: 0.25
+      firstDay: 0.15
+      firstWeek: 0.05
+    bonuses:
+      officialRelease: 0.15
+      multipleOrganizations: 0.10
+      majorVersion: 0.10
+      security: 0.15
+      breakingChange: 0.10

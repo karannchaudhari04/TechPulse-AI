@@ -20,7 +20,32 @@ A complete index audit was performed to optimize read and write operations. The 
 
 ---
 
-## 2. Scale Preparation for Millions of Records
+## 2. Ingestion & Scoring Columns
+
+The `raw_ingestion` table includes specialized audit columns for both credibility and importance layers:
+
+### Credibility Fields
+- `credibility_score` (DOUBLE): Trustworthiness score.
+- `credibility_level` (VARCHAR): `LOW|MEDIUM|HIGH|VERIFIED`.
+- `credibility_confidence` (DOUBLE): Score confidence level.
+- `score_baseline`, `score_official_bonus`, `score_agreement_bonus`, `score_clickbait_penalty`: Scoring breakdowns.
+- `is_official` (BOOLEAN): Official source indicator.
+
+### Importance Fields
+- `importance_score` (DOUBLE): Ecosystem importance score.
+- `importance_level` (VARCHAR): `BACKGROUND|LOW|MEDIUM|HIGH|CRITICAL`.
+- `importance_confidence` (DOUBLE): Confidence in the assessment.
+- `importance_breakdown_json` (TEXT): Standardized JSON string containing breakdown weights.
+- `importance_reasons_json` (TEXT): JSON array of triggered reasons.
+
+### Event Lifecycle Metadata
+- `event_first_seen` (TIMESTAMP): Newest publish/fetched time of first article in event.
+- `event_last_updated` (TIMESTAMP): Latest publish/fetched time in event.
+- `event_source_count` (INT): Number of distinct organizations reporting the event.
+
+---
+
+## 3. Scale Preparation for Millions of Records
 
 To prepare the database schema for future growth to millions of records, the following mechanisms are planned:
 

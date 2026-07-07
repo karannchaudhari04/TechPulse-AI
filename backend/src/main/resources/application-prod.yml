@@ -1,0 +1,25 @@
+# application-prod.yml
+spring:
+  datasource:
+    writer:
+      url: ${DATABASE_WRITER_URL}
+      username: ${DATABASE_WRITER_USER}
+      password: ${DATABASE_WRITER_PASSWORD}
+    replica:
+      url: ${DATABASE_REPLICA_URL:${DATABASE_WRITER_URL}}
+      username: ${DATABASE_REPLICA_USER:${DATABASE_WRITER_USER}}
+      password: ${DATABASE_REPLICA_PASSWORD:${DATABASE_WRITER_PASSWORD}}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+app:
+  gemini:
+    model: gemini-1.5-flash

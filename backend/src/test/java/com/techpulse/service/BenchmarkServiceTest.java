@@ -70,6 +70,56 @@ public class BenchmarkServiceTest {
             return assessed;
         });
 
+        ImportanceRankingAgent importanceRankingAgent = mock(ImportanceRankingAgent.class);
+        when(importanceRankingAgent.process(anyList())).thenAnswer(invocation -> {
+            List<CredibilityAssessedUpdateDTO> credUpdates = invocation.getArgument(0);
+            List<ImportanceAssessedUpdateDTO> assessed = new ArrayList<>();
+            for (CredibilityAssessedUpdateDTO c : credUpdates) {
+                assessed.add(ImportanceAssessedUpdateDTO.builder()
+                        .credibilityAssessedUpdate(c)
+                        .assessment(ImportanceAssessment.builder()
+                                .score(0.7)
+                                .confidence(0.8)
+                                .level(com.techpulse.agent.model.ImportanceLevel.HIGH)
+                                .reasons(List.of(com.techpulse.agent.model.ImportanceReason.DEFAULT_BASELINE))
+                                .evidence(List.of("Benchmark mock assessment"))
+                                .scoreBreakdown(Map.of("CATEGORY_WEIGHT", 0.7))
+                                .metadata(new HashMap<>())
+                                .build())
+                        .build());
+            }
+            return assessed;
+        });
+
+        EntityExtractionAgent entityExtractionAgent = mock(EntityExtractionAgent.class);
+        when(entityExtractionAgent.process(anyList())).thenAnswer(invocation -> {
+            List<ImportanceAssessedUpdateDTO> impUpdates = invocation.getArgument(0);
+            List<EntityExtractedUpdateDTO> resolved = new ArrayList<>();
+            for (ImportanceAssessedUpdateDTO i : impUpdates) {
+                resolved.add(EntityExtractedUpdateDTO.builder()
+                        .importanceAssessedUpdate(i)
+                        .entities(List.of(EntityExtractedUpdateDTO.ExtractedEntity.builder()
+                                .name("Java")
+                                .normalizedName("java")
+                                .type("LANGUAGE")
+                                .build()))
+                        .build());
+            }
+            return resolved;
+        });
+
+        EventFusionAgent eventFusionAgent = mock(EventFusionAgent.class);
+        when(eventFusionAgent.process(anyList())).thenAnswer(invocation -> {
+            List<EntityExtractedUpdateDTO> entUpdates = invocation.getArgument(0);
+            List<TechnologyEventDTO> fused = new ArrayList<>();
+            if (!entUpdates.isEmpty()) {
+                fused.add(TechnologyEventDTO.builder()
+                        .supportingUpdates(entUpdates)
+                        .build());
+            }
+            return fused;
+        });
+
         pipelineOrchestrator = mock(PipelineOrchestrator.class);
 
         benchmarkService = new BenchmarkService(
@@ -77,6 +127,9 @@ public class BenchmarkServiceTest {
                 classificationAgent,
                 duplicateDetectionAgent,
                 credibilityJudgeAgent,
+                importanceRankingAgent,
+                entityExtractionAgent,
+                eventFusionAgent,
                 pipelineOrchestrator
         );
     }

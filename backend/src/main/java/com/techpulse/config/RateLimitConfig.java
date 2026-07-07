@@ -13,9 +13,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
+import org.springframework.context.annotation.Profile;
+
 import java.time.Duration;
 
 @Configuration
+@Profile("!test")
 public class RateLimitConfig {
 
     @Bean

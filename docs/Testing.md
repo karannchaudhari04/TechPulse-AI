@@ -20,10 +20,11 @@ The ingestion pipeline is designed with high fault tolerance, ensuring that sibl
 ## 2. Test Coverage Summary
 
 Our test suite covers all critical aspects of the ingestion pipeline:
-
 - **[DiscoveryAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/DiscoveryAgentTest.java)**: Validates concurrent collector execution and collector exception isolation.
 - **[ContentCleaningAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/ContentCleaningAgentTest.java)**: Validates Jsoup tag removal, newline preservation, and URL sanitization parameters.
 - **[ClassificationAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/ClassificationAgentTest.java)**: Validates category keyword matches and multi-category confidence scoring.
 - **[DuplicateDetectionAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/DuplicateDetectionAgentTest.java)**: Validates exact URL duplicate detection and Jaro-Winkler similarity matching within 48 hours.
+- **[CredibilityJudgeAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/CredibilityJudgeAgentTest.java)**: Validates baseline weights, clickbait/spam heuristics, and consensus-building bonuses.
+- **[ImportanceRankingAgentTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/ImportanceRankingAgentTest.java)**: Validates category scoring, freshness thresholds, SemVer regex patterns, security vulnerabilities, breaking changes, and diversity scoring.
 - **[PipelineOrchestratorTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/agent/PipelineOrchestratorTest.java)**: Validates end-to-end orchestration and metrics aggregation.
 - **[BenchmarkServiceTest](file:///d:/TechBite/backend/src/test/java/com/techpulse/service/BenchmarkServiceTest.java)**: Validates programmatic stress test runs and report generation.

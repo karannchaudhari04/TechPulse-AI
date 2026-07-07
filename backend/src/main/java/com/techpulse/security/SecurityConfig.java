@@ -21,9 +21,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final FirebaseJwtAuthenticationFilter firebaseJwtAuthenticationFilter;
+    private final CorrelationIdFilter correlationIdFilter;
 
-    public SecurityConfig(FirebaseJwtAuthenticationFilter firebaseJwtAuthenticationFilter) {
+    public SecurityConfig(FirebaseJwtAuthenticationFilter firebaseJwtAuthenticationFilter,
+                          CorrelationIdFilter correlationIdFilter) {
         this.firebaseJwtAuthenticationFilter = firebaseJwtAuthenticationFilter;
+        this.correlationIdFilter = correlationIdFilter;
     }
 
     @Bean
@@ -32,12 +35,17 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED))
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Health check, Swagger, and AssetLinks
                 .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/bite/**", "/.well-known/assetlinks.json").permitAll()
                 // Public bite feed
                 .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/{id}", "/api/v1/bites/explain").permitAll()
+                // Public events feed
+                .requestMatchers("/api/v1/feed", "/api/v1/feed/trending", "/api/v1/search", "/api/v1/event/*/related", "/api/v1/events").permitAll()
                 // Permit register-or-login for initial handshake
                 .requestMatchers("/api/v1/users/register-or-login").permitAll()
                 // Strictly lock admin ingestion and bite management
@@ -47,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/bookmarks/**").authenticated()
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(firebaseJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(rateLimitFilter(), FirebaseJwtAuthenticationFilter.class);
 
