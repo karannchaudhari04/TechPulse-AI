@@ -1,0 +1,34 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+  pull_request:
+    paths:
+      - 'backend/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build backend
+        run: mvn clean package
+        working-directory: backend
+
+      - name: Run tests
+        run: mvn test
+        working-directory: backend
+
+      - name: Build Docker image
+        run: docker build -t backend-app:latest -f backend/Dockerfile backend
