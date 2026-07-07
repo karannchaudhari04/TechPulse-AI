@@ -1,0 +1,7 @@
+title = "TechPulse AI Gitleaks Configuration"
+
+[[allowlists]]
+description = "Ignore Firebase client public keys inside Expo EAS configuration"
+paths = [
+    '''mobile/eas\.json'''
+]
