@@ -35,6 +35,7 @@ public class PersonalizationControllerTest {
     private UserRepository userRepository;
     private EventSimilarityEngine eventSimilarityEngine;
     private TechnologyEventRepository technologyEventRepository;
+    private InterestExtractionAgent interestExtractionAgent;
 
     @BeforeEach
     public void setUp() {
@@ -48,11 +49,13 @@ public class PersonalizationControllerTest {
         userRepository = mock(UserRepository.class);
         eventSimilarityEngine = mock(EventSimilarityEngine.class);
         technologyEventRepository = mock(TechnologyEventRepository.class);
+        interestExtractionAgent = mock(InterestExtractionAgent.class);
 
         PersonalizationController controller = new PersonalizationController(
                 recommendationService, searchService, collectionAgent,
                 userFollowRepository, userSavedEventRepository, interactionLogRepository,
-                notificationEventRepository, userRepository, eventSimilarityEngine, technologyEventRepository
+                notificationEventRepository, userRepository, eventSimilarityEngine, 
+                technologyEventRepository, interestExtractionAgent
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();

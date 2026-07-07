@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/user';
 import { useTheme } from '../utils/theme';
@@ -242,6 +242,17 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
                   color={isAmoled ? "#6366F1" : "#475569"} 
                 />
               </Pressable>
+
+              {/* Behavior Engine Card */}
+              <View style={[styles.settingCard, { borderColor: '#818CF8', borderStyle: 'dashed' }]}>
+                <View style={[styles.cardIconBox, { backgroundColor: 'rgba(129, 140, 248, 0.1)' }]}>
+                  <MaterialCommunityIcons name="brain" size={24} color="#818CF8" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardTitle, { color: '#818CF8' }]}>Dynamic Behavior Engine</Text>
+                  <Text style={styles.cardSubtitle}>Your feed is dynamically personalized in real-time as you view, click, and bookmark articles. Stale interests auto-decay over time.</Text>
+                </View>
+              </View>
 
               <Text style={styles.sectionTitle}>Topics for you</Text>
             </View>

@@ -35,6 +35,10 @@ export const userApi = {
   },
   
   ingestNews: async () => {
-    return apiClient.post('/bites/admin/news/ingest', {});
+    return apiClient.post('/admin/news/ingest', {});
+  },
+
+  recordInteraction: async (eventId: string, type: 'VIEW' | 'CLICK' | 'BOOKMARK' | 'SHARE' | 'LIKE' | 'SEARCH' | 'READ_COMPLETE', value?: string) => {
+    return apiClient.post<void>('/user/interaction', { eventId, type, value });
   }
 };

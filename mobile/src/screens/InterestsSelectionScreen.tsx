@@ -103,7 +103,7 @@ export default function InterestsSelectionScreen({ onComplete }: { onComplete: (
             <View style={styles.cardTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>Let's initialize your feed.</Text>
-                <Text style={styles.subtitle}>Pick any {MIN_TAGS} interests.</Text>
+                <Text style={styles.subtitle}>Pick any {MIN_TAGS} interests to start. Your feed will adapt dynamically as you read, click, and save stories.</Text>
                 <Text style={canProceed ? styles.countReady : styles.countPending}>
                   {selectedTags.length}/{MIN_TAGS} Selected
                 </Text>

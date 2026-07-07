@@ -43,6 +43,43 @@ const handleNetworkError = (error: any) => {
   }
 };
 
+async function handleResponse<T>(response: Response): Promise<T> {
+  const correlationId = response.headers.get('X-Correlation-ID');
+
+  if (response.status === 401) {
+    await auth.signOut();
+    throw new Error('Session expired. Please sign in again.');
+  }
+
+  let json: any = null;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      json = await response.json();
+    } catch (e) {
+      // Empty or invalid JSON
+    }
+  }
+
+  if (!response.ok) {
+    const traceInfo = correlationId ? ` [Trace ID: ${correlationId}]` : '';
+    if (json) {
+      const msg = json.message || 'An unknown server error occurred';
+      const details = json.details && Array.isArray(json.details) && json.details.length > 0
+        ? ` (Details: ${json.details.join(', ')})`
+        : '';
+      throw new Error(`${msg}${details}${traceInfo}`);
+    }
+    throw new Error(`HTTP error! status: ${response.status}${traceInfo}`);
+  }
+
+  if (json && json.success === false) {
+    throw new Error(json.message || 'API responded with a failure status');
+  }
+
+  return (json ? json.data : null) as T;
+}
+
 export const apiClient = {
   get: async <T>(endpoint: string): Promise<T> => {
     try {
@@ -50,21 +87,7 @@ export const apiClient = {
       const response = await fetch(`${API_URL}${endpoint}`, { method: 'GET', headers });
 
       networkTracker.setOnline(true);
-
-      if (response.status === 401) {
-        await auth.signOut();
-        throw new Error('Session expired. Please sign in again.');
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const json = await response.json();
-      if (!json.success) {
-        throw new Error(json.message || 'API responded with a failure status');
-      }
-      return json.data as T;
+      return await handleResponse<T>(response);
     } catch (error) {
       handleNetworkError(error);
       throw error;
@@ -81,21 +104,7 @@ export const apiClient = {
       });
 
       networkTracker.setOnline(true);
-
-      if (response.status === 401) {
-        await auth.signOut();
-        throw new Error('Session expired. Please sign in again.');
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const json = await response.json();
-      if (!json.success) {
-        throw new Error(json.message || 'API responded with a failure status');
-      }
-      return json.data as T;
+      return await handleResponse<T>(response);
     } catch (error) {
       handleNetworkError(error);
       throw error;
@@ -108,21 +117,7 @@ export const apiClient = {
       const response = await fetch(`${API_URL}${endpoint}`, { method: 'DELETE', headers });
 
       networkTracker.setOnline(true);
-
-      if (response.status === 401) {
-        await auth.signOut();
-        throw new Error('Session expired. Please sign in again.');
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const json = await response.json();
-      if (!json.success) {
-        throw new Error(json.message || 'API responded with a failure status');
-      }
-      return json.data as T;
+      return await handleResponse<T>(response);
     } catch (error) {
       handleNetworkError(error);
       throw error;

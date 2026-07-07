@@ -108,7 +108,7 @@ const ALL_CATEGORY_TABS = [
 ];
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const [activeTabId, setActiveTabId] = useState('digest');
+  const [activeTabId, setActiveTabId] = useState('updates');
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [headerHeight, setHeaderHeight] = useState(110);
   const { colors, isAmoled } = useTheme();
@@ -139,7 +139,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   // Build the dynamic tab list
   const dynamicTabs = useMemo(() => {
     const base = [
-      { id: 'digest', label: 'Digest', type: 'all' as const }
+      { id: 'updates', label: 'Updates', type: 'all' as const },
+      { id: 'foryou', label: 'For You', type: 'foryou' as const }
     ];
     if (!userPrefs) return base;
 
@@ -198,6 +199,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         const activeItem = viewableItems[0].item as Bite;
         if (activeItem && activeItem.id) {
           markAsViewed(activeItem.id);
+          userApi.recordInteraction('category:' + activeItem.categoryName, 'VIEW')
+            .catch((err) => console.warn('[Analytics] Failed to record view interaction:', err));
         }
       }
     }

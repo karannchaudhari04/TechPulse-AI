@@ -14,6 +14,9 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -138,9 +141,68 @@ public class DatabaseConfig {
 
     @Bean
     public org.flywaydb.core.Flyway flyway(@Qualifier("writerDataSource") DataSource writerDataSource) {
+        boolean isH2 = writerUrl == null || writerUrl.trim().isEmpty() || writerUrl.startsWith("jdbc:h2:");
+
+        if (!isH2) {
+            // Pre-create flyway schema history table for TiDB/MySQL to avoid incompatible "CREATE TABLE ... SELECT" statement
+            try (Connection conn = writerDataSource.getConnection()) {
+                boolean hasHistoryTable = false;
+                try (ResultSet rs = conn.getMetaData().getTables(null, null, "flyway_schema_history", null)) {
+                    if (rs.next()) {
+                        hasHistoryTable = true;
+                    }
+                }
+                if (!hasHistoryTable) {
+                    try (ResultSet rs = conn.getMetaData().getTables(null, null, "FLYWAY_SCHEMA_HISTORY", null)) {
+                        if (rs.next()) {
+                            hasHistoryTable = true;
+                        }
+                    }
+                }
+                if (!hasHistoryTable) {
+                    try (Statement stmt = conn.createStatement()) {
+                        stmt.execute("CREATE TABLE flyway_schema_history (" +
+                                "installed_rank INT NOT NULL," +
+                                "version VARCHAR(50)," +
+                                "description VARCHAR(200) NOT NULL," +
+                                "type VARCHAR(20) NOT NULL," +
+                                "script VARCHAR(1000) NOT NULL," +
+                                "checksum INT," +
+                                "installed_by VARCHAR(100) NOT NULL," +
+                                "installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                                "execution_time INT NOT NULL," +
+                                "success TINYINT(1) NOT NULL," +
+                                "CONSTRAINT flyway_schema_history_pk PRIMARY KEY (installed_rank)" +
+                                ")");
+                        
+                        boolean hasLegacyTables = false;
+                        try (ResultSet rs = conn.getMetaData().getTables(null, null, "users", null)) {
+                            if (rs.next()) {
+                                hasLegacyTables = true;
+                            }
+                        }
+                        if (!hasLegacyTables) {
+                            try (ResultSet rs = conn.getMetaData().getTables(null, null, "USERS", null)) {
+                                if (rs.next()) {
+                                    hasLegacyTables = true;
+                                }
+                            }
+                        }
+                        if (hasLegacyTables) {
+                            stmt.execute("INSERT INTO flyway_schema_history " +
+                                    "(installed_rank, version, description, type, script, installed_by, execution_time, success) " +
+                                    "VALUES (1, '1', '<< Flyway Baseline >>', 'BASELINE', '<< Flyway Baseline >>', 'system', 0, 1)");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[Flyway-PreInit] Warning: " + e.getMessage());
+            }
+        }
+
         org.flywaydb.core.Flyway flyway = org.flywaydb.core.Flyway.configure()
                 .dataSource(writerDataSource)
-                .baselineOnMigrate(true)
+                .baselineOnMigrate(isH2)
                 .locations("classpath:db/migration")
                 .load();
         flyway.migrate();

@@ -23,6 +23,7 @@ import { explainBite } from '../api/bites';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import ExplainModal from './ExplainModal';
 import { useTheme } from '../utils/theme';
+import { userApi } from '../api/user';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -137,6 +138,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
   const handleExplainSimply = () => {
     Haptics.selectionAsync().catch(() => {});
     setExplainModalVisible(true);
+    userApi.recordInteraction('category:' + item.categoryName, 'SEARCH')
+      .catch((err) => console.warn('[Analytics] Failed to record search interaction:', err));
     if (!explainMutation.data && !explainMutation.isPending) {
       explainMutation.mutate();
     }
@@ -144,6 +147,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
 
   const handleOpenSource = () => {
     if (item.originalSourceUrl) {
+      userApi.recordInteraction('category:' + item.categoryName, 'CLICK')
+        .catch((err) => console.warn('[Analytics] Failed to record click interaction:', err));
       navigation.navigate('Article', { 
         url: item.originalSourceUrl,
         title: item.title 
@@ -170,6 +175,8 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
     
     if (newState) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      userApi.recordInteraction('category:' + item.categoryName, 'BOOKMARK')
+        .catch((err) => console.warn('[Analytics] Failed to record bookmark interaction:', err));
     }
     
     onToggleBookmark(item);

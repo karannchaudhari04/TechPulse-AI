@@ -33,6 +33,7 @@ public class PersonalizationController {
     private final UserRepository userRepository;
     private final EventSimilarityEngine eventSimilarityEngine;
     private final TechnologyEventRepository technologyEventRepository;
+    private final InterestExtractionAgent interestExtractionAgent;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PersonalizationController(RecommendationService recommendationService,
@@ -44,7 +45,8 @@ public class PersonalizationController {
                                      NotificationEventRepository notificationEventRepository,
                                      UserRepository userRepository,
                                      EventSimilarityEngine eventSimilarityEngine,
-                                     TechnologyEventRepository technologyEventRepository) {
+                                     TechnologyEventRepository technologyEventRepository,
+                                     InterestExtractionAgent interestExtractionAgent) {
         this.recommendationService = recommendationService;
         this.searchService = searchService;
         this.collectionAgent = collectionAgent;
@@ -55,6 +57,7 @@ public class PersonalizationController {
         this.userRepository = userRepository;
         this.eventSimilarityEngine = eventSimilarityEngine;
         this.technologyEventRepository = technologyEventRepository;
+        this.interestExtractionAgent = interestExtractionAgent;
     }
 
     @GetMapping("/feed")
@@ -167,7 +170,7 @@ public class PersonalizationController {
                 .interactionValue(val)
                 .build();
         interactionLogRepository.save(log);
-
+        interestExtractionAgent.processInteractionsForUser(userId);
         recommendationService.evictRecommendations(userId);
         return ResponseEntity.ok(ApiResponse.success(null, "Interaction recorded successfully."));
     }

@@ -45,26 +45,34 @@ public class InterestExtractionAgent {
             long days = Duration.between(log.getCreatedAt(), LocalDateTime.now()).toDays();
             double decayedWeight = baseWeight * Math.exp(-0.05 * days);
 
-            Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(log.getEventId());
-            if (eventOpt.isPresent()) {
-                TechnologyEvent event = eventOpt.get();
+            if (log.getEventId() != null && log.getEventId().startsWith("category:")) {
+                String cat = log.getEventId().substring("category:".length());
+                addWeight(interestMap, "CATEGORY", cat, decayedWeight);
+            } else if (log.getEventId() != null && log.getEventId().startsWith("entity:")) {
+                String ent = log.getEventId().substring("entity:".length());
+                addWeight(interestMap, "ENTITY", ent, decayedWeight);
+            } else {
+                Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(log.getEventId());
+                if (eventOpt.isPresent()) {
+                    TechnologyEvent event = eventOpt.get();
 
-                if (event.getCategoriesJson() != null) {
-                    try {
-                        List<?> cats = objectMapper.readValue(event.getCategoriesJson(), List.class);
-                        for (Object catObj : cats) {
-                            addWeight(interestMap, "CATEGORY", String.valueOf(catObj), decayedWeight);
-                        }
-                    } catch (Exception ignored) {}
-                }
+                    if (event.getCategoriesJson() != null) {
+                        try {
+                            List<?> cats = objectMapper.readValue(event.getCategoriesJson(), List.class);
+                            for (Object catObj : cats) {
+                                addWeight(interestMap, "CATEGORY", String.valueOf(catObj), decayedWeight);
+                            }
+                        } catch (Exception ignored) {}
+                    }
 
-                if (event.getEntitiesJson() != null) {
-                    try {
-                        List<?> ents = objectMapper.readValue(event.getEntitiesJson(), List.class);
-                        for (Object entObj : ents) {
-                            addWeight(interestMap, "ENTITY", String.valueOf(entObj), decayedWeight);
-                        }
-                    } catch (Exception ignored) {}
+                    if (event.getEntitiesJson() != null) {
+                        try {
+                            List<?> ents = objectMapper.readValue(event.getEntitiesJson(), List.class);
+                            for (Object entObj : ents) {
+                                addWeight(interestMap, "ENTITY", String.valueOf(entObj), decayedWeight);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                 }
             }
         }
