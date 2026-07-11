@@ -7,11 +7,12 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import AppNavigator from './src/navigation/AppNavigator';
+import RootNavigator from './src/navigation/RootNavigator';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NotificationService } from './src/utils/NotificationService';
 import { store, persistor } from './src/store';
 import BootstrapScreen from './src/screens/BootstrapScreen';
+import { ThemeProvider } from './src/theme';
 
 import { LogBox } from 'react-native';
 
@@ -53,17 +54,19 @@ export default function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        {isBootstrapped ? (
-          <PersistQueryClientProvider 
-            client={queryClient}
-            persistOptions={{ persister: asyncStoragePersister }}
-          >
-            <AppNavigator />
-            <StatusBar style="light" />
-          </PersistQueryClientProvider>
-        ) : (
-          <BootstrapScreen onComplete={() => setIsBootstrapped(true)} />
-        )}
+        <ThemeProvider>
+          {isBootstrapped ? (
+            <PersistQueryClientProvider 
+              client={queryClient}
+              persistOptions={{ persister: asyncStoragePersister }}
+            >
+              <RootNavigator />
+              <StatusBar style="light" />
+            </PersistQueryClientProvider>
+          ) : (
+            <BootstrapScreen onComplete={() => setIsBootstrapped(true)} />
+          )}
+        </ThemeProvider>
       </PersistGate>
     </Provider>
   );

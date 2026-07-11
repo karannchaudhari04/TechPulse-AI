@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { auth } from '../utils/firebase';
 import { axiosClient } from '../api/axiosClient';
-import { useAppDispatch } from '../store';
-import { setCredentials, clearCredentials } from '../store/slices/authSlice';
 
 interface BootstrapScreenProps {
   onComplete: () => void;
 }
 
 export default function BootstrapScreen({ onComplete }: BootstrapScreenProps) {
-  const dispatch = useAppDispatch();
   const [statusText, setStatusText] = useState('Initializing system...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -20,39 +16,12 @@ export default function BootstrapScreen({ onComplete }: BootstrapScreenProps) {
     setIsRetrying(true);
 
     try {
-      // 1. Check Backend Connectivity via Actuator Health Check
+      // Check Backend Connectivity via Actuator Health Check
       setStatusText('Connecting to backend services...');
       const healthRes = await axiosClient.get('/actuator/health', { timeout: 7000 });
       if (healthRes.data && healthRes.data.status !== 'UP') {
         throw new Error('Backend systems are undergoing maintenance. Please try again later.');
       }
-
-      // 2. Await Firebase Auth synchronization to resolve the active session
-      setStatusText('Synchronizing user session...');
-      await new Promise<void>((resolve, reject) => {
-        const unsubscribe = auth.onAuthStateChanged(
-          (user) => {
-            unsubscribe();
-            if (user) {
-              dispatch(
-                setCredentials({
-                  uid: user.uid,
-                  email: user.email,
-                  displayName: user.displayName,
-                  photoURL: user.photoURL,
-                })
-              );
-            } else {
-              dispatch(clearCredentials());
-            }
-            resolve();
-          },
-          (error) => {
-            unsubscribe();
-            reject(error);
-          }
-        );
-      });
 
       setStatusText('Ready!');
       onComplete();

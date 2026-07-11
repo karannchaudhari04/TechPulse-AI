@@ -27,13 +27,8 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
       navigation.goBack();
     } else {
       // Safety check: Only go to Home if user is logged in
-      const user = auth.currentUser;
-      if (user) {
-        // @ts-ignore - Home might be hidden in some flows
-        navigation.replace('Home');
-      } else {
-        navigation.replace('Welcome');
-      }
+      // @ts-ignore
+      navigation.replace('Home');
     }
   };
 

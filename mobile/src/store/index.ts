@@ -13,12 +13,14 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import authReducer from './slices/authSlice';
+import profileReducer from './slices/profileSlice';
 import preferencesReducer from './slices/preferencesSlice';
 import uiReducer from './slices/uiSlice';
 import { apiSlice } from '../api/apiSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  profile: profileReducer,
   preferences: preferencesReducer,
   ui: uiReducer,
   [apiSlice.reducerPath]: apiSlice.reducer,
@@ -27,7 +29,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['preferences'], // Exclude transient UI flags and Firebase Auth mirror state from persistence
+  whitelist: ['preferences', 'profile'], // Persist non-sensitive settings and profiles to avoid initial load flickering
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

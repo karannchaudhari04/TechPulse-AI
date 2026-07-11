@@ -1,39 +1,51 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export interface UserProfile {
+export interface UserAuth {
   uid: string;
   email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
 }
 
+export type SessionStatus = 'idle' | 'checking' | 'authenticated' | 'unauthenticated' | 'expired';
+
 export interface AuthState {
-  user: UserProfile | null;
-  sessionStatus: 'loading' | 'authenticated' | 'unauthenticated';
+  user: UserAuth | null;
+  sessionStatus: SessionStatus;
 }
 
 const initialState: AuthState = {
   user: null,
-  sessionStatus: 'loading',
+  sessionStatus: 'idle',
 };
 
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials: (state, action: PayloadAction<UserProfile>) => {
+    setAuthenticated: (state, action: PayloadAction<UserAuth>) => {
       state.user = action.payload;
       state.sessionStatus = 'authenticated';
     },
-    clearCredentials: (state) => {
+    setUnauthenticated: (state) => {
       state.user = null;
       state.sessionStatus = 'unauthenticated';
     },
-    setSessionLoading: (state) => {
-      state.sessionStatus = 'loading';
+    setChecking: (state) => {
+      state.sessionStatus = 'checking';
     },
+    setSessionExpired: (state) => {
+      state.user = null;
+      state.sessionStatus = 'expired';
+    },
+    resetAuth: () => initialState,
   },
 });
 
-export const { setCredentials, clearCredentials, setSessionLoading } = authSlice.actions;
+export const { 
+  setAuthenticated, 
+  setUnauthenticated, 
+  setChecking, 
+  setSessionExpired,
+  resetAuth 
+} = authSlice.actions;
+
 export default authSlice.reducer;
