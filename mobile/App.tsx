@@ -1,5 +1,7 @@
 import './global.css';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
@@ -8,7 +10,8 @@ import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NotificationService } from './src/utils/NotificationService';
-
+import { store, persistor } from './src/store';
+import BootstrapScreen from './src/screens/BootstrapScreen';
 
 import { LogBox } from 'react-native';
 
@@ -32,6 +35,7 @@ const asyncStoragePersister = createAsyncStoragePersister({
 });
 
 export default function App() {
+  const [isBootstrapped, setIsBootstrapped] = useState(false);
   
   useEffect(() => {
     GoogleSignin.configure({
@@ -46,14 +50,22 @@ export default function App() {
     });
   }, []);
 
-
   return (
-    <PersistQueryClientProvider 
-      client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
-    >
-      <AppNavigator />
-      <StatusBar style="light" />
-    </PersistQueryClientProvider>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        {isBootstrapped ? (
+          <PersistQueryClientProvider 
+            client={queryClient}
+            persistOptions={{ persister: asyncStoragePersister }}
+          >
+            <AppNavigator />
+            <StatusBar style="light" />
+          </PersistQueryClientProvider>
+        ) : (
+          <BootstrapScreen onComplete={() => setIsBootstrapped(true)} />
+        )}
+      </PersistGate>
+    </Provider>
   );
 }
+
