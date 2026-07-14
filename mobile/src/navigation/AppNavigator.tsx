@@ -6,6 +6,8 @@ import HomeScreen from '../screens/HomeScreen';
 import BookmarksScreen from '../screens/BookmarksScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import BiteDetailScreen from '../screens/BiteDetailScreen';
+import EventDetailScreen from '../features/events/screens/EventDetailScreen';
+import SearchScreen from '../features/search/screens/SearchScreen';
 import PersonalizationScreen from '../screens/PersonalizationScreen';
 import ArticleScreen from '../screens/ArticleScreen';
 
@@ -16,6 +18,8 @@ const linking = {
     screens: {
       Home: 'home',
       BiteDetail: 'bite/:id',
+      EventDetail: 'event/:id',
+      Search: 'search',
       Profile: 'profile',
       Bookmarks: 'bookmarks',
       Personalization: 'personalization',
@@ -29,6 +33,8 @@ export type RootStackParamList = {
   Bookmarks: undefined;
   Profile: undefined;
   BiteDetail: { id: number };
+  EventDetail: { id: string };
+  Search: undefined;
   Article: { url: string; title: string };
   Personalization: undefined;
 };
@@ -49,6 +55,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
+        <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
         
         <Stack.Screen 

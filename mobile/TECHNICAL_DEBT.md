@@ -29,3 +29,17 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: We created `authApiSlice.ts` and `profileApiSlice.ts` using RTK Query, but existing legacy screens still call the old axios/fetch client via `userApi`.
 - **Debt Impact**: Medium (dual query libraries).
 - **Remediation**: During screen migration phases, convert all data queries to the new RTK Query hooks (`useGetProfileQuery`, etc.) and delete `src/api/user.ts` and `src/api/client.ts` completely.
+
+---
+
+## 5. Legacy Detail Screen & Hooks (`src/screens/BiteDetailScreen.tsx`)
+- **Description**: We built the premium `EventDetailScreen.tsx` and updated AppNavigator routes, but left the legacy `BiteDetailScreen.tsx` and legacy hook `useBites.ts` active for backward compatibility with other unmigrated screens (e.g. BookmarksScreen).
+- **Debt Impact**: Low.
+- **Remediation**: Once all secondary screens are migrated to the new features, delete `BiteDetailScreen.tsx` and `useBites.ts`.
+
+---
+
+## 6. Voice Search UI-Only Placeholders (`src/features/search/components/SearchBar.tsx`)
+- **Description**: The voice search microphone button has been added to the search bar for visual layout completeness but only prints mock console logs.
+- **Debt Impact**: Low (non-blocking).
+- **Remediation**: In a future dedicated AI features phase, integrate a speech recognition library (e.g., `expo-speech` or `react-native-voice`) to trigger audio search queries.
