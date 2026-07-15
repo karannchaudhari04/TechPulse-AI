@@ -35,6 +35,10 @@ const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
 });
 
+import { OfflineQueueService } from './src/features/personalization/services/OfflineQueueService';
+import { PushNotificationService } from './src/features/notifications/services/PushNotificationService';
+import { NotificationSyncService } from './src/features/notifications/services/NotificationSyncService';
+
 export default function App() {
   const [isBootstrapped, setIsBootstrapped] = useState(false);
   
@@ -45,10 +49,26 @@ export default function App() {
       offlineAccess: true,
     });
 
-    // Request Notification Permissions
-    NotificationService.requestPermissions().catch(err => {
-      console.warn('[Notifications] Failed to request permissions:', err);
+    // Initialize Push Notifications permissions & configurations
+    PushNotificationService.register().catch(err => {
+      console.warn('[Notifications] Failed to initialize push:', err);
     });
+
+    // Subscribe to notification foreground receiver streams
+    const unsubscribePush = PushNotificationService.subscribe((notification) => {
+      console.info('[Notifications] Push received in foreground:', notification);
+    });
+
+    // Start background sync manager
+    NotificationSyncService.initialize();
+
+    // Start offline queue monitoring
+    OfflineQueueService.startAutoReplay();
+
+    return () => {
+      unsubscribePush();
+      NotificationSyncService.shutdown();
+    };
   }, []);
 
   return (

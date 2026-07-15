@@ -10,6 +10,14 @@ import EventDetailScreen from '../features/events/screens/EventDetailScreen';
 import SearchScreen from '../features/search/screens/SearchScreen';
 import PersonalizationScreen from '../screens/PersonalizationScreen';
 import ArticleScreen from '../screens/ArticleScreen';
+import LibraryScreen from '../features/personalization/screens/LibraryScreen';
+import CollectionsScreen from '../features/personalization/screens/CollectionsScreen';
+import CollectionDetailScreen from '../features/personalization/screens/CollectionDetailScreen';
+import ReadingHistoryScreen from '../features/personalization/screens/ReadingHistoryScreen';
+import NotificationsScreen from '../features/notifications/screens/NotificationsScreen';
+import NotificationSettingsScreen from '../features/notifications/screens/NotificationSettingsScreen';
+import TechnologyFollowingScreen from '../features/notifications/screens/TechnologyFollowingScreen';
+import RecommendationCenterScreen from '../features/notifications/screens/RecommendationCenterScreen';
 
 const linking = {
   prefixes: ['techpulse://', 'https://techpulse.onrender.com'],
@@ -22,6 +30,14 @@ const linking = {
       Search: 'search',
       Profile: 'profile',
       Bookmarks: 'bookmarks',
+      Library: 'library',
+      Collections: 'collections',
+      CollectionDetail: 'collection/:id',
+      ReadingHistory: 'history',
+      Notifications: 'notifications',
+      NotificationSettings: 'notification-settings',
+      TechnologyFollowing: 'technology-following',
+      RecommendationCenter: 'recommendations',
       Personalization: 'personalization',
       Article: 'article',
     },
@@ -35,6 +51,14 @@ export type RootStackParamList = {
   BiteDetail: { id: number };
   EventDetail: { id: string };
   Search: undefined;
+  Library: undefined;
+  Collections: undefined;
+  CollectionDetail: { id: string };
+  ReadingHistory: undefined;
+  Notifications: undefined;
+  NotificationSettings: undefined;
+  TechnologyFollowing: undefined;
+  RecommendationCenter: undefined;
   Article: { url: string; title: string };
   Personalization: undefined;
 };
@@ -57,6 +81,14 @@ export default function AppNavigator() {
         <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="Library" component={LibraryScreen} />
+        <Stack.Screen name="Collections" component={CollectionsScreen} />
+        <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
+        <Stack.Screen name="ReadingHistory" component={ReadingHistoryScreen} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+        <Stack.Screen name="TechnologyFollowing" component={TechnologyFollowingScreen} />
+        <Stack.Screen name="RecommendationCenter" component={RecommendationCenterScreen} />
         <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
         
         <Stack.Screen 

@@ -43,3 +43,10 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: The voice search microphone button has been added to the search bar for visual layout completeness but only prints mock console logs.
 - **Debt Impact**: Low (non-blocking).
 - **Remediation**: In a future dedicated AI features phase, integrate a speech recognition library (e.g., `expo-speech` or `react-native-voice`) to trigger audio search queries.
+
+---
+
+## 7. Legacy Bookmarks Hook Coexistence (`src/hooks/useBookmarks.ts`)
+- **Description**: While the main `BookmarksScreen.tsx` has been migrated to use `personalizationApiSlice` query hooks, the legacy `useBookmarks.ts` hook remains active for compatibility with unmigrated screens.
+- **Debt Impact**: Medium. Changes to backend bookmark models might require dual maintenance.
+- **Remediation**: Once all secondary screens are migrated to the new slice, permanently delete `src/hooks/useBookmarks.ts`.
