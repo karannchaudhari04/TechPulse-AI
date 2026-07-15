@@ -33,13 +33,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 EXPOSE 8080
 
-# Tuned for Oracle Always Free VM (1GB RAM):
-# -Xmx400m  = max heap 400MB (leaves room for OS + MySQL)
-# -Xms200m  = initial heap (faster startup)
-# -XX:+UseG1GC = best GC for low-memory containers
+# Tuned for Render Free Tier (512MB RAM):
+# -Xmx256m  = max heap 256MB
+# -Xms128m  = initial heap
+# -XX:+UseSerialGC = lightweight GC for low-memory single-core containers
+# -Xss256k  = reduce thread stack size to 256KB to save memory under thread concurrency
 ENTRYPOINT ["java", \
-  "-Xmx400m", "-Xms200m", \
-  "-XX:+UseG1GC", \
-  "-XX:MaxRAMPercentage=60.0", \
+  "-Xmx256m", "-Xms128m", \
+  "-XX:+UseSerialGC", \
+  "-Xss256k", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]
