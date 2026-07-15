@@ -50,3 +50,10 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: While the main `BookmarksScreen.tsx` has been migrated to use `personalizationApiSlice` query hooks, the legacy `useBookmarks.ts` hook remains active for compatibility with unmigrated screens.
 - **Debt Impact**: Medium. Changes to backend bookmark models might require dual maintenance.
 - **Remediation**: Once all secondary screens are migrated to the new slice, permanently delete `src/hooks/useBookmarks.ts`.
+
+---
+
+## 8. Adaptive Notifications Polling Fallback (`src/features/notifications/services/NotificationSyncService.ts`)
+- **Description**: We implemented a client-driven 30-second polling sync service to fetch unread counters and lists to avoid free-tier Render server SSE disconnection issues.
+- **Debt Impact**: Low. It introduces extra client-to-server traffic while the app is active.
+- **Remediation**: Once the backend moves to production infrastructure (AWS/Kubernetes) supporting persistent sockets, replace the polling loop with real-time SSE or WebSocket listeners.

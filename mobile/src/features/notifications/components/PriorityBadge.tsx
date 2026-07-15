@@ -1,6 +1,5 @@
 import React from 'react';
-import { useTheme } from '../../../theme';
-import Badge from '../../../components/common/Badge';
+import { Tag } from '../../../components/common/Badge';
 
 export interface PriorityBadgeProps {
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
@@ -23,18 +22,17 @@ export default function PriorityBadge({ priority }: PriorityBadgeProps) {
   const getStatus = () => {
     switch (priority) {
       case 'LOW': return 'info';
-      case 'NORMAL': return 'default';
+      case 'NORMAL': return 'primary';
       case 'HIGH': return 'warning';
       case 'CRITICAL': return 'danger';
-      default: return 'default';
+      default: return 'primary';
     }
   };
 
   return (
-    <Badge 
+    <Tag 
       label={getLabel()} 
-      status={getStatus() as any} 
-      variant="solid" 
+      type={getStatus() as any} 
     />
   );
 }
