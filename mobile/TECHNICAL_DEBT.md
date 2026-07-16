@@ -71,3 +71,10 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: We imported `Clipboard` from `react-native` inside `CodeBlock.tsx` and `ChatBubble.tsx` to avoid installing new dependencies.
 - **Debt Impact**: Low. The API is deprecated in newer React Native versions but fully operational.
 - **Remediation**: Replace with `@react-native-clipboard/clipboard` or `expo-clipboard` during the next major Expo package upgrade pass.
+
+---
+
+## 11. Infrastructure telemetry placeholders & storage estimation limits
+- **Description**: Sentry and Firebase SDK providers are modeled as console log stubs in dev environments, and AsyncStorage sizing values are approximated since synchronous file sizing operations are blocked by native platform visibility APIs.
+- **Debt Impact**: Low. The abstract wrapper interfaces isolate these details cleanly.
+- **Remediation**: Replace the Console placeholders with Sentry/Firebase SDK configurations once production credentials and certificates are generated.
