@@ -57,3 +57,17 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: We implemented a client-driven 30-second polling sync service to fetch unread counters and lists to avoid free-tier Render server SSE disconnection issues.
 - **Debt Impact**: Low. It introduces extra client-to-server traffic while the app is active.
 - **Remediation**: Once the backend moves to production infrastructure (AWS/Kubernetes) supporting persistent sockets, replace the polling loop with real-time SSE or WebSocket listeners.
+
+---
+
+## 9. Conversation Streaming Mock (`src/features/assistant/screens/AssistantScreen.tsx`)
+- **Description**: While `assistantApiSlice` is configured to map ChatMessage status streams, the current backend interface and offline fallback mocks return responses as a single block.
+- **Debt Impact**: Low. The UI is fully equipped to parse streaming states when available.
+- **Remediation**: In a future conversational tuning sprint, implement real-time SSE adapters in the sync manager to update message states incrementally.
+
+---
+
+## 10. Legacy Clipboard Usage (`src/features/assistant/components/CodeBlock.tsx`)
+- **Description**: We imported `Clipboard` from `react-native` inside `CodeBlock.tsx` and `ChatBubble.tsx` to avoid installing new dependencies.
+- **Debt Impact**: Low. The API is deprecated in newer React Native versions but fully operational.
+- **Remediation**: Replace with `@react-native-clipboard/clipboard` or `expo-clipboard` during the next major Expo package upgrade pass.

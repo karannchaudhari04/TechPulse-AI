@@ -18,6 +18,8 @@ import NotificationsScreen from '../features/notifications/screens/Notifications
 import NotificationSettingsScreen from '../features/notifications/screens/NotificationSettingsScreen';
 import TechnologyFollowingScreen from '../features/notifications/screens/TechnologyFollowingScreen';
 import RecommendationCenterScreen from '../features/notifications/screens/RecommendationCenterScreen';
+import AssistantScreen from '../features/assistant/screens/AssistantScreen';
+import ConversationHistoryScreen from '../features/assistant/screens/ConversationHistoryScreen';
 
 const linking = {
   prefixes: ['techpulse://', 'https://techpulse.onrender.com'],
@@ -38,6 +40,8 @@ const linking = {
       NotificationSettings: 'notification-settings',
       TechnologyFollowing: 'technology-following',
       RecommendationCenter: 'recommendations',
+      Assistant: 'assistant',
+      ConversationHistory: 'conversation-history',
       Personalization: 'personalization',
       Article: 'article',
     },
@@ -59,6 +63,8 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   TechnologyFollowing: undefined;
   RecommendationCenter: undefined;
+  Assistant: undefined;
+  ConversationHistory: undefined;
   Article: { url: string; title: string };
   Personalization: undefined;
 };
@@ -89,6 +95,8 @@ export default function AppNavigator() {
         <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
         <Stack.Screen name="TechnologyFollowing" component={TechnologyFollowingScreen} />
         <Stack.Screen name="RecommendationCenter" component={RecommendationCenterScreen} />
+        <Stack.Screen name="Assistant" component={AssistantScreen} />
+        <Stack.Screen name="ConversationHistory" component={ConversationHistoryScreen} />
         <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
         
         <Stack.Screen 

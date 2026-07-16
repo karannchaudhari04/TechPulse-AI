@@ -16,6 +16,7 @@ import authReducer from './slices/authSlice';
 import profileReducer from './slices/profileSlice';
 import preferencesReducer from './slices/preferencesSlice';
 import uiReducer from './slices/uiSlice';
+import conversationReducer from '../features/assistant/store/conversationSlice';
 import { apiSlice } from '../api/apiSlice';
 
 const rootReducer = combineReducers({
@@ -23,6 +24,7 @@ const rootReducer = combineReducers({
   profile: profileReducer,
   preferences: preferencesReducer,
   ui: uiReducer,
+  conversation: conversationReducer,
   [apiSlice.reducerPath]: apiSlice.reducer,
 });
 

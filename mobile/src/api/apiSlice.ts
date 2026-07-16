@@ -82,6 +82,6 @@ const customAxiosBaseQuery = (): BaseQueryFn<
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: customAxiosBaseQuery(),
-  tagTypes: ['Bite', 'User', 'Collection', 'Notification', 'Bookmark', 'History', 'Recommendation', 'FollowedTechnology', 'Preferences'],
+  tagTypes: ['Bite', 'User', 'Collection', 'Notification', 'Bookmark', 'History', 'Recommendation', 'FollowedTechnology', 'Preferences', 'Assistant', 'Conversation'],
   endpoints: () => ({}),
 });
