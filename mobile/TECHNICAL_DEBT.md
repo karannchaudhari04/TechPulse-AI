@@ -78,3 +78,10 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 - **Description**: Sentry and Firebase SDK providers are modeled as console log stubs in dev environments, and AsyncStorage sizing values are approximated since synchronous file sizing operations are blocked by native platform visibility APIs.
 - **Debt Impact**: Low. The abstract wrapper interfaces isolate these details cleanly.
 - **Remediation**: Replace the Console placeholders with Sentry/Firebase SDK configurations once production credentials and certificates are generated.
+
+---
+
+## 12. Grid-based Graph Layouts (`src/features/intelligence/screens/KnowledgeGraphScreen.tsx`)
+- **Description**: Graph nodes are rendered in standard flex-wrapping grids rather than Canvas-driven force-directed graph rendering containers.
+- **Debt Impact**: Low. It simplifies rendering performance on mobile.
+- **Remediation**: If users request drag-and-drop or canvas zooming interactions in the future, migrate to `react-native-svg` and a gesture responder canvas.

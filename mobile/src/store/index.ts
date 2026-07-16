@@ -17,6 +17,7 @@ import profileReducer from './slices/profileSlice';
 import preferencesReducer from './slices/preferencesSlice';
 import uiReducer from './slices/uiSlice';
 import conversationReducer from '../features/assistant/store/conversationSlice';
+import workspaceReducer from '../features/intelligence/store/workspaceSlice';
 import { apiSlice } from '../api/apiSlice';
 
 const rootReducer = combineReducers({
@@ -25,13 +26,14 @@ const rootReducer = combineReducers({
   preferences: preferencesReducer,
   ui: uiReducer,
   conversation: conversationReducer,
+  workspace: workspaceReducer,
   [apiSlice.reducerPath]: apiSlice.reducer,
 });
 
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['preferences', 'profile'], // Persist non-sensitive settings and profiles to avoid initial load flickering
+  whitelist: ['preferences', 'profile', 'workspace'], // Persist non-sensitive settings, profiles, and workspace pins
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -21,6 +21,12 @@ import RecommendationCenterScreen from '../features/notifications/screens/Recomm
 import AssistantScreen from '../features/assistant/screens/AssistantScreen';
 import ConversationHistoryScreen from '../features/assistant/screens/ConversationHistoryScreen';
 import SystemSettingsScreen from '../features/system/screens/SystemSettingsScreen';
+import TechnologyScreen from '../features/intelligence/screens/TechnologyScreen';
+import CompanyScreen from '../features/intelligence/screens/CompanyScreen';
+import ReleaseScreen from '../features/intelligence/screens/ReleaseScreen';
+import TimelineScreen from '../features/intelligence/screens/TimelineScreen';
+import KnowledgeGraphScreen from '../features/intelligence/screens/KnowledgeGraphScreen';
+import WorkspaceScreen from '../features/intelligence/screens/WorkspaceScreen';
 
 const linking = {
   prefixes: ['techpulse://', 'https://techpulse.onrender.com'],
@@ -44,6 +50,12 @@ const linking = {
       Assistant: 'assistant',
       ConversationHistory: 'conversation-history',
       SystemSettings: 'settings',
+      Technology: 'technology/:id',
+      Company: 'company/:id',
+      Release: 'release/:id',
+      Timeline: 'timeline/:id',
+      KnowledgeGraph: 'graph',
+      Workspace: 'workspace',
       Personalization: 'personalization',
       Article: 'article',
     },
@@ -68,6 +80,12 @@ export type RootStackParamList = {
   Assistant: undefined;
   ConversationHistory: undefined;
   SystemSettings: undefined;
+  Technology: { id: string };
+  Company: { id: string };
+  Release: { id: string };
+  Timeline: { id: string };
+  KnowledgeGraph: undefined;
+  Workspace: undefined;
   Article: { url: string; title: string };
   Personalization: undefined;
 };
@@ -101,6 +119,12 @@ export default function AppNavigator() {
         <Stack.Screen name="Assistant" component={AssistantScreen} />
         <Stack.Screen name="ConversationHistory" component={ConversationHistoryScreen} />
         <Stack.Screen name="SystemSettings" component={SystemSettingsScreen} />
+        <Stack.Screen name="Technology" component={TechnologyScreen} />
+        <Stack.Screen name="Company" component={CompanyScreen} />
+        <Stack.Screen name="Release" component={ReleaseScreen} />
+        <Stack.Screen name="Timeline" component={TimelineScreen} />
+        <Stack.Screen name="KnowledgeGraph" component={KnowledgeGraphScreen} />
+        <Stack.Screen name="Workspace" component={WorkspaceScreen} />
         <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
         
         <Stack.Screen 
