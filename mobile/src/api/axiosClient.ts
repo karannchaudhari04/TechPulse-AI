@@ -30,7 +30,9 @@ export const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   async (config) => {
     const user = auth.currentUser;
-    if (user) {
+    const isPublicEndpoint = config.url?.endsWith('/actuator/health');
+
+    if (user && !isPublicEndpoint) {
       try {
         const token = await user.getIdToken();
         config.headers.Authorization = `Bearer ${token}`;

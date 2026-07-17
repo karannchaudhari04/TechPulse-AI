@@ -5,7 +5,7 @@ export interface UserAuth {
   email: string | null;
 }
 
-export type SessionStatus = 'idle' | 'checking' | 'authenticated' | 'unauthenticated' | 'expired';
+export type SessionStatus = 'idle' | 'checking' | 'authenticated' | 'unauthenticated' | 'expired' | 'skipped';
 
 export interface AuthState {
   user: UserAuth | null;
@@ -36,6 +36,10 @@ export const authSlice = createSlice({
       state.user = null;
       state.sessionStatus = 'expired';
     },
+    skipAuth: (state) => {
+      state.user = null;
+      state.sessionStatus = 'skipped';
+    },
     resetAuth: () => initialState,
   },
 });
@@ -45,6 +49,7 @@ export const {
   setUnauthenticated, 
   setChecking, 
   setSessionExpired,
+  skipAuth,
   resetAuth 
 } = authSlice.actions;
 

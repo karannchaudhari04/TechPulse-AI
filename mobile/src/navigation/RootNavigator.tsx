@@ -69,17 +69,17 @@ export default function RootNavigator() {
   }
 
   // 4. Authenticated profile bootstrap checks
-  if (!profile || profileLoading) {
+  if (sessionStatus === 'authenticated' && (!profile || profileLoading)) {
     return <AccountLoadingScreen />;
   }
 
   // 5. Verification checks
-  if (!profile.emailVerified) {
+  if (sessionStatus === 'authenticated' && !profile?.emailVerified) {
     return <VerifyEmailScreen />;
   }
 
   // 6. Onboarding checks
-  if (!profile.isOnboarded) {
+  if (sessionStatus === 'authenticated' && !profile?.isOnboarded) {
     return <CompleteProfileScreen />;
   }
 

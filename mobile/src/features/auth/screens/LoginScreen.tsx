@@ -1,45 +1,51 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { StyleSheet, View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../../theme';
-import { useAuth } from '../hooks/useAuth';
-import { loginSchema, LoginFormData } from '../validation/authValidation';
-import { ScreenContainer, SafeAreaWrapper } from '../../../components/common/Layout';
-import { TextInput, PasswordInput } from '../../../components/common/Input';
+import { useAppDispatch } from '../../../store';
+import { skipAuth } from '../../../store/slices/authSlice';
+import { SafeAreaWrapper } from '../../../components/common/Layout';
 import Button from '../../../components/common/Button';
 import Card from '../../../components/common/Card';
 import { Toast } from '../../../components/common/NotificationUI';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { auth } from '../../../utils/firebase';
 
 /**
  * Purpose: Design System styled LoginScreen.
- * Handles form entry and state notifications.
+ * Displays clean Google and Skip authentication actions.
  */
 export default function LoginScreen({ navigation }: any) {
-  const { colors, typography, spacing } = useTheme();
-  const { login } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { colors, typography, spacing, radius } = useTheme();
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
+  const handleGoogleSignIn = async () => {
+    if (isGoogleSigningIn) return;
+    setIsGoogleSigningIn(true);
     try {
-      await login(data.email, data.password);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Incorrect email or password. Please try again.');
-      setToastVisible(true);
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken || (response as any).idToken;
+
+      if (!idToken) throw new Error("No ID token received from Google");
+
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, googleCredential);
+    } catch (error: any) {
+      if (error.code !== 'ASYNC_OP_IN_PROGRESS') {
+        setErrorMessage(error.message || 'Google Sign-In failed.');
+        setToastVisible(true);
+      }
     } finally {
-      setIsLoading(false);
+      setIsGoogleSigningIn(false);
     }
+  };
+
+  const handleSkip = () => {
+    dispatch(skipAuth());
   };
 
   return (
@@ -63,71 +69,51 @@ export default function LoginScreen({ navigation }: any) {
 
           <Card variant="elevated" style={styles.card}>
             <Text style={[styles.cardTitle, { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, marginBottom: spacing.md }]}>
-              Sign In
+              Welcome to TechPulse
             </Text>
 
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, value } }) => (
-                <TextInput
-                  label="Email Address"
-                  placeholder="name@company.com"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.email?.message}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  disabled={isLoading}
-                />
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleSigningIn}
+              style={[
+                styles.googleBtn,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.cardBackground,
+                  borderRadius: radius.sm,
+                  minHeight: 48,
+                  paddingVertical: 12,
+                  marginBottom: spacing.sm,
+                }
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in with Google"
+            >
+              {isGoogleSigningIn ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <View style={styles.googleBtnContent}>
+                  <Image
+                    source={require('../../../../assets/google.png')}
+                    style={styles.googleIcon}
+                    resizeMode="contain"
+                  />
+                  <Text style={[styles.googleBtnText, { color: colors.textPrimary, fontFamily: typography.button.fontFamily }]}>
+                    Continue with Google
+                  </Text>
+                </View>
               )}
-            />
-
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, value } }) => (
-                <PasswordInput
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={value}
-                  onChangeText={onChange}
-                  error={errors.password?.message}
-                  disabled={isLoading}
-                />
-              )}
-            />
+            </TouchableOpacity>
 
             <Button
-              title="Sign In"
-              onPress={handleSubmit(onSubmit)}
-              isLoading={isLoading}
-              style={{ marginTop: spacing.sm }}
-            />
-
-            <Button
-              title="Forgot Password?"
-              onPress={() => navigation.navigate('ForgotPassword')}
+              title="Skip"
+              onPress={handleSkip}
               variant="outlined"
-              style={{ marginTop: spacing.sm, borderWidth: 0 }}
+              style={{ marginTop: spacing.xs, borderWidth: 0 }}
               textStyle={{ color: colors.textSecondary }}
-              disabled={isLoading}
+              disabled={isGoogleSigningIn}
             />
           </Card>
-
-          <View style={[styles.footer, { marginVertical: spacing.lg }]}>
-            <Text style={{ color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily }}>
-              Don't have an account?{' '}
-            </Text>
-            <Button
-              title="Sign Up"
-              onPress={() => navigation.navigate('Register')}
-              variant="outlined"
-              style={{ minHeight: 32, paddingVertical: 4, paddingHorizontal: 12, borderWidth: 0 }}
-              textStyle={{ color: colors.primary, fontWeight: 'bold' }}
-              disabled={isLoading}
-            />
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -187,5 +173,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    marginHorizontal: 12,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  googleBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+  },
+  googleBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
