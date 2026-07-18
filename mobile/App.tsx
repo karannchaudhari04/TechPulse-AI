@@ -1,5 +1,5 @@
 import './global.css';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { QueryClient } from '@tanstack/react-query';
@@ -11,7 +11,6 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { NotificationService } from './src/utils/NotificationService';
 import { store, persistor } from './src/store';
-import BootstrapScreen from './src/screens/BootstrapScreen';
 import { ThemeProvider } from './src/theme';
 
 import { LogBox } from 'react-native';
@@ -40,8 +39,6 @@ import { PushNotificationService } from './src/features/notifications/services/P
 import { NotificationSyncService } from './src/features/notifications/services/NotificationSyncService';
 
 export default function App() {
-  const [isBootstrapped, setIsBootstrapped] = useState(false);
-  
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -75,17 +72,13 @@ export default function App() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider>
-          {isBootstrapped ? (
-            <PersistQueryClientProvider 
-              client={queryClient}
-              persistOptions={{ persister: asyncStoragePersister }}
-            >
-              <RootNavigator />
-              <StatusBar style="light" />
-            </PersistQueryClientProvider>
-          ) : (
-            <BootstrapScreen onComplete={() => setIsBootstrapped(true)} />
-          )}
+          <PersistQueryClientProvider 
+            client={queryClient}
+            persistOptions={{ persister: asyncStoragePersister }}
+          >
+            <RootNavigator />
+            <StatusBar style="light" />
+          </PersistQueryClientProvider>
         </ThemeProvider>
       </PersistGate>
     </Provider>
