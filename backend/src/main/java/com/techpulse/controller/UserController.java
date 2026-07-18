@@ -150,6 +150,36 @@ public class UserController {
 
         return ResponseEntity.ok(ApiResponse.success(data, "Profile fetched successfully"));
     }
+
+    @PutMapping("/profile")
+    @Transactional
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateProfile(
+            @RequestBody Map<String, String> requestBody) {
+        String firebaseUid = getFirebaseUid();
+        User user = getCurrentUser();
+
+        String displayName = requestBody.get("displayName");
+        String photoUrl = requestBody.get("photoUrl");
+
+        if (displayName != null && !displayName.trim().isEmpty()) {
+            user.setDisplayName(displayName.trim());
+        }
+        if (photoUrl != null) {
+            user.setProfilePictureUrl(photoUrl);
+        }
+
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+        userService.evictUserCache(firebaseUid);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("email", user.getEmail());
+        data.put("displayName", user.getDisplayName());
+        data.put("photoURL", user.getProfilePictureUrl());
+        data.put("role", user.getRole().name());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "Profile updated successfully"));
+    }
     @PostMapping("/push-token")
     @Transactional
     public ResponseEntity<ApiResponse<Void>> registerPushToken(@RequestBody Map<String, String> request) {

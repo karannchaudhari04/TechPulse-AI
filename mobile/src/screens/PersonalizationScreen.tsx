@@ -18,6 +18,8 @@ import { useTheme } from '../utils/theme';
 import * as Haptics from 'expo-haptics';
 import { auth } from '../utils/firebase';
 import { useNavigation } from '@react-navigation/native';
+import { useAppDispatch } from '../store';
+import { setUnauthenticated } from '../store/slices/authSlice';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -47,6 +49,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
   const { isAmoled, setAmoled, colors } = useTheme();
   const navigation = useNavigation<any>();
   const user = auth.currentUser;
+  const dispatch = useAppDispatch();
   
   // 1. Fetch real categories from backend
   const { data: allCategories, isLoading: loadingCats } = useQuery({
@@ -152,7 +155,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
             <Pressable 
               onPress={() => {
                 onClose(); // Close modal first
-                navigation.navigate('Welcome');
+                dispatch(setUnauthenticated());
               }} 
               style={({ pressed }) => [
                 styles.signInBtn,

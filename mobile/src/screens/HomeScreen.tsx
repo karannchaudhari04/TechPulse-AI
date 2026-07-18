@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { networkTracker } from '../utils/network';
+import { useAppSelector } from '../store';
 
 import HomeHeader from '../features/feed/components/HomeHeader';
 import TechnologyChip from '../features/events/components/TechnologyChip';
@@ -56,14 +57,17 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
+  const { sessionStatus } = useAppSelector(state => state.auth);
+  const isGuest = sessionStatus === 'skipped';
+
   // 2. Fetch Dashboard Feed and Stats
   const { data: feedData, isFetching: isFeedFetching, refetch: refetchFeed } = useGetFeedQuery({
     cursor: cursor || undefined,
     category: activeCategory === 'all' ? undefined : activeCategory,
   });
 
-  const { data: trends, isLoading: isTrendsLoading } = useGetTrendsQuery();
-  const { data: recommended, isLoading: isRecsLoading } = useGetRecommendedFeedQuery();
+  const { data: trends, isLoading: isTrendsLoading } = useGetTrendsQuery(undefined, { skip: isGuest });
+  const { data: recommended, isLoading: isRecsLoading } = useGetRecommendedFeedQuery(undefined, { skip: isGuest });
   const { data: trendingFeed } = useGetTrendingFeedQuery();
   const [recordInteraction] = useRecordInteractionMutation();
 
@@ -145,26 +149,28 @@ export default function HomeScreen() {
         )}
 
         {/* Trending Technologies Carousel */}
-        <View style={styles.sectionSpacing}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, paddingLeft: spacing.md }]}>
-            Trending Technologies
-          </Text>
-          {isTrendsLoading ? (
-            <TrendingSkeleton />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizontalList, { paddingLeft: spacing.md }]}>
-              {trends?.map((item) => (
-                <View key={item.name} style={{ marginRight: spacing.xs }}>
-                  <TechnologyChip 
-                    name={item.name} 
-                    following={item.following} 
-                    trendStatus={item.trendStatus} 
-                  />
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {!isGuest && (
+          <View style={styles.sectionSpacing}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, paddingLeft: spacing.md }]}>
+              Trending Technologies
+            </Text>
+            {isTrendsLoading ? (
+              <TrendingSkeleton />
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizontalList, { paddingLeft: spacing.md }]}>
+                {trends?.map((item) => (
+                  <View key={item.name} style={{ marginRight: spacing.xs }}>
+                    <TechnologyChip 
+                      name={item.name} 
+                      following={item.following} 
+                      trendStatus={item.trendStatus} 
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
 
         {/* Recommended Updates Carousel */}
         {recommended && recommended.length > 0 && (

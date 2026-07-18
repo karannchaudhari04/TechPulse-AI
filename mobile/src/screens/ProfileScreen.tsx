@@ -9,6 +9,8 @@ import { userApi } from '../api/user';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppDispatch } from '../store';
+import { setUnauthenticated } from '../store/slices/authSlice';
 import Animated, { 
   FadeInDown, 
   useSharedValue, 
@@ -70,6 +72,7 @@ function StatCard({ item, index, onPress }: { item: any, index: number, onPress?
 }
 
 export default function ProfileScreen({ navigation }: any) {
+  const dispatch = useAppDispatch();
   const user = auth.currentUser;
   const { colors, isAmoled } = useTheme();
 
@@ -198,7 +201,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.guestTitle}>Guest Mode</Text>
           <Text style={styles.guestSubtitle}>Sign in to sync your progress and bookmarks across devices.</Text>
           <Pressable 
-            onPress={() => navigation.navigate('Welcome')} 
+            onPress={() => dispatch(setUnauthenticated())} 
             style={({ pressed }) => [
               styles.signInBtn,
               pressed && styles.pressed

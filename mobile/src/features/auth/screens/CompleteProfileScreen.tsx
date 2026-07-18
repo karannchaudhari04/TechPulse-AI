@@ -17,14 +17,14 @@ import { Chip } from '../../../components/common/Badge';
 import { Toast } from '../../../components/common/NotificationUI';
 
 const AVAILABLE_TOPICS = [
-  { id: 'ai', name: 'Artificial Intelligence' },
-  { id: 'cloud', name: 'Cloud Computing' },
+  { id: 'ai', name: 'AI & Machine Learning' },
+  { id: 'cloud', name: 'Cloud & DevOps' },
   { id: 'cybersecurity', name: 'Cybersecurity' },
-  { id: 'devops', name: 'DevOps & Infrastructure' },
+  { id: 'backend', name: 'System Design & Backend' },
   { id: 'mobile', name: 'Mobile Development' },
-  { id: 'web', name: 'Web Engineering' },
-  { id: 'data', name: 'Data Science & Databases' },
-  { id: 'blockchain', name: 'Blockchain & Web3' },
+  { id: 'web', name: 'Web Development' },
+  { id: 'data', name: 'Data Science & Analytics' },
+  { id: 'blockchain', name: 'Emerging Tech' },
 ];
 
 /**
