@@ -5,6 +5,7 @@ import com.techpulse.agent.*;
 import com.techpulse.agent.dto.*;
 import com.techpulse.dto.ApiResponse;
 import com.techpulse.dto.PageResponse;
+import com.techpulse.dto.CursorPageResponse;
 import com.techpulse.model.*;
 import com.techpulse.repository.*;
 import com.techpulse.service.*;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -61,36 +64,176 @@ public class PersonalizationController {
     }
 
     @GetMapping("/feed")
-    public ResponseEntity<ApiResponse<List<PersonalizedFeedDTO>>> getFeeds() {
+    public ResponseEntity<ApiResponse<CursorPageResponse<Map<String, Object>>>> getFeed(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String tech) {
+
         Long userId = getOptionalUserId();
-        List<PersonalizedFeedDTO> feeds = new ArrayList<>();
+        List<TechnologyEvent> events = technologyEventRepository.findAll();
 
-        List<RecommendationDTO> forYou = recommendationService.getRecommendations(userId, 10);
-        feeds.add(PersonalizedFeedDTO.builder()
-                .feedName("For You")
-                .items(forYou)
-                .build());
+        // Sort by firstSeen descending
+        events.sort((a, b) -> {
+            LocalDateTime ta = a.getFirstSeen() != null ? a.getFirstSeen() : LocalDateTime.MIN;
+            LocalDateTime tb = b.getFirstSeen() != null ? b.getFirstSeen() : LocalDateTime.MIN;
+            return tb.compareTo(ta);
+        });
 
-        List<RecommendationDTO> trending = recommendationService.getRecommendations(null, 5);
-        feeds.add(PersonalizedFeedDTO.builder()
-                .feedName("Trending")
-                .items(trending)
-                .build());
+        // Filter categories and tech tags
+        List<TechnologyEvent> filtered = new ArrayList<>();
+        for (TechnologyEvent event : events) {
+            boolean keep = true;
+            if (category != null && !category.trim().isEmpty()) {
+                keep = false;
+                if (event.getCategoriesJson() != null) {
+                    try {
+                        List<?> cats = objectMapper.readValue(event.getCategoriesJson(), List.class);
+                        if (cats.stream().anyMatch(c -> String.valueOf(c).equalsIgnoreCase(category.trim()))) {
+                            keep = true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (keep && tech != null && !tech.trim().isEmpty()) {
+                keep = false;
+                if (event.getEntitiesJson() != null) {
+                    try {
+                        List<?> entities = objectMapper.readValue(event.getEntitiesJson(), List.class);
+                        if (entities.stream().anyMatch(e -> String.valueOf(e).equalsIgnoreCase(tech.trim()))) {
+                            keep = true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (keep) {
+                filtered.add(event);
+            }
+        }
 
-        return ResponseEntity.ok(ApiResponse.success(feeds, "Personalized feeds compiled successfully."));
+        // Paginate using eventId cursor
+        int startIndex = 0;
+        if (cursor != null && !cursor.trim().isEmpty()) {
+            for (int i = 0; i < filtered.size(); i++) {
+                if (filtered.get(i).getId().equals(cursor.trim())) {
+                    startIndex = i + 1;
+                    break;
+                }
+            }
+        }
+
+        int endIndex = Math.min(startIndex + limit, filtered.size());
+        List<TechnologyEvent> pageContent = filtered.subList(startIndex, endIndex);
+
+        boolean hasNext = endIndex < filtered.size();
+        String nextCursor = null;
+        if (!pageContent.isEmpty()) {
+            nextCursor = pageContent.get(pageContent.size() - 1).getId();
+        }
+
+        List<Map<String, Object>> mappedContent = new ArrayList<>();
+        for (TechnologyEvent event : pageContent) {
+            mappedContent.add(mapToFeedItem(event, userId));
+        }
+
+        CursorPageResponse<Map<String, Object>> response = new CursorPageResponse<>(mappedContent, nextCursor, hasNext);
+        return ResponseEntity.ok(ApiResponse.success(response, "Feed fetched successfully."));
     }
 
     @GetMapping("/feed/trending")
-    public ResponseEntity<ApiResponse<List<RecommendationDTO>>> getTrendingFeed() {
-        List<RecommendationDTO> trending = recommendationService.getRecommendations(null, 20);
-        return ResponseEntity.ok(ApiResponse.success(trending, "Trending technology feed fetched successfully."));
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTrendingFeed() {
+        Long userId = getOptionalUserId();
+        List<RecommendationDTO> recommendations = recommendationService.getRecommendations(null, 20);
+        List<Map<String, Object>> feed = new ArrayList<>();
+        for (RecommendationDTO rec : recommendations) {
+            Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(rec.getEventId());
+            if (eventOpt.isPresent()) {
+                Map<String, Object> map = mapToFeedItem(eventOpt.get(), userId);
+                if (rec.getExplanation() != null && rec.getExplanation().getReasons() != null && !rec.getExplanation().getReasons().isEmpty()) {
+                    map.put("recommendationReason", String.join(", ", rec.getExplanation().getReasons()));
+                }
+                feed.add(map);
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success(feed, "Trending technology feed fetched successfully."));
     }
 
     @GetMapping("/feed/recommended")
-    public ResponseEntity<ApiResponse<List<RecommendationDTO>>> getRecommendedFeed() {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRecommendedFeed() {
         Long userId = getRequiredUserId();
-        List<RecommendationDTO> recommended = recommendationService.getRecommendations(userId, 20);
-        return ResponseEntity.ok(ApiResponse.success(recommended, "Recommended technology feed fetched successfully."));
+        List<RecommendationDTO> recommendations = recommendationService.getRecommendations(userId, 20);
+        List<Map<String, Object>> feed = new ArrayList<>();
+        for (RecommendationDTO rec : recommendations) {
+            Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(rec.getEventId());
+            if (eventOpt.isPresent()) {
+                Map<String, Object> map = mapToFeedItem(eventOpt.get(), userId);
+                if (rec.getExplanation() != null && rec.getExplanation().getReasons() != null && !rec.getExplanation().getReasons().isEmpty()) {
+                    map.put("recommendationReason", String.join(", ", rec.getExplanation().getReasons()));
+                }
+                feed.add(map);
+            }
+        }
+        return ResponseEntity.ok(ApiResponse.success(feed, "Recommended technology feed fetched successfully."));
+    }
+
+    private Map<String, Object> mapToFeedItem(TechnologyEvent event, Long userId) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", event.getId());
+        map.put("eventId", event.getId());
+        map.put("headline", event.getTitle());
+        map.put("summary", event.getSummary() != null ? event.getSummary() : "");
+        map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : LocalDateTime.now().toString());
+        map.put("sourceName", "TechPulse Ingestion");
+        
+        String sourceUrl = "";
+        if (event.getOfficialLinksJson() != null) {
+            try {
+                List<?> links = objectMapper.readValue(event.getOfficialLinksJson(), List.class);
+                if (!links.isEmpty()) {
+                    sourceUrl = String.valueOf(links.get(0));
+                }
+            } catch (Exception ignored) {}
+        }
+        map.put("sourceUrl", sourceUrl);
+        
+        map.put("importanceScore", event.getImportanceScore() != null ? event.getImportanceScore() : 75.0);
+        map.put("credibilityScore", event.getCredibilityScore() != null ? event.getCredibilityScore() : 80.0);
+        
+        String category = "Emerging Tech";
+        if (event.getCategoriesJson() != null) {
+            try {
+                List<?> cats = objectMapper.readValue(event.getCategoriesJson(), List.class);
+                if (!cats.isEmpty()) {
+                    category = String.valueOf(cats.get(0));
+                }
+            } catch (Exception ignored) {}
+        }
+        map.put("category", category);
+        
+        String tech = "General";
+        if (event.getEntitiesJson() != null) {
+            try {
+                List<?> entities = objectMapper.readValue(event.getEntitiesJson(), List.class);
+                if (!entities.isEmpty()) {
+                    tech = String.valueOf(entities.get(0));
+                }
+            } catch (Exception ignored) {}
+        }
+        map.put("technology", tech);
+        
+        map.put("version", event.getVersionString());
+        map.put("releaseStatus", event.getLifecycleStatus());
+        map.put("trendStatus", "RISING");
+        
+        boolean bookmarked = false;
+        if (userId != null) {
+            bookmarked = userSavedEventRepository.existsById(new UserSavedEventId(userId, event.getId()));
+        }
+        map.put("bookmarked", bookmarked);
+        map.put("read", false);
+        map.put("recommendationReason", "Matching your onboarding interests.");
+
+        return map;
     }
 
     @GetMapping("/search")

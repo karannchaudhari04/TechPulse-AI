@@ -219,7 +219,8 @@ public class UserController {
         }
         Object principal = auth.getPrincipal();
         if (principal instanceof User user) {
-            return user;
+            return userRepository.findById(user.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
         }
         if (principal instanceof String uid) {
             return userRepository.findByFirebaseUid(uid)

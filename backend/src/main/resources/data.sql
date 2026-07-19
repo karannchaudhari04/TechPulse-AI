@@ -159,3 +159,42 @@ INSERT IGNORE INTO news_sources (id, name, url, active, created_at, updated_at) 
 (21, 'KDnuggets', 'https://www.kdnuggets.com/feed', true, NOW(), NOW()),
 (22, 'CoinDesk', 'https://www.coindesk.com/arc/outboundfeeds/rss/', true, NOW(), NOW()),
 (23, 'Red Hat Developer', 'https://developers.redhat.com/blog/feed', true, NOW(), NOW());
+
+-- ── Seed Technology Events for Feed ───────────────────────────────────────────
+INSERT IGNORE INTO technology_event (
+    id, title, categories_json, credibility_score, importance_score, merge_confidence,
+    first_seen, last_updated, lifecycle_status, major_version, minor_version, patch_version,
+    version_string, entities_json, summary, technical_impact, developer_impact, enterprise_impact,
+    migration_notes, breaking_changes, security_notes, official_links_json, llm_model, prompt_version,
+    response_schema_version, summary_status, prompt_tokens, completion_tokens, estimated_cost_usd,
+    estimated_cost_inr, generation_latency, summary_generated_at
+) VALUES
+('e1', 'Java 21 LTS Release Launch', '["AI & Machine Learning", "System Design & Backend"]', 98.0, 92.0, 1.0,
+ NOW(), NOW(), 'RELEASED', 21, 0, 0,
+ '21.0.0', '["Java", "Spring Boot"]', 'JDK 21 is a major LTS release introducing production-ready Virtual Threads (JEP 444) for lightweight concurrency and scoped values.',
+ 'Virtual threads scale application throughput with near-zero memory overhead compared to platform threads.',
+ 'Accelerates developer velocity by keeping synchronous, blocking execution flows easy to write and debug.',
+ 'Reduces cloud compute infrastructure costs by maximizing server CPU and resource utilization.',
+ 'No breaking changes. Update build tools configuration and source compatibility level settings to Java 21.',
+ 'Deprecated legacy thread constructor structures.',
+ 'Resolved 14 minor JDK CVE vulnerabilities.', '["https://openjdk.org/jeps/444"]', 'gemini-1.5-flash', 'v1', 'v1', 'NEW', 120, 240, 0.0005, 0.04, 800, NOW()),
+
+('e2', 'React 19 Actions & React Compiler', '["Web Development"]', 96.0, 89.0, 1.0,
+ NOW(), NOW(), 'RELEASED', 19, 0, 0,
+ '19.0.0', '["React", "NextJS"]', 'React 19 introduces automatic re-render optimization via the new React Compiler, alongside support for server actions and form hook states.',
+ 'Eliminates the need for manual useMemo and useCallback optimization triggers.',
+ 'Simplifies form state tracking with the useActionState hook, and optimizes async transitions.',
+ 'Enables faster client rendering speeds and smaller client bundle payload sizes.',
+ 'Upgrade React and React DOM dependencies, and update custom build configurations to target the new compiler options.',
+ 'Removed legacy context properties and direct DOM manipulation properties inside ref attributes.',
+ 'No security vulnerabilities identified.', '["https://react.dev/blog/2024/04/25/react-19"]', 'gemini-1.5-flash', 'v1', 'v1', 'NEW', 130, 250, 0.0005, 0.04, 750, NOW()),
+
+('e3', 'Kubernetes v1.30: GitOps & Security Hardening', '["Cloud & DevOps"]', 95.0, 85.0, 1.0,
+ NOW(), NOW(), 'RELEASED', 1, 30, 0,
+ '1.30.0', '["Kubernetes", "Docker"]', 'Kubernetes v1.30 introduces structured authorization configuration and advanced security context profiles for container execution.',
+ 'Hardens default sandbox container control and enables strict validation rules on admission webhooks.',
+ 'Provides standardized resource allocation APIs and better diagnostics reporting.',
+ 'Secures cloud deployments and prevents unauthorized sandbox container breakout exploits.',
+ 'Update cluster orchestration profiles and verify webhook validation payload shapes before scaling up nodes.',
+ 'Deprecated legacy authentication controllers.',
+ 'Addresses CVE-2026-1122 within kube-apiserver component.', '["https://kubernetes.io/blog/2024/04/17/kubernetes-v1-30-release/"]', 'gemini-1.5-flash', 'v1', 'v1', 'NEW', 140, 260, 0.0005, 0.04, 900, NOW());
