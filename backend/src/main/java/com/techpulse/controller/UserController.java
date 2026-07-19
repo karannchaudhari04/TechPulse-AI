@@ -137,13 +137,32 @@ public class UserController {
     }
 
     @GetMapping("/profile")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<Map<String, Object>>> getProfile() {
-        User user = getCurrentUser();
+        String firebaseUid = getFirebaseUid();
+        User user = userRepository.findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Map<String, Object> data = new HashMap<>();
+        data.put("uid", user.getFirebaseUid());
         data.put("email", user.getEmail());
         data.put("displayName", user.getDisplayName());
-        data.put("photoURL", user.getProfilePictureUrl());
+        data.put("photoUrl", user.getProfilePictureUrl());
+        
+        List<String> rolesList = new ArrayList<>();
+        rolesList.add(user.getRole().name());
+        data.put("roles", rolesList);
+
+        List<String> prefsList = user.getPreferences().stream()
+                .map(Category::getName)
+                .collect(Collectors.toList());
+        data.put("preferences", prefsList);
+        
+        data.put("followedTechnologies", new ArrayList<String>());
+        
+        boolean isOnboarded = !user.getPreferences().isEmpty();
+        data.put("isOnboarded", isOnboarded);
+        
         data.put("preferencesCount", user.getPreferences().size());
         data.put("savedBitesCount", bookmarkRepository.countByUserId(user.getId()));
         data.put("role", user.getRole().name());
@@ -172,13 +191,7 @@ public class UserController {
         userRepository.save(user);
         userService.evictUserCache(firebaseUid);
 
-        Map<String, Object> data = new HashMap<>();
-        data.put("email", user.getEmail());
-        data.put("displayName", user.getDisplayName());
-        data.put("photoURL", user.getProfilePictureUrl());
-        data.put("role", user.getRole().name());
-
-        return ResponseEntity.ok(ApiResponse.success(data, "Profile updated successfully"));
+        return getProfile();
     }
     @PostMapping("/push-token")
     @Transactional

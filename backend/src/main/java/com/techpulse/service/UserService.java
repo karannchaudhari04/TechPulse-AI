@@ -133,9 +133,17 @@ public class UserService {
     }
 
     private User updateAndSave(User user, String email, String displayName, String photoUrl) {
-        if (displayName != null) user.setDisplayName(displayName);
-        if (photoUrl != null) user.setProfilePictureUrl(photoUrl);
-        if (email != null) user.setEmail(email);
+        if (displayName != null && !displayName.trim().isEmpty() && !displayName.equals("Tech Explorer")) {
+            user.setDisplayName(displayName.trim());
+        } else if (user.getDisplayName() == null || user.getDisplayName().isEmpty()) {
+            user.setDisplayName("Tech Explorer");
+        }
+        if (photoUrl != null && !photoUrl.trim().isEmpty()) {
+            user.setProfilePictureUrl(photoUrl.trim());
+        }
+        if (email != null && !email.trim().isEmpty()) {
+            user.setEmail(email.trim());
+        }
         User saved = userRepository.save(user);
         evictUserCache(user.getFirebaseUid());
         return saved;
