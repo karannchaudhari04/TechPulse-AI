@@ -113,6 +113,7 @@ export default function HomeScreen() {
         <HomeHeader
           onSearchPress={() => navigation.navigate('Search')}
           onNotificationsPress={() => navigation.navigate('Notifications')}
+          onProfilePress={() => navigation.navigate('Profile')}
           breakingCount={breakingEvent ? 1 : 0}
           trendsCount={trends?.length || 0}
         />
@@ -264,6 +265,19 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderHeader}
           ListFooterComponent={renderFooter}
+          ListEmptyComponent={
+            !isFeedFetching ? (
+              <View style={{ paddingVertical: spacing.xl, paddingHorizontal: spacing.md, alignItems: 'center' }}>
+                <Icon name="newspaper-outline" provider="ionicons" size={44} color={colors.textMuted} />
+                <Text style={{ color: colors.textSecondary, fontFamily: typography.titleSmall.fontFamily, marginTop: spacing.sm }}>
+                  No technology updates available
+                </Text>
+                <Text style={{ color: colors.textMuted, fontFamily: typography.caption.fontFamily, marginTop: spacing.xxs, textAlign: 'center' }}>
+                  Pull down to refresh or select a different category filter.
+                </Text>
+              </View>
+            ) : null
+          }
           refreshControl={
             <RefreshControl refreshing={isFeedFetching && cursor === null} onRefresh={handleRefresh} tintColor={colors.primary} />
           }

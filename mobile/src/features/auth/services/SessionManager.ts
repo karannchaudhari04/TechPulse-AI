@@ -39,25 +39,18 @@ class SessionManagerClass {
     if (!user) return;
 
     try {
-      const expirationStr = await SecureStoreService.getItem(TOKEN_EXPIRATION_KEY);
-      if (!expirationStr) return;
-
-      const expirationTime = new Date(expirationStr).getTime();
-      const currentTime = Date.now();
-      const timeRemaining = expirationTime - currentTime;
-
-      // If token expires in less than 10 minutes, trigger a refresh
-      const refreshThreshold = 1000 * 60 * 10;
-
-      if (timeRemaining <= 0) {
-        console.warn('[SessionManager] Token has already expired. Logging out...');
+      // Delegate to Firebase SDK to retrieve or silently refresh the ID token
+      const token = await authService.getIdToken(false);
+      if (!token) {
+        console.warn('[SessionManager] Unable to retrieve valid Firebase ID token. Expiring session...');
         this.handleSessionExpired();
-      } else if (timeRemaining < refreshThreshold) {
-        console.info('[SessionManager] Token expiring soon. Refreshing ID token...');
-        await authService.getIdToken(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SessionManager] Failed to check or refresh token:', error);
+      // Only expire session if explicit unauthenticated error occurs
+      if (error?.code === 'auth/user-token-expired' || error?.code === 'auth/user-disabled' || error?.code === 'auth/user-not-found') {
+        this.handleSessionExpired();
+      }
     }
   }
 

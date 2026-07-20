@@ -8,6 +8,7 @@ import Icon from '../../../components/common/Icon';
 export interface HomeHeaderProps {
   onSearchPress: () => void;
   onNotificationsPress: () => void;
+  onProfilePress?: () => void;
   breakingCount?: number;
   trendsCount?: number;
 }
@@ -19,6 +20,7 @@ export interface HomeHeaderProps {
 export default function HomeHeader({
   onSearchPress,
   onNotificationsPress,
+  onProfilePress,
   breakingCount = 4,
   trendsCount = 18,
 }: HomeHeaderProps) {
@@ -50,12 +52,14 @@ export default function HomeHeader({
           <TouchableOpacity onPress={onNotificationsPress} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Notifications">
             <Icon name="bell" provider="feather" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Avatar 
-            source={profile?.photoURL} 
-            name={displayName} 
-            size={36} 
-            style={{ marginLeft: spacing.sm }} 
-          />
+          <TouchableOpacity onPress={onProfilePress} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Profile Settings">
+            <Avatar 
+              source={profile?.photoURL} 
+              name={displayName} 
+              size={36} 
+              style={{ marginLeft: spacing.sm }} 
+            />
+          </TouchableOpacity>
         </View>
       </View>
 

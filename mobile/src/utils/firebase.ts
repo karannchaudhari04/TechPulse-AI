@@ -14,11 +14,17 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase securely
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const isNewApp = getApps().length === 0;
+const app = isNewApp ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Authentication with persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-});
+// Initialize Firebase Authentication with persistence safely
+let auth: ReturnType<typeof getAuth>;
+if (isNewApp) {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
+} else {
+  auth = getAuth(app);
+}
 
 export { app, auth };
