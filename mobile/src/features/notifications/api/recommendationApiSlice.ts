@@ -20,6 +20,7 @@ export interface FollowedTechnologyItem {
  * Purpose: RTK Query endpoints for AI recommended articles, tag explanations, and technology follows.
  */
 export const recommendationApiSlice = apiSlice.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getRecommendations: builder.query<FeedItem[], void>({
       query: () => ({

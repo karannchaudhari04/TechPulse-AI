@@ -46,8 +46,8 @@ class ExpoPushNotificationProvider implements NotificationProvider {
       });
       this.token = tokenData.data;
       return this.token;
-    } catch (error) {
-      console.error('[PushNotificationService] Failed to retrieve Expo push token:', error);
+    } catch (error: any) {
+      console.warn('[PushNotificationService] Push tokens unavailable in dev environment (Native FCM credentials pending):', error?.message || error);
       return null;
     }
   }

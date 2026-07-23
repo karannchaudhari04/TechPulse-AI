@@ -20,6 +20,16 @@
     <java.version>17</java.version>
     <spring-cloud.version>2023.0.0</spring-cloud.version>
     <spring-ai.version>1.0.0-M1</spring-ai.version>
+    <DATABASE_WRITER_URL>jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/techbite?useSSL=true&amp;enabledTLSProtocols=TLSv1.2&amp;serverTimezone=UTC&amp;readOnlyPropagatesToServer=false</DATABASE_WRITER_URL>
+    <DATABASE_WRITER_USER>jvZRRNRdZRCKGPP.root</DATABASE_WRITER_USER>
+    <DATABASE_WRITER_PASSWORD>JscNYE6VuCFACo4x</DATABASE_WRITER_PASSWORD>
+    <DATABASE_REPLICA_URL>jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/techbite?useSSL=true&amp;enabledTLSProtocols=TLSv1.2&amp;serverTimezone=UTC&amp;readOnlyPropagatesToServer=false</DATABASE_REPLICA_URL>
+    <DATABASE_REPLICA_USER>jvZRRNRdZRCKGPP.root</DATABASE_REPLICA_USER>
+    <DATABASE_REPLICA_PASSWORD>JscNYE6VuCFACo4x</DATABASE_REPLICA_PASSWORD>
+    <REDIS_HOST>localhost</REDIS_HOST>
+    <REDIS_PORT>6379</REDIS_PORT>
+    <GEMINI_API_KEY>mock-gemini-key</GEMINI_API_KEY>
+    <JWT_SECRET>kjasdkdhs3928462ojdhnjasdhipwuey9362yiuhe2p3962-wodhwo324</JWT_SECRET>
   </properties>
   
   <repositories>
@@ -220,7 +230,38 @@
               <artifactId>lombok</artifactId>
             </exclude>
           </excludes>
+          <systemPropertyVariables>
+            <DATABASE_WRITER_URL>${DATABASE_WRITER_URL}</DATABASE_WRITER_URL>
+            <DATABASE_WRITER_USER>${DATABASE_WRITER_USER}</DATABASE_WRITER_USER>
+            <DATABASE_WRITER_PASSWORD>${DATABASE_WRITER_PASSWORD}</DATABASE_WRITER_PASSWORD>
+            <DATABASE_REPLICA_URL>${DATABASE_REPLICA_URL}</DATABASE_REPLICA_URL>
+            <DATABASE_REPLICA_USER>${DATABASE_REPLICA_USER}</DATABASE_REPLICA_USER>
+            <DATABASE_REPLICA_PASSWORD>${DATABASE_REPLICA_PASSWORD}</DATABASE_REPLICA_PASSWORD>
+            <REDIS_HOST>${REDIS_HOST}</REDIS_HOST>
+            <REDIS_PORT>${REDIS_PORT}</REDIS_PORT>
+            <GEMINI_API_KEY>${GEMINI_API_KEY}</GEMINI_API_KEY>
+            <JWT_SECRET>${JWT_SECRET}</JWT_SECRET>
+          </systemPropertyVariables>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>properties-maven-plugin</artifactId>
+        <version>1.2.1</version>
+        <executions>
+          <execution>
+            <phase>initialize</phase>
+            <goals>
+              <goal>read-project-properties</goal>
+            </goals>
+            <configuration>
+              <files>
+                <file>${project.basedir}/.env</file>
+              </files>
+              <quiet>true</quiet>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
