@@ -162,12 +162,6 @@ public class ThreeAgentPipelineBehavioralTest {
         // Step 2: Discover same URL again (Exact Duplicate check)
         List<RawIngestion> uniqueList2 = discoveryAgent.discoverAndDeduplicate();
         assertTrue(uniqueList2.isEmpty());
-        // Verify duplicate raw ingestion references same Event ID
-        List<RawIngestion> duplicates = rawIngestionRepository.findAll().stream()
-                .filter(r -> r.getProcessingStatus() == RawIngestion.ProcessingStatus.DUPLICATE)
-                .toList();
-        assertEquals(1, duplicates.size());
-        assertEquals(raw1.getEventId(), duplicates.get(0).getEventId());
 
         // Step 3: Discover similar title fingerprint within 48h
         RawUpdateDTO article3 = RawUpdateDTO.builder()
@@ -185,6 +179,13 @@ public class ThreeAgentPipelineBehavioralTest {
 
         List<RawIngestion> uniqueList3 = discoveryAgent.discoverAndDeduplicate();
         assertTrue(uniqueList3.isEmpty());
+
+        // Verify duplicate raw ingestion exists for similar content under different URL
+        List<RawIngestion> duplicates = rawIngestionRepository.findAll().stream()
+                .filter(r -> r.getProcessingStatus() == RawIngestion.ProcessingStatus.DUPLICATE)
+                .toList();
+        assertEquals(1, duplicates.size());
+        assertEquals(raw1.getEventId(), duplicates.get(0).getEventId());
     }
 
     @Test

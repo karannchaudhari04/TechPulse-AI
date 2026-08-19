@@ -169,6 +169,21 @@ public class DiscoveryAgent {
             entity.setPublishedAt(update.getPublishedAt());
             entity.setFetchedAt(LocalDateTime.now());
 
+            boolean isUrlDuplicate = false;
+            // Check if it matched URL in Layer 1 or Layer 2
+            for (RawIngestion ing : allIngested) {
+                if (ing.getUrlHash().equals(urlHash)) {
+                    isUrlDuplicate = true;
+                    break;
+                }
+            }
+            if (!isUrlDuplicate) {
+                Optional<RawIngestion> dbUrlMatch = rawIngestionRepository.findByUrlHash(urlHash);
+                if (dbUrlMatch.isPresent()) {
+                    isUrlDuplicate = true;
+                }
+            }
+
             if (isDuplicate) {
                 entity.setProcessingStatus(RawIngestion.ProcessingStatus.DUPLICATE);
                 entity.setEventId(matchedEventId != null ? matchedEventId : UUID.randomUUID().toString());
@@ -180,7 +195,10 @@ public class DiscoveryAgent {
                 log.info("[DiscoveryAgent] Unique article discovered: '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
             }
 
-            allIngested.add(entity);
+            // Only save if it is not an exact URL duplicate (to respect unique index on url_hash)
+            if (!isUrlDuplicate) {
+                allIngested.add(entity);
+            }
         }
 
         if (!allIngested.isEmpty()) {
