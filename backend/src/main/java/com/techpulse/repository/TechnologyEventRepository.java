@@ -9,4 +9,5 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface TechnologyEventRepository extends JpaRepository<TechnologyEvent, String> {
+    java.util.List<TechnologyEvent> findTop500ByOrderByFirstSeenDesc();
 }

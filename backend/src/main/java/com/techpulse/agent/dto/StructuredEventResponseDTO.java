@@ -28,4 +28,5 @@ public class StructuredEventResponseDTO {
     private String breakingChanges;
     private String securityNotes;
     private List<String> officialLinks;
+    private String imageUrl;
 }

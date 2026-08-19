@@ -573,7 +573,7 @@ public class PersonalizationController {
             }
 
             log.info("[PersonalizationController] Cache miss for personalized feed: {}. Fetching & ranking from database...", cacheKey);
-            List<TechnologyEvent> candidates = technologyEventRepository.findAll();
+            List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFirstSeenDesc();
             List<TechnologyEvent> ranked = personalizationService.rankEvents(userId, candidates);
 
             try {
@@ -623,9 +623,12 @@ public class PersonalizationController {
         map.put("id", event.getId());
         map.put("eventId", event.getId());
         map.put("headline", event.getTitle());
+        map.put("title", event.getTitle());
         map.put("summary", event.getSummary() != null ? event.getSummary() : "");
+        map.put("contentSummary", event.getSummary() != null ? event.getSummary() : "");
         map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : LocalDateTime.now().toString());
         map.put("sourceName", "TechCrunch"); // default source template matching RN cards
+        map.put("thumbnailUrl", event.getImageUrl());
 
         String sourceUrl = "";
         List<String> links = parseJsonList(event.getOfficialLinksJson());
@@ -633,12 +636,15 @@ public class PersonalizationController {
             sourceUrl = links.get(0);
         }
         map.put("sourceUrl", sourceUrl);
+        map.put("originalSourceUrl", sourceUrl);
 
         map.put("importanceScore", event.getImportanceScore() != null ? event.getImportanceScore() : 70.0);
         map.put("credibilityScore", event.getCredibilityScore() != null ? event.getCredibilityScore() : 80.0);
 
         List<String> categories = parseJsonList(event.getCategoriesJson());
-        map.put("category", categories.isEmpty() ? "Emerging Tech" : categories.get(0));
+        String cat = categories.isEmpty() ? "Emerging Tech" : categories.get(0);
+        map.put("category", cat);
+        map.put("categoryName", cat);
 
         List<String> entities = parseJsonList(event.getEntitiesJson());
         map.put("technology", entities.isEmpty() ? "General" : entities.get(0));

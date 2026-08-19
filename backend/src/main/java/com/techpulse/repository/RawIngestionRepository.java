@@ -37,4 +37,10 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     java.util.Optional<RawIngestion> findByUrlHash(String urlHash);
     java.util.List<RawIngestion> findByTitleHash(String titleHash);
     boolean existsByUrlHash(String urlHash);
+
+    /**
+     * Returns up to 50 RawIngestion records stuck in NEW status, oldest first.
+     * Used by NewsIngestionService to retry failed Gemini synthesis on each ingestion cycle.
+     */
+    java.util.List<RawIngestion> findTop50ByProcessingStatusOrderByFetchedAtAsc(RawIngestion.ProcessingStatus status);
 }

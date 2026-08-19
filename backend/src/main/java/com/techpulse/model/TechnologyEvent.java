@@ -89,6 +89,9 @@ public class TechnologyEvent {
     @Column(name = "official_links_json", columnDefinition = "TEXT")
     private String officialLinksJson;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
     @Column(name = "llm_model", length = 50)
     private String llmModel;
 

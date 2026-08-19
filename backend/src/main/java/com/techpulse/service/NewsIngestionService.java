@@ -4,6 +4,7 @@ import com.techpulse.agent.DiscoveryAgent;
 import com.techpulse.agent.AISynthesisAgent;
 import com.techpulse.model.RawIngestion;
 import com.techpulse.model.TechnologyEvent;
+import com.techpulse.repository.RawIngestionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ public class NewsIngestionService {
 
     private final DiscoveryAgent discoveryAgent;
     private final AISynthesisAgent aiSynthesisAgent;
+    private final RawIngestionRepository rawIngestionRepository;
     private final org.springframework.cache.CacheManager cacheManager;
     private final AtomicBoolean isIngesting = new AtomicBoolean(false);
 
@@ -34,9 +36,11 @@ public class NewsIngestionService {
 
     public NewsIngestionService(DiscoveryAgent discoveryAgent,
                                 AISynthesisAgent aiSynthesisAgent,
+                                RawIngestionRepository rawIngestionRepository,
                                 org.springframework.cache.CacheManager cacheManager) {
         this.discoveryAgent = discoveryAgent;
         this.aiSynthesisAgent = aiSynthesisAgent;
+        this.rawIngestionRepository = rawIngestionRepository;
         this.cacheManager = cacheManager;
     }
 
@@ -69,14 +73,40 @@ public class NewsIngestionService {
             return;
         }
         try {
+            // ── Phase 0: Retry pending NEW records from previous failed Gemini calls ──────
+            List<RawIngestion> pendingRetries = rawIngestionRepository
+                    .findTop50ByProcessingStatusOrderByFetchedAtAsc(RawIngestion.ProcessingStatus.NEW);
+
+            int retryCount = pendingRetries.size();
+            int retrySuccessCount = 0;
+
+            if (!pendingRetries.isEmpty()) {
+                log.info("[NewsIngestion] Found {} pending NEW records to retry with AISynthesisAgent.", retryCount);
+                for (RawIngestion pending : pendingRetries) {
+                    try {
+                        TechnologyEvent event = aiSynthesisAgent.synthesizeAndSave(pending);
+                        if (event != null) {
+                            retrySuccessCount++;
+                        }
+                        Thread.sleep(2000);
+                    } catch (Exception e) {
+                        log.error("[NewsIngestion] Retry synthesis failed for raw update ID '{}': {}", pending.getId(), e.getMessage());
+                    }
+                }
+                log.info("[NewsIngestion] Retry phase complete. Succeeded: {}/{}", retrySuccessCount, retryCount);
+            } else {
+                log.info("[NewsIngestion] No pending NEW records to retry.");
+            }
+
+            // ── Phase 1: Fresh RSS Discovery ─────────────────────────────────────────────
             log.info("[NewsIngestion] Starting Discovery & Deduplication phase via DiscoveryAgent...");
             List<RawIngestion> uniqueCandidates = discoveryAgent.discoverAndDeduplicate();
             log.info("[NewsIngestion] Deduplication complete. Found {} unique updates to process with AISynthesisAgent.", uniqueCandidates.size());
 
+            // ── Phase 2: Synthesize newly discovered articles ────────────────────────────
             int savedCount = 0;
             for (RawIngestion candidate : uniqueCandidates) {
                 try {
-                    // Call structured Gemini synthesis
                     TechnologyEvent event = aiSynthesisAgent.synthesizeAndSave(candidate);
                     if (event != null) {
                         savedCount++;
@@ -90,12 +120,13 @@ public class NewsIngestionService {
             this.lastSavedCount = savedCount;
             this.lastRunTime = LocalDateTime.now();
 
-            if (savedCount > 0) {
+            if (savedCount > 0 || retrySuccessCount > 0) {
                 log.info("[NewsIngestion] Evicting feed and personalization caches...");
                 invalidateCaches();
             }
 
-            log.info("[NewsIngestion] Ingestion Completed. Successfully synthesized {} events.", savedCount);
+            log.info("[NewsIngestion] Ingestion Completed. Retried: {}/{} | Fresh synthesized: {}",
+                    retrySuccessCount, retryCount, savedCount);
         } finally {
             isIngesting.set(false);
         }

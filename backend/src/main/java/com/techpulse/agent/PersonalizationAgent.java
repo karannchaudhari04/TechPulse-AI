@@ -210,12 +210,13 @@ public class PersonalizationAgent {
                 daysSincePublished = Duration.between(event.getFirstSeen(), now).toDays();
             }
             double recency = Math.pow(0.9, daysSincePublished);
-
-            double finalScore = personalizationScore + (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
+            double clippedPersonalization = Math.max(-5.0, Math.min(5.0, personalizationScore));
+            double finalScore = clippedPersonalization + (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
             scoredEvents.put(event, finalScore);
         }
 
         candidates.sort((a, b) -> Double.compare(scoredEvents.get(b), scoredEvents.get(a)));
+        log.info("[PERSONALIZATION] userId={} candidateCount={} rankedCount={}", userId, candidates.size(), candidates.size());
         return candidates;
     }
 

@@ -48,6 +48,9 @@ public class RawIngestion {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
     @Column(name = "fetched_at")
     private LocalDateTime fetchedAt = LocalDateTime.now();
 

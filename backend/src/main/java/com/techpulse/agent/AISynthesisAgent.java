@@ -71,7 +71,7 @@ public class AISynthesisAgent {
         try {
             response = aiClient.generate(request);
         } catch (Exception e) {
-            log.error("[AISynthesisAgent] Failed to invoke Gemini for event ID '{}': {}", rawUpdate.getEventId(), e.getMessage());
+            log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=FAILED reason=\"{}\"", rawUpdate.getId(), rawUpdate.getEventId(), e.getMessage());
             rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
             rawIngestionRepository.save(rawUpdate);
             throw new RuntimeException("Gemini generation failed: " + e.getMessage(), e);
@@ -88,7 +88,7 @@ public class AISynthesisAgent {
         try {
             dto = objectMapper.readValue(jsonContent, StructuredEventResponseDTO.class);
         } catch (Exception e) {
-            log.error("[AISynthesisAgent] Failed to parse Gemini response JSON for event ID '{}': {}", rawUpdate.getEventId(), e.getMessage());
+            log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=FAILED reason=\"JSON parsing failed: {}\"", rawUpdate.getId(), rawUpdate.getEventId(), e.getMessage());
             rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
             rawIngestionRepository.save(rawUpdate);
             throw new RuntimeException("Structured output parsing failed", e);
@@ -122,6 +122,7 @@ public class AISynthesisAgent {
                 .completionTokens(response.getCompletionTokens())
                 .generationLatency((int) response.getLatency())
                 .summaryGeneratedAt(LocalDateTime.now())
+                .imageUrl(dto.getImageUrl() != null ? dto.getImageUrl() : rawUpdate.getImageUrl())
                 .build();
 
         try {
@@ -142,7 +143,7 @@ public class AISynthesisAgent {
         rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.PROCESSED);
         rawIngestionRepository.save(rawUpdate);
 
-        log.info("[AISynthesisAgent] Successfully synthesized and saved TechnologyEvent ID: {}", event.getId());
+        log.info("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=SUCCESS", rawUpdate.getId(), event.getId());
         return event;
     }
 
@@ -179,7 +180,8 @@ public class AISynthesisAgent {
                   "migrationNotes": "string",
                   "breakingChanges": "string",
                   "securityNotes": "string",
-                  "officialLinks": ["string"]
+                  "officialLinks": ["string"],
+                  "imageUrl": "string or null (URL to a representative technology logo/image or official vendor image, or null)"
                 }
                 """.formatted(title, content.substring(0, Math.min(content.length(), 3500)), categoriesStr);
     }
