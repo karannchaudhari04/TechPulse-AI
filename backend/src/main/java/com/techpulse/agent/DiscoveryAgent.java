@@ -61,9 +61,9 @@ public class DiscoveryAgent {
         List<RawUpdateDTO> rawUpdates = Collections.synchronizedList(new ArrayList<>());
         PipelineContext context = new PipelineContext(runId, LocalDateTime.now(), new HashMap<>());
 
-        // Per-source success/failure counters (thread-safe for parallel futures)
-        AtomicInteger successfulSources = new java.util.concurrent.atomic.AtomicInteger(0);
-        AtomicInteger failedSources = new java.util.concurrent.atomic.AtomicInteger(0);
+        // // Per-source success/failure counters (thread-safe for parallel futures)
+        // AtomicInteger successfulSources = new java.util.concurrent.atomic.AtomicInteger(0);
+        // AtomicInteger failedSources = new java.util.concurrent.atomic.AtomicInteger(0);
 
         List<CompletableFuture<Void>> futures = activeSources.stream()
                 .map(source -> CompletableFuture.supplyAsync(() -> {
