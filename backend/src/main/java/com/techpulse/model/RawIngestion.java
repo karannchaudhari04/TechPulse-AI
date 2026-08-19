@@ -39,6 +39,12 @@ public class RawIngestion {
     @Column(name = "canonical_url", length = 512)
     private String canonicalUrl;
 
+    @Column(name = "url_hash", length = 64, unique = true)
+    private String urlHash;
+
+    @Column(name = "title_hash", length = 64)
+    private String titleHash;
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 

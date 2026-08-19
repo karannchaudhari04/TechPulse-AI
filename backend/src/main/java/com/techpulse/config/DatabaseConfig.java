@@ -205,6 +205,7 @@ public class DatabaseConfig {
                 .baselineOnMigrate(isH2)
                 .locations("classpath:db/migration")
                 .load();
+        flyway.repair();
         flyway.migrate();
         return flyway;
     }

@@ -36,20 +36,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket resolveBucket(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAuthenticated = auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser");
-        
-        String key;
-        if (isAuthenticated) {
-            key = "AUTH_" + auth.getPrincipal().toString();
-        } else {
-            // Fallback to IP address for guests
-            String xfHeader = request.getHeader("X-Forwarded-For");
-            key = "GUEST_" + (xfHeader == null ? request.getRemoteAddr() : xfHeader.split(",")[0]);
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAuthenticated = auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser");
+            
+            String key;
+            if (isAuthenticated) {
+                key = "AUTH_" + auth.getPrincipal().toString();
+            } else {
+                // Fallback to IP address for guests
+                String xfHeader = request.getHeader("X-Forwarded-For");
+                key = "GUEST_" + (xfHeader == null ? request.getRemoteAddr() : xfHeader.split(",")[0]);
+            }
+            
+            log.debug("[RateLimitFilter] Resolved key: {}, isAuthenticated: {}", key, isAuthenticated);
+            if (proxyManager == null) {
+                return null;
+            }
+            var builder = proxyManager.builder();
+            if (builder == null) {
+                return null;
+            }
+            return builder.build(key, () -> createNewBucketConfig(isAuthenticated));
+        } catch (Exception e) {
+            log.warn("[RateLimitFilter] Error resolving rate limit bucket: {}. Bypassing rate limit check.", e.getMessage());
+            return null;
         }
-        
-        log.debug("[RateLimitFilter] Resolved key: {}, isAuthenticated: {}", key, isAuthenticated);
-        return proxyManager.builder().build(key, () -> createNewBucketConfig(isAuthenticated));
     }
 
     @Override
@@ -57,14 +69,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String uri = request.getRequestURI();
-        if (uri.startsWith("/api/v1/bites")) {
+        if (uri.startsWith("/api/v1/")) {
             Bucket bucket = resolveBucket(request);
-            log.info("[RateLimitFilter] Request to URI: {}, Resolved Remote Address: {}", uri, request.getRemoteAddr());
-            if (!bucket.tryConsume(1)) {
-                log.warn("[RateLimitFilter] 🛑 RATE LIMIT EXCEEDED for key. Blocking request to {}", uri);
-                response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                response.getWriter().write("Too many requests. Please try again later.");
-                return;
+            if (bucket != null) {
+                log.info("[RateLimitFilter] Request to URI: {}, Resolved Remote Address: {}", uri, request.getRemoteAddr());
+                if (!bucket.tryConsume(1)) {
+                    log.warn("[RateLimitFilter] 🛑 RATE LIMIT EXCEEDED for key. Blocking request to {}", uri);
+                    response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+                    response.getWriter().write("Too many requests. Please try again later.");
+                    return;
+                }
             }
         }
         filterChain.doFilter(request, response);

@@ -1,7 +1,7 @@
 package com.techpulse.controller;
 
-import com.techpulse.model.Bite;
-import com.techpulse.repository.BiteRepository;
+import com.techpulse.model.TechnologyEvent;
+import com.techpulse.repository.TechnologyEventRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class DeepLinkController {
 
     @Autowired
-    private BiteRepository biteRepository;
+    private TechnologyEventRepository technologyEventRepository;
 
     @Value("${android.sha256.fingerprint:71:BC:9C:71:07:82:E2:3C:F8:55:A2:33:16:F7:FA:4C:FF:18:E5:B0:08:AD:49:BC:60:09:47:43:1F:57:44:B3}")
     private String sha256Fingerprint;
@@ -24,7 +24,7 @@ public class DeepLinkController {
     @ResponseBody
     @Cacheable(value = "totalBiteCount", key = "'global'")
     public String index() {
-        return "TechPulse AI API is Live. Total Bites: " + biteRepository.count();
+        return "TechPulse AI API is Live. Total Events: " + technologyEventRepository.count();
     }
 
     @GetMapping(value = "/.well-known/assetlinks.json", produces = "application/json")
@@ -47,15 +47,16 @@ public class DeepLinkController {
     }
 
     @GetMapping("/bite/{id}")
-    public String handleDeepLink(@PathVariable Long id, Model model) {
-        Bite bite = biteRepository.findById(id).orElse(null);
+    public String handleDeepLink(@PathVariable String id, Model model) {
+        TechnologyEvent event = technologyEventRepository.findById(id).orElse(null);
         
-        if (bite != null) {
-            model.addAttribute("id", bite.getId());
-            model.addAttribute("title", bite.getTitle());
-            model.addAttribute("summary", bite.getContentSummary());
-            model.addAttribute("thumbnail", bite.getThumbnailUrl());
-            model.addAttribute("category", bite.getCategory() != null ? bite.getCategory().getName() : "Tech");
+        if (event != null) {
+            model.addAttribute("id", event.getId());
+            model.addAttribute("title", event.getTitle());
+            model.addAttribute("summary", event.getSummary());
+            // Safe fallback image for deep link metadata
+            model.addAttribute("thumbnail", "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800");
+            model.addAttribute("category", "Tech");
         } else {
             model.addAttribute("id", "");
             model.addAttribute("title", "TechPulse AI | Technology Intelligence");

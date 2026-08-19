@@ -33,4 +33,8 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
      */
     @Query("SELECT r FROM RawIngestion r WHERE r.fetchedAt >= :since")
     List<RawIngestion> findRecentRawIngestions(@Param("since") LocalDateTime since);
+
+    java.util.Optional<RawIngestion> findByUrlHash(String urlHash);
+    java.util.List<RawIngestion> findByTitleHash(String titleHash);
+    boolean existsByUrlHash(String urlHash);
 }

@@ -45,14 +45,14 @@ public class RateLimitFilterTest {
     @Test
     public void whenRateLimitNotExceeded_shouldAllowRequest() throws Exception {
         Mockito.when(mockBucket.tryConsume(1)).thenReturn(true);
-        mockMvc.perform(get("/api/v1/bites"))
+        mockMvc.perform(get("/api/v1/feed"))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void whenRateLimitExceeded_shouldBlockRequest() throws Exception {
         Mockito.when(mockBucket.tryConsume(1)).thenReturn(false);
-        mockMvc.perform(get("/api/v1/bites"))
+        mockMvc.perform(get("/api/v1/feed"))
                 .andExpect(status().is4xxClientError());
     }
 }

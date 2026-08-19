@@ -21,20 +21,20 @@ public class UserController {
     private final com.techpulse.repository.UserRepository userRepository;
     private final com.techpulse.repository.CategoryRepository categoryRepository;
     private final com.techpulse.service.UserService userService;
-    private final com.techpulse.repository.BookmarkRepository bookmarkRepository;
+    private final com.techpulse.repository.UserSavedEventRepository userSavedEventRepository;
     private final com.techpulse.service.PushScheduler pushScheduler;
     private final com.techpulse.repository.LoginAuditRepository loginAuditRepository;
 
     public UserController(com.techpulse.repository.UserRepository userRepository, 
                           com.techpulse.repository.CategoryRepository categoryRepository, 
                           com.techpulse.service.UserService userService,
-                          com.techpulse.repository.BookmarkRepository bookmarkRepository,
+                          com.techpulse.repository.UserSavedEventRepository userSavedEventRepository,
                           com.techpulse.service.PushScheduler pushScheduler,
                           com.techpulse.repository.LoginAuditRepository loginAuditRepository) {
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.userService = userService;
-        this.bookmarkRepository = bookmarkRepository;
+        this.userSavedEventRepository = userSavedEventRepository;
         this.pushScheduler = pushScheduler;
         this.loginAuditRepository = loginAuditRepository;
     }
@@ -164,7 +164,7 @@ public class UserController {
         data.put("isOnboarded", isOnboarded);
         
         data.put("preferencesCount", user.getPreferences().size());
-        data.put("savedBitesCount", bookmarkRepository.countByUserId(user.getId()));
+        data.put("savedBitesCount", userSavedEventRepository.findByUserId(user.getId()).size());
         data.put("role", user.getRole().name());
 
         return ResponseEntity.ok(ApiResponse.success(data, "Profile fetched successfully"));
