@@ -1,129 +1,207 @@
 package com.techpulse.agent;
 
 import com.techpulse.agent.collector.SourceCollector;
-import com.techpulse.agent.dto.DiscoveryResult;
 import com.techpulse.agent.dto.RawUpdateDTO;
 import com.techpulse.agent.model.SourceType;
 import com.techpulse.agent.registry.SourceRegistry;
+import com.techpulse.agent.util.JaroWinklerSimilarity;
+import com.techpulse.agent.util.UrlNormalizer;
+import com.techpulse.common.HashUtil;
 import com.techpulse.model.NewsSource;
 import com.techpulse.model.RawIngestion;
 import com.techpulse.repository.NewsSourceRepository;
 import com.techpulse.repository.RawIngestionRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
- * DiscoveryAgent aggregates raw updates from active technology sources concurrently.
+ * Core Agent responsible for discovering tech news updates and executing layered deduplication.
  */
 @Service
-public class DiscoveryAgent implements Agent<PipelineContext, DiscoveryResult> {
+public class DiscoveryAgent {
 
     private static final Logger log = LoggerFactory.getLogger(DiscoveryAgent.class);
+    private static final double SIMILARITY_THRESHOLD = 0.85;
 
     private final NewsSourceRepository newsSourceRepository;
     private final SourceRegistry sourceRegistry;
     private final RawIngestionRepository rawIngestionRepository;
     private final ExecutorService executorService;
 
-    public DiscoveryAgent(NewsSourceRepository newsSourceRepository, 
-                          SourceRegistry sourceRegistry, 
-                          RawIngestionRepository rawIngestionRepository) {
+    public DiscoveryAgent(NewsSourceRepository newsSourceRepository,
+                          SourceRegistry sourceRegistry,
+                          RawIngestionRepository rawIngestionRepository,
+                          @Value("${app.discovery.thread-pool-size:10}") int threadPoolSize) {
         this.newsSourceRepository = newsSourceRepository;
         this.sourceRegistry = sourceRegistry;
         this.rawIngestionRepository = rawIngestionRepository;
-        // Thread pool to handle concurrent collections (limit to 10 threads to be friendly to VM)
-        this.executorService = Executors.newFixedThreadPool(10);
+        this.executorService = Executors.newFixedThreadPool(threadPoolSize);
     }
 
-    @Override
-    public DiscoveryResult process(PipelineContext context) {
-        String runId = context.runId();
-        long startTime = System.currentTimeMillis();
-        log.info("[DiscoveryAgent] [runId={}] Starting news discovery run...", runId);
+    @Transactional
+    public List<RawIngestion> discoverAndDeduplicate() {
+        String runId = UUID.randomUUID().toString();
+        log.info("[DiscoveryAgent] Starting discovery run ID: {}", runId);
 
         List<NewsSource> activeSources = newsSourceRepository.findByActiveTrue();
-        int totalSources = activeSources.size();
-        log.info("[DiscoveryAgent] [runId={}] Found {} active technology sources.", runId, totalSources);
+        log.info("[DiscoveryAgent] Found {} active sources", activeSources.size());
 
-        List<RawUpdateDTO> aggregatedUpdates = Collections.synchronizedList(new ArrayList<>());
-        Map<String, String> failuresMap = new ConcurrentHashMap<>();
+        List<RawUpdateDTO> rawUpdates = Collections.synchronizedList(new ArrayList<>());
+        PipelineContext context = new PipelineContext(runId, LocalDateTime.now(), new HashMap<>());
 
         List<CompletableFuture<Void>> futures = activeSources.stream()
                 .map(source -> CompletableFuture.supplyAsync(() -> {
-                    // Current news sources are all RSS-based
-                    SourceType type = SourceType.RSS;
-                    SourceCollector collector = sourceRegistry.getCollector(type);
+                    SourceCollector collector = sourceRegistry.getCollector(SourceType.RSS);
                     if (collector == null) {
-                        throw new IllegalStateException("No collector registered for source type: " + type);
+                        throw new IllegalStateException("RSS source collector not found");
                     }
                     return collector.collect(context, source.getName(), source.getUrl());
                 }, executorService)
-                .thenAccept(aggregatedUpdates::addAll)
+                .thenAccept(rawUpdates::addAll)
                 .exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    log.error("[DiscoveryAgent] [runId={}] Collection failed for source '{}': {}", 
-                            runId, source.getName(), cause.getMessage());
-                    failuresMap.put(source.getUrl(), cause.getMessage());
+                    log.error("[DiscoveryAgent] Failed fetching feed {}: {}", source.getName(), ex.getMessage());
                     return null;
                 }))
                 .toList();
 
-        // Wait for all fetches to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        log.info("[DiscoveryAgent] Fetched {} total candidate updates", rawUpdates.size());
 
-        // Persist all gathered raw updates to database in batch
-        List<RawIngestion> entitiesToSave = new ArrayList<>();
-        for (RawUpdateDTO dto : aggregatedUpdates) {
+        LocalDateTime since = LocalDateTime.now().minusDays(7);
+        List<RawIngestion> dbCandidates = rawIngestionRepository.findRecentRawIngestions(since);
+
+        List<RawIngestion> uniqueUpdates = new ArrayList<>();
+        List<RawIngestion> allIngested = new ArrayList<>();
+
+        for (RawUpdateDTO update : rawUpdates) {
+            String title = update.getTitle();
+            String rawUrl = update.getSourceUrl();
+
+            if (title == null || title.isBlank() || rawUrl == null || rawUrl.isBlank()) {
+                continue;
+            }
+
+            String cleanedTitle = cleanHtml(title);
+            String cleanedContent = cleanHtml(update.getRawContent());
+
+            if (cleanedTitle.isBlank() || cleanedContent.isBlank()) {
+                continue;
+            }
+
+            String normalizedUrl = UrlNormalizer.normalize(rawUrl);
+            String canonicalUrl = UrlNormalizer.normalize(update.getCanonicalUrl() != null ? update.getCanonicalUrl() : rawUrl);
+
+            String urlHash = HashUtil.sha256(canonicalUrl);
+            String titleHash = HashUtil.sha256(HashUtil.normalizeTitle(cleanedTitle));
+
+            // Layered Duplicate Detection
+            boolean isDuplicate = false;
+            String matchedEventId = null;
+
+            // Layer 1: Check in-memory batch for exact URL match
+            for (RawIngestion ing : allIngested) {
+                if (ing.getUrlHash().equals(urlHash)) {
+                    isDuplicate = true;
+                    matchedEventId = ing.getEventId();
+                    break;
+                }
+            }
+
+            // Layer 2: Check database for exact URL match
+            if (!isDuplicate) {
+                Optional<RawIngestion> dbUrlMatch = rawIngestionRepository.findByUrlHash(urlHash);
+                if (dbUrlMatch.isPresent()) {
+                    isDuplicate = true;
+                    matchedEventId = dbUrlMatch.get().getEventId();
+                }
+            }
+
+            // Layer 3: Check database for exact Title Fingerprint match
+            if (!isDuplicate) {
+                List<RawIngestion> dbTitleMatches = rawIngestionRepository.findByTitleHash(titleHash);
+                if (!dbTitleMatches.isEmpty()) {
+                    isDuplicate = true;
+                    matchedEventId = dbTitleMatches.get(0).getEventId();
+                }
+            }
+
+            // Layer 4: Jaro-Winkler Similarity with Token-Overlap check against last 7 days candidates
+            if (!isDuplicate) {
+                LocalDateTime publishedTime = update.getPublishedAt() != null ? update.getPublishedAt() : LocalDateTime.now();
+                for (RawIngestion cand : dbCandidates) {
+                    LocalDateTime candPubAt = cand.getPublishedAt() != null ? cand.getPublishedAt() : cand.getFetchedAt();
+                    long hourDiff = Math.abs(Duration.between(publishedTime, candPubAt).toHours());
+                    if (hourDiff <= 48) {
+                        // Pre-filter: only compute Jaro-Winkler if there is token overlap
+                        if (HashUtil.hasTokenOverlap(cleanedTitle, cand.getTitle())) {
+                            double sim = JaroWinklerSimilarity.calculate(cleanedTitle, cand.getTitle());
+                            if (sim >= SIMILARITY_THRESHOLD) {
+                                isDuplicate = true;
+                                matchedEventId = cand.getEventId();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             RawIngestion entity = new RawIngestion();
             entity.setId(UUID.randomUUID().toString());
             entity.setRunId(runId);
-            entity.setSourceName(dto.getSourceName());
-            entity.setSourceType(dto.getSourceType());
-            entity.setTitle(dto.getTitle());
-            entity.setRawContent(dto.getRawContent());
-            entity.setUrl(dto.getSourceUrl());
-            entity.setCanonicalUrl(dto.getCanonicalUrl());
-            entity.setPublishedAt(dto.getPublishedAt());
-            entity.setFetchedAt(dto.getFetchedAt() != null ? dto.getFetchedAt() : LocalDateTime.now());
-            entity.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
-            entitiesToSave.add(entity);
-        }
+            entity.setSourceName(update.getSourceName());
+            entity.setSourceType(update.getSourceType());
+            entity.setTitle(cleanedTitle);
+            entity.setRawContent(cleanedContent);
+            entity.setUrl(normalizedUrl);
+            entity.setCanonicalUrl(canonicalUrl);
+            entity.setUrlHash(urlHash);
+            entity.setTitleHash(titleHash);
+            entity.setPublishedAt(update.getPublishedAt());
+            entity.setFetchedAt(LocalDateTime.now());
 
-        try {
-            if (!entitiesToSave.isEmpty()) {
-                log.info("[DiscoveryAgent] [runId={}] Saving {} raw updates to database...", runId, entitiesToSave.size());
-                rawIngestionRepository.saveAll(entitiesToSave);
-                log.info("[DiscoveryAgent] [runId={}] Saved {} raw updates successfully.", runId, entitiesToSave.size());
+            if (isDuplicate) {
+                entity.setProcessingStatus(RawIngestion.ProcessingStatus.DUPLICATE);
+                entity.setEventId(matchedEventId != null ? matchedEventId : UUID.randomUUID().toString());
+                log.debug("[DiscoveryAgent] Duplicate detected for title '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
+            } else {
+                entity.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
+                entity.setEventId(UUID.randomUUID().toString());
+                uniqueUpdates.add(entity);
+                log.info("[DiscoveryAgent] Unique article discovered: '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
             }
-        } catch (Exception e) {
-            log.error("[DiscoveryAgent] [runId={}] Failed to persist raw updates to database: {}", runId, e.getMessage(), e);
-            // We want to record this failure, but not crash the dry-run metrics output if possible
-            failuresMap.put("database-save", e.getMessage());
+
+            allIngested.add(entity);
         }
 
-        long elapsedTime = System.currentTimeMillis() - startTime;
-        int failureCount = failuresMap.size();
-        int successCount = totalSources - failureCount;
+        if (!allIngested.isEmpty()) {
+            rawIngestionRepository.saveAll(allIngested);
+        }
 
-        log.info("[DiscoveryAgent] [runId={}] Discovery run completed in {}ms. Success: {}/{}, Failures: {}", 
-                runId, elapsedTime, successCount, totalSources, failureCount);
+        log.info("[DiscoveryAgent] Ingestion Discovery finished. Total ingested: {}, Unique updates found: {}", 
+                allIngested.size(), uniqueUpdates.size());
 
-        return new DiscoveryResult(
-                runId,
-                new ArrayList<>(aggregatedUpdates),
-                totalSources,
-                successCount,
-                failureCount,
-                elapsedTime,
-                failuresMap
-        );
+        return uniqueUpdates;
+    }
+
+    private String cleanHtml(String html) {
+        if (html == null) {
+            return "";
+        }
+        Document doc = Jsoup.parse(html);
+        String text = doc.body() != null ? doc.body().wholeText() : doc.text();
+        text = text.replaceAll("\\r?\\n", "\n");
+        text = text.replaceAll("\\n{3,}", "\n\n");
+        text = text.replaceAll("[ \\t\\x0B\\f]+", " ");
+        return text.trim();
     }
 }

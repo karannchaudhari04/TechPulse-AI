@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techpulse.controller.PersonalizationController;
 import com.techpulse.model.TechnologyEvent;
 import com.techpulse.repository.*;
-import com.techpulse.personalization.service.PersonalizationService;
+import com.techpulse.agent.PersonalizationAgent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cache.CacheManager;
@@ -32,7 +32,7 @@ public class PersonalizationControllerTest {
     private UserFollowRepository userFollowRepository;
     private UserRepository userRepository;
     private InteractionLogRepository interactionLogRepository;
-    private PersonalizationService personalizationService;
+    private PersonalizationAgent personalizationAgent;
     private CacheManager cacheManager;
 
     @BeforeEach
@@ -45,7 +45,7 @@ public class PersonalizationControllerTest {
         userFollowRepository = mock(UserFollowRepository.class);
         userRepository = mock(UserRepository.class);
         interactionLogRepository = mock(InteractionLogRepository.class);
-        personalizationService = mock(PersonalizationService.class);
+        personalizationAgent = mock(PersonalizationAgent.class);
         cacheManager = mock(CacheManager.class);
         
         Cache mockCache = mock(Cache.class);
@@ -54,7 +54,7 @@ public class PersonalizationControllerTest {
         PersonalizationController controller = new PersonalizationController(
                 technologyEventRepository, userSavedEventRepository, userHistoryLogRepository,
                 userCollectionRepository, collectionEventRepository, userFollowRepository,
-                userRepository, interactionLogRepository, personalizationService, cacheManager
+                userRepository, interactionLogRepository, personalizationAgent, cacheManager
         );
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
@@ -66,7 +66,7 @@ public class PersonalizationControllerTest {
     @Test
     public void testGetFeeds() throws Exception {
         when(technologyEventRepository.findAll()).thenReturn(new ArrayList<>());
-        when(personalizationService.rankEvents(any(), any())).thenReturn(new ArrayList<>());
+        when(personalizationAgent.rankEvents(any(), any())).thenReturn(new ArrayList<>());
 
         mockMvc.perform(get("/api/v1/feed"))
                 .andExpect(status().isOk())

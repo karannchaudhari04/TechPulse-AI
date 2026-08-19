@@ -7,7 +7,7 @@ import com.techpulse.dto.CursorPageResponse;
 import com.techpulse.dto.PageResponse;
 import com.techpulse.model.*;
 import com.techpulse.repository.*;
-import com.techpulse.personalization.service.PersonalizationService;
+import com.techpulse.agent.PersonalizationAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
@@ -37,7 +37,7 @@ public class PersonalizationController {
     private final UserFollowRepository userFollowRepository;
     private final UserRepository userRepository;
     private final InteractionLogRepository interactionLogRepository;
-    private final PersonalizationService personalizationService;
+    private final PersonalizationAgent personalizationService;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
 
@@ -52,7 +52,7 @@ public class PersonalizationController {
                                      UserFollowRepository userFollowRepository,
                                      UserRepository userRepository,
                                      InteractionLogRepository interactionLogRepository,
-                                     PersonalizationService personalizationService,
+                                     PersonalizationAgent personalizationService,
                                      CacheManager cacheManager) {
         this.technologyEventRepository = technologyEventRepository;
         this.userSavedEventRepository = userSavedEventRepository;

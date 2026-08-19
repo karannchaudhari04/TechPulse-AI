@@ -1,7 +1,7 @@
 package com.techpulse.service;
 
-import com.techpulse.discovery.service.DiscoveryService;
-import com.techpulse.ai.service.AISynthesisService;
+import com.techpulse.agent.DiscoveryAgent;
+import com.techpulse.agent.AISynthesisAgent;
 import com.techpulse.model.RawIngestion;
 import com.techpulse.model.TechnologyEvent;
 import org.slf4j.Logger;
@@ -11,7 +11,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -22,8 +21,8 @@ public class NewsIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(NewsIngestionService.class);
 
-    private final DiscoveryService discoveryService;
-    private final AISynthesisService aiSynthesisService;
+    private final DiscoveryAgent discoveryAgent;
+    private final AISynthesisAgent aiSynthesisAgent;
     private final org.springframework.cache.CacheManager cacheManager;
     private final AtomicBoolean isIngesting = new AtomicBoolean(false);
 
@@ -33,11 +32,11 @@ public class NewsIngestionService {
     @Value("${app.news.ingestion.enabled:true}")
     private boolean ingestionEnabled;
 
-    public NewsIngestionService(DiscoveryService discoveryService,
-                                AISynthesisService aiSynthesisService,
+    public NewsIngestionService(DiscoveryAgent discoveryAgent,
+                                AISynthesisAgent aiSynthesisAgent,
                                 org.springframework.cache.CacheManager cacheManager) {
-        this.discoveryService = discoveryService;
-        this.aiSynthesisService = aiSynthesisService;
+        this.discoveryAgent = discoveryAgent;
+        this.aiSynthesisAgent = aiSynthesisAgent;
         this.cacheManager = cacheManager;
     }
 
@@ -70,19 +69,18 @@ public class NewsIngestionService {
             return;
         }
         try {
-            log.info("[NewsIngestion] Starting Discovery & Deduplication phase...");
-            List<RawIngestion> uniqueCandidates = discoveryService.discoverAndDeduplicate();
-            log.info("[NewsIngestion] Deduplication complete. Found {} unique updates to process with AI.", uniqueCandidates.size());
+            log.info("[NewsIngestion] Starting Discovery & Deduplication phase via DiscoveryAgent...");
+            List<RawIngestion> uniqueCandidates = discoveryAgent.discoverAndDeduplicate();
+            log.info("[NewsIngestion] Deduplication complete. Found {} unique updates to process with AISynthesisAgent.", uniqueCandidates.size());
 
             int savedCount = 0;
             for (RawIngestion candidate : uniqueCandidates) {
                 try {
                     // Call structured Gemini synthesis
-                    TechnologyEvent event = aiSynthesisService.synthesizeAndSave(candidate);
+                    TechnologyEvent event = aiSynthesisAgent.synthesizeAndSave(candidate);
                     if (event != null) {
                         savedCount++;
                     }
-                    // Throttling sleep between Gemini calls to protect quota
                     Thread.sleep(2000);
                 } catch (Exception e) {
                     log.error("[NewsIngestion] AI Synthesis failed for raw update ID '{}': {}", candidate.getId(), e.getMessage());

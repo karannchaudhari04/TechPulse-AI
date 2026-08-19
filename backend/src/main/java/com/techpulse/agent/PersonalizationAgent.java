@@ -1,4 +1,4 @@
-package com.techpulse.personalization.service;
+package com.techpulse.agent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,10 +7,12 @@ import com.techpulse.model.TechnologyEvent;
 import com.techpulse.model.UserHistoryLog;
 import com.techpulse.model.UserInterest;
 import com.techpulse.model.UserInterestId;
+import com.techpulse.model.User;
 import com.techpulse.repository.InteractionLogRepository;
 import com.techpulse.repository.TechnologyEventRepository;
 import com.techpulse.repository.UserHistoryLogRepository;
 import com.techpulse.repository.UserInterestRepository;
+import com.techpulse.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,38 +21,45 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
+/**
+ * Core Agent responsible for recording user interaction logs, managing personalization interest profiles,
+ * and performing deterministic feed ranking.
+ */
 @Service
-public class PersonalizationServiceImpl implements PersonalizationService {
+public class PersonalizationAgent {
 
-    private static final Logger log = LoggerFactory.getLogger(PersonalizationServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(PersonalizationAgent.class);
 
     private final UserInterestRepository userInterestRepository;
     private final UserHistoryLogRepository userHistoryLogRepository;
     private final TechnologyEventRepository technologyEventRepository;
     private final InteractionLogRepository interactionLogRepository;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
-    public PersonalizationServiceImpl(UserInterestRepository userInterestRepository,
-                                     UserHistoryLogRepository userHistoryLogRepository,
-                                     TechnologyEventRepository technologyEventRepository,
-                                     InteractionLogRepository interactionLogRepository) {
+    public PersonalizationAgent(UserInterestRepository userInterestRepository,
+                                UserHistoryLogRepository userHistoryLogRepository,
+                                TechnologyEventRepository technologyEventRepository,
+                                InteractionLogRepository interactionLogRepository,
+                                UserRepository userRepository) {
         this.userInterestRepository = userInterestRepository;
         this.userHistoryLogRepository = userHistoryLogRepository;
         this.technologyEventRepository = technologyEventRepository;
         this.interactionLogRepository = interactionLogRepository;
+        this.userRepository = userRepository;
         this.objectMapper = new ObjectMapper();
     }
 
-    @Override
     @Transactional
     public void recordInteraction(Long userId, String eventId, String type, String value) {
-        log.info("[PersonalizationService] Recording interaction: userId={}, eventId={}, type={}, value={}", 
+        log.info("[PersonalizationAgent] Recording interaction: userId={}, eventId={}, type={}, value={}", 
                 userId, eventId, type, value);
 
         Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(eventId);
         if (eventOpt.isEmpty()) {
-            log.warn("[PersonalizationService] Event not found for interaction: eventId={}", eventId);
+            log.warn("[PersonalizationAgent] Event not found for interaction: eventId={}", eventId);
             return;
         }
 
@@ -139,10 +148,8 @@ public class PersonalizationServiceImpl implements PersonalizationService {
                 try {
                     int val = Integer.parseInt(value);
                     if (val > 100) {
-                        // Likely duration in seconds
                         historyLog.setReadingDurationSec(val);
                     } else if (val >= 0) {
-                        // Likely completion percentage
                         historyLog.setCompletionPercentage(val);
                     }
                 } catch (NumberFormatException ignored) {}
@@ -152,7 +159,6 @@ public class PersonalizationServiceImpl implements PersonalizationService {
         }
     }
 
-    @Override
     public List<TechnologyEvent> rankEvents(Long userId, List<TechnologyEvent> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             return Collections.emptyList();
@@ -233,7 +239,6 @@ public class PersonalizationServiceImpl implements PersonalizationService {
         try {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception e) {
-            // Fallback: strip brackets and quotes if basic format
             String clean = json.replace("[", "").replace("]", "").replace("\"", "");
             if (clean.trim().isEmpty()) {
                 return Collections.emptyList();

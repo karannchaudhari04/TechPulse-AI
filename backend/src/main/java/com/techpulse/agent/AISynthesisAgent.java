@@ -1,237 +1,186 @@
 package com.techpulse.agent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.techpulse.agent.dto.*;
+import com.techpulse.agent.dto.AIRequest;
+import com.techpulse.agent.dto.AIResponse;
+import com.techpulse.agent.dto.StructuredEventResponseDTO;
+import com.techpulse.model.RawIngestion;
 import com.techpulse.model.TechnologyEvent;
+import com.techpulse.repository.CategoryRepository;
+import com.techpulse.repository.RawIngestionRepository;
 import com.techpulse.repository.TechnologyEventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.*;
 
 /**
- * Agent orchestrating LLM synthesis, strictly validating outputs, managing caching,
- * and maintaining TechnologyEvent DB states.
+ * Core Agent responsible for synthesizing unique tech updates using Gemini and structured JSON validation.
  */
 @Service
-public class AISynthesisAgent implements Agent<TechnologyEventDTO, SynthesizedTechnologyEventDTO> {
+public class AISynthesisAgent {
 
     private static final Logger log = LoggerFactory.getLogger(AISynthesisAgent.class);
 
+    private static final List<String> KNOWN_CATEGORIES = List.of(
+            "DSA & Problem Solving", "Web Development", "Mobile Development",
+            "AI & Machine Learning", "Cloud & DevOps", "System Design & Backend",
+            "Cybersecurity", "Data Science & Analytics", "Product & UI/UX",
+            "Open Source & GitHub", "Career & Placements", "Emerging Tech"
+    );
+
     private final AIClient aiClient;
-    private final PromptTemplateService promptTemplateService;
-    private final PromptContextFactory promptContextFactory;
-    private final PromptRenderer promptRenderer;
-    private final AIResponseParser aiResponseParser;
-    private final HallucinationValidator hallucinationValidator;
-    private final SummaryCache summaryCache;
-    private final AIMetricsCollector metricsCollector;
     private final TechnologyEventRepository technologyEventRepository;
+    private final RawIngestionRepository rawIngestionRepository;
     private final ObjectMapper objectMapper;
 
     @Value("${app.gemini.model:gemini-1.5-flash}")
     private String modelName;
 
-    @Value("${app.gemini.temperature:0.2}")
-    private double temperature;
-
-    @Value("${app.gemini.max-tokens:2048}")
-    private int maxTokens;
-
-    @Value("${app.gemini.prompt-version:PROMPT_V1}")
-    private String promptVersion;
-
     public AISynthesisAgent(AIClient aiClient,
-                            PromptTemplateService promptTemplateService,
-                            PromptContextFactory promptContextFactory,
-                            PromptRenderer promptRenderer,
-                            AIResponseParser aiResponseParser,
-                            HallucinationValidator hallucinationValidator,
-                            SummaryCache summaryCache,
-                            AIMetricsCollector metricsCollector,
-                            TechnologyEventRepository technologyEventRepository) {
+                            TechnologyEventRepository technologyEventRepository,
+                            RawIngestionRepository rawIngestionRepository) {
         this.aiClient = aiClient;
-        this.promptTemplateService = promptTemplateService;
-        this.promptContextFactory = promptContextFactory;
-        this.promptRenderer = promptRenderer;
-        this.aiResponseParser = aiResponseParser;
-        this.hallucinationValidator = hallucinationValidator;
-        this.summaryCache = summaryCache;
-        this.metricsCollector = metricsCollector;
         this.technologyEventRepository = technologyEventRepository;
+        this.rawIngestionRepository = rawIngestionRepository;
         this.objectMapper = new ObjectMapper();
     }
 
-    @Override
-    public SynthesizedTechnologyEventDTO process(TechnologyEventDTO input) {
-        TechnologyEvent event = input.getEvent();
+    @Transactional
+    public TechnologyEvent synthesizeAndSave(RawIngestion rawUpdate) {
+        log.info("[AISynthesisAgent] Processing raw update for AI synthesis: '{}' (Event ID: {})", 
+                rawUpdate.getTitle(), rawUpdate.getEventId());
 
-        String eventId = event.getId();
-        String kgHash = getMd5Hash(event.getEntitiesJson());
-        String timelineHash = getMd5Hash(event.getVersionString() + ":" + event.getLifecycleStatus());
-        String entitiesHash = getMd5Hash(event.getEntitiesJson());
-        String systemPrompt = promptTemplateService.getTemplate(promptVersion);
-        String sysPromptHash = getMd5Hash(systemPrompt);
-
-        String cacheKey = summaryCache.generateKey(eventId, kgHash, timelineHash, entitiesHash,
-                promptVersion, modelName, temperature, maxTokens, sysPromptHash);
-
-        SynthesizedTechnologyEventDTO cached = summaryCache.get(cacheKey);
-        if (cached != null) {
-            log.info("[AISynthesisAgent] Cache hit for eventId={}! Reusing summary.", eventId);
-            metricsCollector.recordCacheHit();
-            return cached;
-        }
-
-        log.info("[AISynthesisAgent] Cache miss for eventId={}. Building prompt and invoking AIClient...", eventId);
-
-        event.setSummaryStatus("GENERATING");
-        technologyEventRepository.save(event);
-
-        long startTime = System.currentTimeMillis();
-        String requestId = UUID.randomUUID().toString();
-
-        PromptContext context = promptContextFactory.createContext(event);
-        String userPrompt = promptRenderer.render(systemPrompt, context);
+        String prompt = buildStructuredPrompt(rawUpdate.getTitle(), rawUpdate.getRawContent());
 
         AIRequest request = AIRequest.builder()
                 .model(modelName)
-                .temperature(temperature)
-                .maxTokens(maxTokens)
-                .systemPrompt("")
-                .userPrompt(userPrompt)
+                .temperature(0.2)
+                .maxTokens(2048)
+                .systemPrompt("You are a professional technology analyst. Return strict JSON ONLY.")
+                .userPrompt(prompt)
                 .responseSchema("JSON")
-                .requestId(requestId)
+                .requestId(UUID.randomUUID().toString())
                 .build();
 
         AIResponse response;
         try {
             response = aiClient.generate(request);
         } catch (Exception e) {
-            log.error("[AISynthesisAgent] Provider invocation failed for eventId={}: {}", eventId, e.getMessage());
-            event.setSummaryStatus("FAILED");
-            technologyEventRepository.save(event);
-            metricsCollector.recordProviderError();
-            throw new RuntimeException("AI provider error: " + e.getMessage(), e);
+            log.error("[AISynthesisAgent] Failed to invoke Gemini for event ID '{}': {}", rawUpdate.getEventId(), e.getMessage());
+            rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
+            rawIngestionRepository.save(rawUpdate);
+            throw new RuntimeException("Gemini generation failed: " + e.getMessage(), e);
         }
 
-        long latency = System.currentTimeMillis() - startTime;
+        String jsonContent = response.getContent().trim();
+        if (jsonContent.startsWith("```")) {
+            jsonContent = jsonContent.replaceAll("^```[a-zA-Z]*\\s*", "");
+            jsonContent = jsonContent.replaceAll("\\s*```$", "");
+        }
+        jsonContent = jsonContent.trim();
 
-        SynthesizedTechnologyEventDTO synthesized;
+        StructuredEventResponseDTO dto;
         try {
-            synthesized = aiResponseParser.parse(response.getContent());
+            dto = objectMapper.readValue(jsonContent, StructuredEventResponseDTO.class);
         } catch (Exception e) {
-            log.error("[AISynthesisAgent] JSON validation failed for eventId={}: {}", eventId, e.getMessage());
-            event.setSummaryStatus("FAILED");
-            technologyEventRepository.save(event);
-            metricsCollector.recordValidationFailure();
-            throw new RuntimeException("AI output validation error: " + e.getMessage(), e);
+            log.error("[AISynthesisAgent] Failed to parse Gemini response JSON for event ID '{}': {}", rawUpdate.getEventId(), e.getMessage());
+            rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
+            rawIngestionRepository.save(rawUpdate);
+            throw new RuntimeException("Structured output parsing failed", e);
         }
 
+        // Validate Category
+        String categoryName = dto.getCategory();
+        if (categoryName == null || !KNOWN_CATEGORIES.contains(categoryName)) {
+            categoryName = "Emerging Tech";
+        }
+
+        TechnologyEvent event = TechnologyEvent.builder()
+                .id(rawUpdate.getEventId())
+                .title(dto.getTitle() != null && !dto.getTitle().isBlank() ? dto.getTitle() : rawUpdate.getTitle())
+                .summary(dto.getSummary())
+                .technicalImpact(dto.getTechnicalImpact())
+                .developerImpact(dto.getDeveloperImpact())
+                .enterpriseImpact(dto.getEnterpriseImpact())
+                .migrationNotes(dto.getMigrationNotes())
+                .breakingChanges(dto.getBreakingChanges())
+                .securityNotes(dto.getSecurityNotes())
+                .credibilityScore(dto.getCredibilityScore() != null ? dto.getCredibilityScore() : 80.0)
+                .importanceScore(dto.getImportanceScore() != null ? dto.getImportanceScore() : 70.0)
+                .versionString(dto.getVersionString())
+                .lifecycleStatus(dto.getLifecycleStatus())
+                .firstSeen(rawUpdate.getPublishedAt() != null ? rawUpdate.getPublishedAt() : LocalDateTime.now())
+                .lastUpdated(LocalDateTime.now())
+                .summaryStatus("READY")
+                .llmModel(modelName)
+                .promptTokens(response.getPromptTokens())
+                .completionTokens(response.getCompletionTokens())
+                .generationLatency((int) response.getLatency())
+                .summaryGeneratedAt(LocalDateTime.now())
+                .build();
+
         try {
-            hallucinationValidator.validate(input, synthesized);
+            event.setCategoriesJson(objectMapper.writeValueAsString(List.of(categoryName)));
+            event.setEntitiesJson(objectMapper.writeValueAsString(dto.getTopics() != null ? dto.getTopics() : Collections.emptyList()));
+            
+            List<String> links = dto.getOfficialLinks() != null && !dto.getOfficialLinks().isEmpty() 
+                    ? dto.getOfficialLinks() 
+                    : List.of(rawUpdate.getUrl());
+            event.setOfficialLinksJson(objectMapper.writeValueAsString(links));
         } catch (Exception e) {
-            log.error("[AISynthesisAgent] Hallucination check failed for eventId={}: {}", eventId, e.getMessage());
-            event.setSummaryStatus("FAILED");
-            technologyEventRepository.save(event);
-            metricsCollector.recordHallucinationFailure();
-            throw new RuntimeException("AI output validation error (Hallucination): " + e.getMessage(), e);
+            log.error("[AISynthesisAgent] Error serializing JSON list fields: {}", e.getMessage());
         }
-
-        double costUsd = response.getPromptTokens() * 0.000000075 + response.getCompletionTokens() * 0.0000003;
-        double costInr = costUsd * 83.50;
-
-        event.setSummary(synthesized.getSummary());
-        event.setTechnicalImpact(synthesized.getTechnicalImpact());
-        event.setDeveloperImpact(synthesized.getDeveloperImpact());
-        event.setEnterpriseImpact(synthesized.getEnterpriseImpact());
-        event.setMigrationNotes(synthesized.getMigrationNotes());
-        event.setBreakingChanges(synthesized.getBreakingChanges());
-        event.setSecurityNotes(synthesized.getSecurityNotes());
-        try {
-            event.setOfficialLinksJson(objectMapper.writeValueAsString(synthesized.getOfficialLinks()));
-        } catch (Exception ignored) {}
-        event.setLlmModel(modelName);
-        event.setPromptVersion(promptVersion);
-        event.setResponseSchemaVersion("v1");
-        event.setSummaryStatus("READY");
-        event.setPromptTokens(response.getPromptTokens());
-        event.setCompletionTokens(response.getCompletionTokens());
-        event.setEstimatedCostUsd(costUsd);
-        event.setEstimatedCostInr(costInr);
-        event.setGenerationLatency((int) latency);
-        event.setSummaryGeneratedAt(LocalDateTime.now());
 
         technologyEventRepository.save(event);
 
-        SynthesizedTechnologyEventDTO result = SynthesizedTechnologyEventDTO.builder()
-                .headline(synthesized.getHeadline())
-                .summary(synthesized.getSummary())
-                .technicalImpact(synthesized.getTechnicalImpact())
-                .developerImpact(synthesized.getDeveloperImpact())
-                .enterpriseImpact(synthesized.getEnterpriseImpact())
-                .migrationNotes(synthesized.getMigrationNotes())
-                .breakingChanges(synthesized.getBreakingChanges())
-                .securityNotes(synthesized.getSecurityNotes())
-                .officialLinks(synthesized.getOfficialLinks())
-                .keyTakeaways(synthesized.getKeyTakeaways())
-                .recommendedActions(synthesized.getRecommendedActions())
-                .confidenceExplanation(synthesized.getConfidenceExplanation())
-                .generatedAt(event.getSummaryGeneratedAt())
-                .promptVersion(promptVersion)
-                .modelName(modelName)
-                .promptTokens(response.getPromptTokens())
-                .completionTokens(response.getCompletionTokens())
-                .latency(latency)
-                .estimatedCostUsd(costUsd)
-                .estimatedCostInr(costInr)
-                .status("READY")
-                .build();
+        // Mark raw ingestion as processed
+        rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.PROCESSED);
+        rawIngestionRepository.save(rawUpdate);
 
-        summaryCache.put(cacheKey, result);
-        metricsCollector.recordRequest(response.getPromptTokens(), response.getCompletionTokens(), latency, costUsd, synthesized.getSummary().length());
-
-        return result;
+        log.info("[AISynthesisAgent] Successfully synthesized and saved TechnologyEvent ID: {}", event.getId());
+        return event;
     }
 
-    public SynthesizedTechnologyEventDTO generateWithoutPersistence(TechnologyEventDTO input) {
-        String systemPrompt = promptTemplateService.getTemplate(promptVersion);
-        PromptContext context = promptContextFactory.createContext(input.getEvent());
-        String userPrompt = promptRenderer.render(systemPrompt, context);
-
-        AIRequest request = AIRequest.builder()
-                .model(modelName)
-                .temperature(temperature)
-                .maxTokens(maxTokens)
-                .systemPrompt("")
-                .userPrompt(userPrompt)
-                .responseSchema("JSON")
-                .requestId(UUID.randomUUID().toString())
-                .build();
-
-        AIResponse response = aiClient.generate(request);
-        SynthesizedTechnologyEventDTO synthesized = aiResponseParser.parse(response.getContent());
-        hallucinationValidator.validate(input, synthesized);
-        return synthesized;
-    }
-
-    private String getMd5Hash(String text) {
-        if (text == null) return "";
-        try {
-            MessageDigest digest = MessageDigest.getInstance("MD5");
-            byte[] bytes = digest.digest(text.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return String.valueOf(text.hashCode());
-        }
+    private String buildStructuredPrompt(String title, String content) {
+        String categoriesStr = String.join(", ", KNOWN_CATEGORIES);
+        return """
+                You are a senior technology analyst. Synthesize this raw technology update into a structured, developer-oriented news event.
+                
+                RAW TITLE: %s
+                RAW CONTENT: %s
+                
+                Select exactly one category from these options:
+                - %s
+                
+                Extract 3-5 specific topics/tags (e.g. "React", "LLM", "Docker").
+                Evaluate overall importanceScore (0.0 to 100.0) and credibilityScore (0.0 to 100.0) based on source strength and technical impact.
+                Extract versionString (e.g., "19.0.0" or null if not applicable) and lifecycleStatus (e.g., "RELEASED", "BETA", "GA", or null).
+                For impacts (technicalImpact, developerImpact, enterpriseImpact), write 1-2 concise, high-value sentences explaining what developers and businesses need to know.
+                Write migrationNotes, breakingChanges, and securityNotes if mentioned, otherwise write "Not confirmed."
+                
+                Return STRICT JSON matching the following schema. Wrap output in a JSON object only. Do not add markdown or backticks.
+                {
+                  "title": "string (non-clickbait, technically meaningful headline)",
+                  "summary": "string (a bulleted or clear summary explaining what happened, what changed, and why it matters)",
+                  "category": "string (must match one of the listed categories exactly)",
+                  "topics": ["string"],
+                  "importanceScore": number,
+                  "credibilityScore": number,
+                  "versionString": "string or null",
+                  "lifecycleStatus": "string or null",
+                  "technicalImpact": "string",
+                  "developerImpact": "string",
+                  "enterpriseImpact": "string",
+                  "migrationNotes": "string",
+                  "breakingChanges": "string",
+                  "securityNotes": "string",
+                  "officialLinks": ["string"]
+                }
+                """.formatted(title, content.substring(0, Math.min(content.length(), 3500)), categoriesStr);
     }
 }

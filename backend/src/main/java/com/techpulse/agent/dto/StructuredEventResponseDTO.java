@@ -1,4 +1,4 @@
-package com.techpulse.ai.dto;
+package com.techpulse.agent.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
