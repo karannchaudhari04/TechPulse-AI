@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "626642842714",
+    "project_id": "techbite-2ad11",
+    "storage_bucket": "techbite-2ad11.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626642842714:android:311ca357cd86e60b21d463",
+        "android_client_info": {
+          "package_name": "com.techbite.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "626642842714-9ilvga479pkd96fh634e5j7frdpoc7d3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.techbite.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "626642842714-bd3jbfttms1mrs5d1ckk1louv0ak3fpa.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.techbite.app",
+            "certificate_hash": "48ca32eb1965c0bd4da51c02bb0544b3ff71d45a"
+          }
+        },
+        {
+          "client_id": "626642842714-5366htochl4i04vfbffocd8joogi35fn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvcofc9HhZnh4JA5bw0BTT92iHmmj0Nxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "626642842714-5366htochl4i04vfbffocd8joogi35fn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "626642842714-kupjaq7lgenrd1p5tkvfgoq6qifee6qa.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.techbite.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
