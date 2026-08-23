@@ -18,6 +18,8 @@ import com.techpulse.repository.CategoryRepository;
 import com.techpulse.model.Category;
 import org.springframework.beans.factory.annotation.Value;
 import com.techpulse.service.NewsIngestionService;
+import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +36,35 @@ public class TechPulseApplication {
     private static final Logger log = LoggerFactory.getLogger(TechPulseApplication.class);
 
     public static void main(String[] args) {
+        loadDotEnv();
         SpringApplication.run(TechPulseApplication.class, args);
+    }
+
+    private static void loadDotEnv() {
+        try {
+            File envFile = new File(".env");
+            if (envFile.exists()) {
+                Files.lines(envFile.toPath())
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                        .forEach(line -> {
+                            String[] parts = line.split("=", 2);
+                            if (parts.length == 2) {
+                                String key = parts[0].trim();
+                                String value = parts[1].trim();
+                                if (value.startsWith("\"") && value.endsWith("\"")) {
+                                    value = value.substring(1, value.length() - 1);
+                                } else if (value.startsWith("'") && value.endsWith("'")) {
+                                    value = value.substring(1, value.length() - 1);
+                                }
+                                System.setProperty(key, value);
+                            }
+                        });
+                System.out.println(">>> [System] Loaded environment variables from local .env file.");
+            }
+        } catch (Exception e) {
+            System.err.println(">>> [System] Failed to load .env file programmatically: " + e.getMessage());
+        }
     }
 
     @Bean
@@ -225,8 +255,9 @@ public class TechPulseApplication {
 
     @Bean
     public CommandLineRunner triggerIngestionOnStartup(NewsIngestionService newsIngestionService,
-                                                       @Value("${app.news.ingestion.run-on-startup:false}") boolean runOnStartup) {
+                                                       @Value("${RUN_INGESTION_ON_STARTUP:false}") boolean runOnStartup) {
         return args -> {
+            log.info("[TechPulseApplication] Ingestion on startup checker: runOnStartup={}", runOnStartup);
             if (runOnStartup) {
                 log.info("[TechPulseApplication] Ingestion on startup is enabled. Triggering ingestion pipeline...");
                 newsIngestionService.ingestAllFeeds();
