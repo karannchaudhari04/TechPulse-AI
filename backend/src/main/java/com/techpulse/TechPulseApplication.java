@@ -16,6 +16,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import com.techpulse.repository.CategoryRepository;
 import com.techpulse.model.Category;
+import org.springframework.beans.factory.annotation.Value;
+import com.techpulse.service.NewsIngestionService;
 import java.util.List;
 import java.util.Map;
 
@@ -217,6 +219,17 @@ public class TechPulseApplication {
                 // In production, if another instance already seeded, this might fail with a unique constraint.
                 // We catch it and ignore it so the app continues to start normally.
                 log.info(">>> [System] Seeding skipped (Data likely already present or seeded by another instance)");
+            }
+        };
+    }
+
+    @Bean
+    public CommandLineRunner triggerIngestionOnStartup(NewsIngestionService newsIngestionService,
+                                                       @Value("${app.news.ingestion.run-on-startup:false}") boolean runOnStartup) {
+        return args -> {
+            if (runOnStartup) {
+                log.info("[TechPulseApplication] Ingestion on startup is enabled. Triggering ingestion pipeline...");
+                newsIngestionService.ingestAllFeeds();
             }
         };
     }
