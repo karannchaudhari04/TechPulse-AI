@@ -18,10 +18,10 @@ This log documents code areas requiring eventual cleanup, deprecation, or refact
 
 ---
 
-## 3. Legacy Welcome & Onboarding Screens (`src/screens/`)
-- **Description**: The screens `WelcomeScreen.tsx`, `OnboardingIntroScreen.tsx`, and `InterestsSelectionScreen.tsx` are still present in `src/screens/` but are no longer used by the new `RootNavigator` (which uses `LoginScreen.tsx` and `CompleteProfileScreen.tsx` instead).
-- **Debt Impact**: Low (dead code).
-- **Remediation**: Safely delete these three files in a later cleanup pass.
+## 3. Legacy Welcome & Onboarding Screens (`src/screens/`) [RESOLVED]
+- **Description**: The unused screens `WelcomeScreen.tsx`, `OnboardingIntroScreen.tsx`, `InterestsSelectionScreen.tsx`, and `BootstrapScreen.tsx` have been permanently removed. Navigation is fully managed by `RootNavigator`, `LoginScreen.tsx`, and `CompleteProfileScreen.tsx`.
+- **Debt Impact**: None (deleted).
+- **Status**: Completed / Removed.
 
 ---
 

@@ -22,17 +22,12 @@ Engineered as a **production-ready distributed system**, TechPulse AI is capable
 
 ## 🏗️ Multi-Agent Architecture
 
-The platform uses a pipeline of specialized, modular agent components:
+The platform is powered by a high-throughput autonomous multi-agent pipeline and on-demand conversational intelligence:
 
-1. **Discovery Agent**: Aggregates technology updates from RSS feeds and online sources.
-2. **Content Cleaning Agent**: Sanitizes and normalizes raw content using JSoup.
-3. **Classification Agent**: Categorizes updates deterministically into core domains (AI, Web Dev, Mobile, Cloud, Security, etc.).
-4. **Duplicate Detection Agent**: Filters out overlapping stories using Jaro-Winkler title similarity and URL normalization.
-5. **Credibility Judge Agent**: Assesses source trustworthiness using a rule-based tier list.
-6. **Importance Ranking Agent**: Calculates significance scores taking source tiers, duplicate counts, and time decay into account.
-7. **Summarization Agent**: Uses Google Gemini to generate clean, high-yield summaries.
-8. **Explain Agent**: Generates beginner-friendly explanations on demand.
-9. **Recommendation Agent**: Personalizes user feeds based on category preferences and reading history.
+1. **Discovery Agent**: Concurrently crawls and ingests technology updates across active RSS sources, sanitizes HTML via JSoup, normalizes URLs (removing tracking parameters), and executes layered deduplication using Jaro-Winkler title similarity and SHA-256 content hashing.
+2. **AI Synthesis Agent**: Processes unique updates via Google Gemini / Spring AI to produce structured JSON intelligence—generating technical/developer/enterprise impact analyses, version extractions, official taxonomy categorization, and credibility/importance evaluations.
+3. **Personalization Agent**: Tracks granular user interaction signals (likes, bookmarks, shares, read durations), models category and entity interest weights with temporal decay, and performs deterministic multi-factor feed ranking.
+4. **AI Assistant & Intelligence Services**: Powers on-demand conversational Q&A, deep-dive technology comparisons, and technical briefs via Gemini with contextual citations.
 
 ---
 
