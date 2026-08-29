@@ -97,7 +97,7 @@ export default function EventDetailScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, { padding: spacing.md }]}>
         <View style={styles.tagsRow}>
           <Tag label={event.category} type="primary" />
-          {event.technologies.map(tech => (
+          {(event.technologies || []).map(tech => (
             <Tag key={tech} label={tech} type="info" />
           ))}
         </View>

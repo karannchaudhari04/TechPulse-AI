@@ -648,6 +648,7 @@ public class PersonalizationController {
 
         List<String> entities = parseJsonList(event.getEntitiesJson());
         map.put("technology", entities.isEmpty() ? "General" : entities.get(0));
+        map.put("technologies", entities);
 
         map.put("version", event.getVersionString());
         map.put("releaseStatus", event.getLifecycleStatus());
