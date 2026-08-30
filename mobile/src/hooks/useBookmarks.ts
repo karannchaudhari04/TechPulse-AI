@@ -42,11 +42,11 @@ export const useBookmarks = () => {
       await queryClient.cancelQueries({ queryKey: ['bookmarks'] });
       const previous = queryClient.getQueryData<PageResponse<Bite>>(['bookmarks']);
 
-      queryClient.setQueryData<PageResponse<Bite>>(['bookmarks'], (old) => {
+      queryClient.setQueryData<PageResponse<Bite>>(['bookmarks'], (old: PageResponse<Bite> | undefined) => {
         if (!old) return { content: [bite], totalPages: 1, totalElements: 1, number: 0, size: 100, empty: false };
-        const isBookmarked = old.content.some(b => b.id === bite.id);
+        const isBookmarked = old.content.some((b: Bite) => b.id === bite.id);
         const newContent = isBookmarked
-          ? old.content.filter(b => b.id !== bite.id)
+          ? old.content.filter((b: Bite) => b.id !== bite.id)
           : [bite, ...old.content];
         return { ...old, content: newContent, totalElements: newContent.length };
       });

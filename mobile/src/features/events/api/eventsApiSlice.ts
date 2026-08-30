@@ -39,6 +39,7 @@ export interface FollowPayload {
  * user bookmarks, and technology follow actions.
  */
 export const eventsApiSlice = apiSlice.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getEvents: builder.query<FeedItem[], { category?: string }>({
       query: (params) => ({

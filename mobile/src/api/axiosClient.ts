@@ -1,11 +1,6 @@
 import axios from 'axios';
+import { API_URL } from '../config/env';
 import { auth } from '../utils/firebase';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.38:8080/api/v1';
-
-if (!process.env.EXPO_PUBLIC_API_URL) {
-  console.warn('[API] Warning: EXPO_PUBLIC_API_URL is not defined. Falling back to local development URL.');
-}
 
 /**
  * Standard UUID generator for correlation tracking in React Native (avoids crypto polyfill errors).

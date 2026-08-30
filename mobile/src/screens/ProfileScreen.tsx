@@ -22,6 +22,7 @@ import Animated, {
   Easing
 } from 'react-native-reanimated';
 import { useTheme } from '../utils/theme';
+import { ENV } from '../config/env';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
@@ -108,8 +109,8 @@ export default function ProfileScreen({ navigation }: any) {
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '',
+      webClientId: ENV.GOOGLE.WEB_CLIENT_ID,
+      iosClientId: ENV.GOOGLE.IOS_CLIENT_ID,
     });
 
     const getToken = async () => {

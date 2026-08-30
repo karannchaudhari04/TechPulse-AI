@@ -1,13 +1,9 @@
 // Lightweight fetch-based API client.
 // TanStack Query manages caching/retries on top of this.
 
+import { API_URL } from '../config/env';
 import { auth } from '../utils/firebase';
 import { networkTracker } from '../utils/network';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.38:8080/api/v1';
-if (!process.env.EXPO_PUBLIC_API_URL) {
-  console.warn('[API] Warning: EXPO_PUBLIC_API_URL is not defined. Falling back to local development URL.');
-}
 
 /** Gets the current user's Firebase ID token, or null if not signed in. */
 async function getAuthToken(): Promise<string | null> {

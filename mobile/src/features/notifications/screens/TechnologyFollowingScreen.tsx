@@ -8,7 +8,7 @@ import Card from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import { 
   useGetFollowedTechnologiesQuery, 
-  useFollowTechnologyMutation, 
+  useFollowTechnologyTagMutation, 
   useUnfollowTechnologyMutation 
 } from '../api/recommendationApiSlice';
 import { useNotificationAnalytics } from '../hooks/useNotificationAnalytics';
@@ -24,7 +24,7 @@ export default function TechnologyFollowingScreen() {
 
   const [newTech, setNewTech] = useState('');
   const { data: followedTechs, isLoading, refetch } = useGetFollowedTechnologiesQuery();
-  const [followTech] = useFollowTechnologyMutation();
+  const [followTech] = useFollowTechnologyTagMutation();
   const [unfollowTech] = useUnfollowTechnologyMutation();
 
   const handleFollow = async () => {

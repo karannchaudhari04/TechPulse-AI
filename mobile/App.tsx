@@ -37,12 +37,13 @@ const asyncStoragePersister = createAsyncStoragePersister({
 import { OfflineQueueService } from './src/features/personalization/services/OfflineQueueService';
 import { PushNotificationService } from './src/features/notifications/services/PushNotificationService';
 import { NotificationSyncService } from './src/features/notifications/services/NotificationSyncService';
+import { ENV } from './src/config/env';
 
 export default function App() {
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      webClientId: ENV.GOOGLE.WEB_CLIENT_ID,
+      iosClientId: ENV.GOOGLE.IOS_CLIENT_ID,
       offlineAccess: true,
     });
 

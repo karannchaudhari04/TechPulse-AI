@@ -42,7 +42,7 @@ export const recommendationApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ['FollowedTechnology'],
     }),
-    followTechnology: builder.mutation<void, { name: string }>({
+    followTechnologyTag: builder.mutation<void, { name: string }>({
       query: (payload) => ({
         url: '/technologies/follow',
         method: 'POST',
@@ -64,6 +64,6 @@ export const {
   useGetRecommendationsQuery,
   useGetRecommendationExplanationsQuery,
   useGetFollowedTechnologiesQuery,
-  useFollowTechnologyMutation,
+  useFollowTechnologyTagMutation,
   useUnfollowTechnologyMutation,
 } = recommendationApiSlice;
