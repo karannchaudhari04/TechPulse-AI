@@ -73,7 +73,7 @@ public class DiscoveryAgentTest {
                 .thenReturn(List.of(update1, update2));
 
         // Stub database candidates: empty (no prior history)
-        when(rawIngestionRepository.findRecentRawIngestions(any())).thenReturn(new ArrayList<>());
+        when(rawIngestionRepository.findRecentCandidateProjections(any())).thenReturn(new ArrayList<>());
         
         // Mock DB lookups
         when(rawIngestionRepository.findByUrlHash(anyString())).thenReturn(Optional.empty());
@@ -114,7 +114,7 @@ public class DiscoveryAgentTest {
         when(mockCollector.collect(any(), eq("Source 1"), eq("http://source1.com/rss")))
                 .thenReturn(List.of(update));
 
-        when(rawIngestionRepository.findRecentRawIngestions(any())).thenReturn(new ArrayList<>());
+        when(rawIngestionRepository.findRecentCandidateProjections(any())).thenReturn(new ArrayList<>());
         when(rawIngestionRepository.findByUrlHash(anyString())).thenReturn(Optional.empty());
 
         // Simulate title fingerprint hash match in DB

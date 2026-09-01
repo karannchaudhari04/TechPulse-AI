@@ -88,7 +88,7 @@ public class DiscoveryAgent {
         log.info("[DiscoveryAgent] Fetched {} total candidate updates", rawUpdates.size());
 
         LocalDateTime since = LocalDateTime.now().minusDays(7);
-        List<RawIngestion> dbCandidates = rawIngestionRepository.findRecentRawIngestions(since);
+        List<RawIngestionRepository.CandidateProjection> dbCandidates = rawIngestionRepository.findRecentCandidateProjections(since);
 
         List<RawIngestion> uniqueUpdates = new ArrayList<>();
         List<RawIngestion> allIngested = new ArrayList<>();
@@ -152,7 +152,7 @@ public class DiscoveryAgent {
             // Layer 4: Jaro-Winkler Similarity with Token-Overlap check against last 7 days candidates
             if (!isDuplicate) {
                 LocalDateTime publishedTime = update.getPublishedAt() != null ? update.getPublishedAt() : LocalDateTime.now();
-                for (RawIngestion cand : dbCandidates) {
+                for (RawIngestionRepository.CandidateProjection cand : dbCandidates) {
                     LocalDateTime candPubAt = cand.getPublishedAt() != null ? cand.getPublishedAt() : cand.getFetchedAt();
                     long hourDiff = Math.abs(Duration.between(publishedTime, candPubAt).toHours());
                     if (hourDiff <= 48) {

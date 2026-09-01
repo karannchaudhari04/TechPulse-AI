@@ -34,13 +34,19 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8080
 
 # Tuned for Render Free Tier (512MB RAM):
-# -Xmx256m  = max heap 256MB
-# -Xms128m  = initial heap
-# -XX:+UseSerialGC = lightweight GC for low-memory single-core containers
-# -Xss256k  = reduce thread stack size to 256KB to save memory under thread concurrency
+# -Xmx192m                  = max heap 192MB (leaves 320MB for metaspace, threads, native)
+# -Xms96m                   = initial heap 96MB
+# -XX:MaxMetaspaceSize=128m = prevent unbounded classloader metaspace growth
+# -XX:ReservedCodeCacheSize=48m = cap JIT code cache
+# -XX:+UseSerialGC          = lightweight single-thread GC with minimal memory metadata
+# -Xss256k                  = reduce thread stack size to 256KB to save memory per thread
+# -XX:+ExitOnOutOfMemoryError
 ENTRYPOINT ["java", \
-  "-Xmx256m", "-Xms128m", \
+  "-Xmx192m", "-Xms96m", \
+  "-XX:MaxMetaspaceSize=128m", \
+  "-XX:ReservedCodeCacheSize=48m", \
   "-XX:+UseSerialGC", \
   "-Xss256k", \
+  "-XX:+ExitOnOutOfMemoryError", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]

@@ -29,7 +29,24 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     int pruneOldProcessed(@Param("cutoff") LocalDateTime cutoff);
 
     /**
-     * Finds recent raw ingestion entries for deduplication mapping.
+     * Memory-efficient Spring Data JPA projection for candidate deduplication.
+     * Avoids hydrating large LONGTEXT rawContent columns into the Hibernate 1st-level cache.
+     */
+    public interface CandidateProjection {
+        String getTitle();
+        LocalDateTime getPublishedAt();
+        LocalDateTime getFetchedAt();
+        String getEventId();
+    }
+
+    /**
+     * Finds recent raw ingestion entries for deduplication mapping using lightweight projection.
+     */
+    @Query("SELECT r.title AS title, r.publishedAt AS publishedAt, r.fetchedAt AS fetchedAt, r.eventId AS eventId FROM RawIngestion r WHERE r.fetchedAt >= :since")
+    List<CandidateProjection> findRecentCandidateProjections(@Param("since") LocalDateTime since);
+
+    /**
+     * Legacy full-entity query kept for test backward-compatibility.
      */
     @Query("SELECT r FROM RawIngestion r WHERE r.fetchedAt >= :since")
     List<RawIngestion> findRecentRawIngestions(@Param("since") LocalDateTime since);
