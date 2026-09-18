@@ -44,15 +44,30 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/bite/**", "/.well-known/assetlinks.json").permitAll()
                 // Public bite feed
                 .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/{id}", "/api/v1/bites/explain").permitAll()
-                // Public events feed
-                .requestMatchers("/api/v1/feed", "/api/v1/feed/trending", "/api/v1/search", "/api/v1/event/*/related", "/api/v1/events").permitAll()
+                // Public events feed, trends, categories, intelligence, and assistant
+                .requestMatchers(
+                    "/api/v1/feed",
+                    "/api/v1/feed/trending",
+                    "/api/v1/trends",
+                    "/api/v1/search",
+                    "/api/v1/events",
+                    "/api/v1/events/**",
+                    "/api/v1/event/**",
+                    "/api/v1/categories",
+                    "/api/v1/categories/**",
+                    "/api/v1/intelligence/**",
+                    "/api/v1/assistant/**"
+                ).permitAll()
                 // Permit register-or-login for initial handshake
                 .requestMatchers("/api/v1/users/register-or-login").permitAll()
                 // Strictly lock admin ingestion and bite management
                 .requestMatchers("/api/v1/bites/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
-                // Strictly protect preferences and bookmarks
+                // Strictly protect personalized feeds, preferences, notifications, bookmarks, and user library
+                .requestMatchers("/api/v1/feed/recommended").authenticated()
                 .requestMatchers("/api/v1/users/**").authenticated()
+                .requestMatchers("/api/v1/user/**").authenticated()
                 .requestMatchers("/api/v1/bookmarks/**").authenticated()
+                .requestMatchers("/api/v1/notifications/**").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)

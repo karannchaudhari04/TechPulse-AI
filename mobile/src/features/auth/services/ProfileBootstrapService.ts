@@ -25,6 +25,7 @@ export const ProfileBootstrapService = {
       // 1. Sync Firebase credentials with the Spring Boot backend
       await store.dispatch(
         authApiSlice.endpoints.registerOrLogin.initiate({
+          uid: user.uid,
           email: user.email || '',
           displayName: user.displayName || 'Tech Explorer',
           photoUrl: user.photoURL || '',
@@ -45,7 +46,7 @@ export const ProfileBootstrapService = {
           preferences: profileResponse.preferences || [],
           followedTechnologies: profileResponse.followedTechnologies || [],
           emailVerified: user.emailVerified,
-          isOnboarded: profileResponse.isOnboarded,
+          isOnboarded: profileResponse.isOnboarded ?? false,
         })
       );
 

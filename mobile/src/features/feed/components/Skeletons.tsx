@@ -19,8 +19,6 @@ export function HeaderSkeleton() {
         </View>
         <Shimmer width={36} height={36} borderRadius={18} />
       </View>
-      <Shimmer width={220} height={14} style={{ marginTop: spacing.xs }} />
-      <Shimmer width="100%" height={44} borderRadius={8} style={{ marginTop: spacing.sm }} />
     </View>
   );
 }

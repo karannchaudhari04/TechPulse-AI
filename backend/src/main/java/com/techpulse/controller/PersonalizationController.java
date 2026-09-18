@@ -131,7 +131,16 @@ public class PersonalizationController {
 
     @GetMapping("/feed/recommended")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRecommendedFeed() {
-        Long userId = getRequiredUserId();
+        Long userId = getOptionalUserId();
+        if (userId == null) {
+            List<TechnologyEvent> events = getCachedPersonalizedFeed(null);
+            List<Map<String, Object>> response = events.stream()
+                    .limit(10)
+                    .map(event -> mapToFeedItem(event, null))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.success(response, "Recommended feed fetched successfully."));
+        }
+
         List<TechnologyEvent> events = getCachedPersonalizedFeed(userId);
 
         // Filter out read events
@@ -548,31 +557,34 @@ public class PersonalizationController {
             Cache cache = cacheManager.getCache("personalizedFeed");
             if (cache != null) {
                 Cache.ValueWrapper wrapper = cache.get(cacheKey);
-                if (wrapper != null && wrapper.get() instanceof List) {
-                    return (List<TechnologyEvent>) wrapper.get();
+                if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
+                    if (rawList.isEmpty() || rawList.get(0) instanceof TechnologyEvent) {
+                        return (List<TechnologyEvent>) rawList;
+                    }
                 }
             }
         } catch (Exception e) {
-            log.error("[PersonalizationController] Redis cache read failed: {}. Falling back to database.", e.getMessage());
+            log.warn("[PersonalizationController] Cache read fallback: {}", e.getMessage());
         }
 
         // Single-flight synchronization to protect against cache stampede
         Object lock = feedLocks.computeIfAbsent(cacheKey, k -> new Object());
         synchronized (lock) {
-            // Double check
             try {
                 Cache cache = cacheManager.getCache("personalizedFeed");
                 if (cache != null) {
                     Cache.ValueWrapper wrapper = cache.get(cacheKey);
-                    if (wrapper != null && wrapper.get() instanceof List) {
-                        return (List<TechnologyEvent>) wrapper.get();
+                    if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
+                        if (rawList.isEmpty() || rawList.get(0) instanceof TechnologyEvent) {
+                            return (List<TechnologyEvent>) rawList;
+                        }
                     }
                 }
             } catch (Exception e) {
                 // Ignore, fallback to DB
             }
 
-            log.info("[PersonalizationController] Cache miss for personalized feed: {}. Fetching & ranking from database...", cacheKey);
+            log.info("[PersonalizationController] Fetching & ranking feed for key: {}", cacheKey);
             List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFirstSeenDesc();
             List<TechnologyEvent> ranked = personalizationService.rankEvents(userId, candidates);
 
@@ -582,7 +594,7 @@ public class PersonalizationController {
                     cache.put(cacheKey, ranked);
                 }
             } catch (Exception e) {
-                log.error("[PersonalizationController] Redis cache write failed: {}", e.getMessage());
+                log.warn("[PersonalizationController] Cache write warning: {}", e.getMessage());
             }
             return ranked;
         }
@@ -598,7 +610,7 @@ public class PersonalizationController {
                 cache.evict("guest");
             }
         } catch (Exception e) {
-            log.error("[PersonalizationController] Redis cache eviction failed: {}", e.getMessage());
+            log.warn("[PersonalizationController] Cache eviction warning: {}", e.getMessage());
         }
     }
 
@@ -606,16 +618,18 @@ public class PersonalizationController {
         if (category == null || category.trim().isEmpty() || "all".equalsIgnoreCase(category.trim())) {
             return true;
         }
+        String trimmed = category.trim().toLowerCase();
         List<String> list = parseJsonList(event.getCategoriesJson());
-        return list.stream().anyMatch(c -> c.equalsIgnoreCase(category.trim()));
+        return list.stream().anyMatch(c -> c.trim().equalsIgnoreCase(trimmed) || c.toLowerCase().contains(trimmed) || trimmed.contains(c.toLowerCase()));
     }
 
     private boolean filterByTech(TechnologyEvent event, String tech) {
         if (tech == null || tech.trim().isEmpty() || "all".equalsIgnoreCase(tech.trim())) {
             return true;
         }
+        String trimmed = tech.trim().toLowerCase();
         List<String> list = parseJsonList(event.getEntitiesJson());
-        return list.stream().anyMatch(t -> t.equalsIgnoreCase(tech.trim()));
+        return list.stream().anyMatch(t -> t.trim().equalsIgnoreCase(trimmed) || t.toLowerCase().contains(trimmed) || trimmed.contains(t.toLowerCase()));
     }
 
     private Map<String, Object> mapToFeedItem(TechnologyEvent event, Long userId) {
@@ -689,13 +703,13 @@ public class PersonalizationController {
 
     private Long getRequiredUserId() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) throw new RuntimeException("Not authenticated");
+        if (auth == null || !auth.isAuthenticated()) throw new RuntimeException("Not authenticated");
         Object principal = auth.getPrincipal();
         if (principal instanceof User user) return user.getId();
-        if (principal instanceof String uid) {
+        if (principal instanceof String uid && !uid.equals("anonymousUser")) {
             return userRepository.findByFirebaseUid(uid)
-                    .orElseThrow(() -> new RuntimeException("User not found"))
-                    .getId();
+                    .map(User::getId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
         }
         throw new RuntimeException("Not authenticated");
     }

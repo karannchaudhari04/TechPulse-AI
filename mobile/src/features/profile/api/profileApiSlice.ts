@@ -5,10 +5,12 @@ export interface UserProfileResponse {
   email: string;
   displayName: string;
   photoUrl: string | null;
-  roles: string[];
-  preferences: string[];
-  followedTechnologies: string[];
+  roles?: string[];
+  role?: string;
+  preferences?: string[];
+  followedTechnologies?: string[];
   isOnboarded: boolean;
+  savedBitesCount?: number;
 }
 
 export interface UpdateProfilePayload {

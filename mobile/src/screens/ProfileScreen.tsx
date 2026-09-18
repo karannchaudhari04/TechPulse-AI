@@ -6,7 +6,7 @@ import { signOut } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../utils/firebase';
 import { userApi } from '../api/user';
-import { useGetProfileQuery } from '../features/auth/api/authApiSlice';
+import { useGetProfileQuery } from '../features/profile/api/profileApiSlice';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../store';
@@ -157,7 +157,7 @@ export default function ProfileScreen({ navigation }: any) {
     );
   };
 
-  const isAdmin = profile?.role === 'ADMIN';
+  const isAdmin = profile?.roles?.includes('ADMIN') || profile?.role === 'ADMIN';
   const [isIngesting, setIsIngesting] = useState(false);
 
   const handleTriggerIngestion = async () => {

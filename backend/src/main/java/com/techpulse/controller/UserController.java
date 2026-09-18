@@ -48,7 +48,22 @@ public class UserController {
             @RequestBody Map<String, String> requestBody,
             jakarta.servlet.http.HttpServletRequest request) {
 
-        String firebaseUid = getFirebaseUid();
+        String firebaseUid = null;
+        try {
+            firebaseUid = getFirebaseUid();
+        } catch (Exception e) {
+            // Fallback to request body if security context token is in transit
+            if (requestBody.containsKey("uid")) {
+                firebaseUid = requestBody.get("uid");
+            } else if (requestBody.containsKey("firebaseUid")) {
+                firebaseUid = requestBody.get("firebaseUid");
+            }
+        }
+
+        if (firebaseUid == null || firebaseUid.isBlank()) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Unable to resolve Firebase UID"));
+        }
+
         String email = requestBody.get("email");
         String displayName = requestBody.get("displayName");
         String photoUrl = requestBody.get("photoUrl");

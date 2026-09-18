@@ -177,7 +177,8 @@ public class PersonalizationAgent {
 
         LocalDateTime now = LocalDateTime.now();
         for (UserInterest interest : interests) {
-            long days = Duration.between(interest.getLastInteractionAt(), now).toDays();
+            LocalDateTime lastInteraction = interest.getLastInteractionAt() != null ? interest.getLastInteractionAt() : now;
+            long days = Duration.between(lastInteraction, now).toDays();
             double decayedWeight = interest.getWeight() * Math.pow(0.95, days);
 
             if ("CATEGORY".equalsIgnoreCase(interest.getInterestType())) {
@@ -209,7 +210,7 @@ public class PersonalizationAgent {
             if (event.getFirstSeen() != null) {
                 daysSincePublished = Duration.between(event.getFirstSeen(), now).toDays();
             }
-            double recency = Math.pow(0.9, daysSincePublished);
+            double recency = Math.pow(0.9, Math.max(0, daysSincePublished));
             double clippedPersonalization = Math.max(-5.0, Math.min(5.0, personalizationScore));
             double finalScore = clippedPersonalization + (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
             scoredEvents.put(event, finalScore);
@@ -228,7 +229,7 @@ public class PersonalizationAgent {
         if (event.getFirstSeen() != null) {
             daysSincePublished = Duration.between(event.getFirstSeen(), LocalDateTime.now()).toDays();
         }
-        double recency = Math.pow(0.9, daysSincePublished);
+        double recency = Math.pow(0.9, Math.max(0, daysSincePublished));
 
         return (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
     }

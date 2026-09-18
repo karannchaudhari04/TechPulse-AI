@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, RefreshControl, StyleSheet, ScrollView, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -7,24 +7,19 @@ import { networkTracker } from '../utils/network';
 import { useAppSelector } from '../store';
 
 import HomeHeader from '../features/feed/components/HomeHeader';
-import TechnologyChip from '../features/events/components/TechnologyChip';
 import EventCard from '../features/events/components/EventCard';
 import { 
   useGetFeedQuery, 
-  useGetTrendsQuery, 
   useGetRecommendedFeedQuery, 
-  useGetTrendingFeedQuery,
   FeedItem
 } from '../features/feed/api/feedApiSlice';
 import { useRecordInteractionMutation } from '../features/events/api/eventsApiSlice';
 import { 
   HeaderSkeleton, 
   CardSkeleton, 
-  TrendingSkeleton, 
   RecommendationSkeleton 
 } from '../features/feed/components/Skeletons';
 import Icon from '../components/common/Icon';
-import Card from '../components/common/Card';
 
 const ALL_CATEGORIES = [
   { id: 'all', label: 'All Updates' },
@@ -36,9 +31,8 @@ const ALL_CATEGORIES = [
 ];
 
 /**
- * Purpose: Refactored Tech Intelligence Dashboard screen.
- * Displays greeting header with real-time stats, breaking alerts, trending technologies,
- * personalized recommendations, and a vertical feed list.
+ * Purpose: Streamlined Tech Intelligence Dashboard screen.
+ * Displays greeting header, optional AI highlights, category filters, and a vertical feed list.
  */
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -66,14 +60,12 @@ export default function HomeScreen() {
     category: activeCategory === 'all' ? undefined : activeCategory,
   });
 
-  const { data: trends, isLoading: isTrendsLoading } = useGetTrendsQuery(undefined, { skip: isGuest });
   const { data: recommended, isLoading: isRecsLoading } = useGetRecommendedFeedQuery(undefined, { skip: isGuest });
-  const { data: trendingFeed } = useGetTrendingFeedQuery();
   const [recordInteraction] = useRecordInteractionMutation();
 
-  // 3. Accumulate items during cursor pagination
+  // 3. Accumulate items during cursor pagination and category updates
   useEffect(() => {
-    if (feedData) {
+    if (feedData?.content) {
       if (cursor === null) {
         setAccumulatedFeed(feedData.content);
       } else {
@@ -84,7 +76,7 @@ export default function HomeScreen() {
         });
       }
     }
-  }, [feedData, cursor]);
+  }, [feedData, cursor, activeCategory]);
 
   const handleRefresh = async () => {
     setCursor(null);
@@ -98,24 +90,19 @@ export default function HomeScreen() {
   };
 
   const handleCategorySelect = (category: string) => {
-    setActiveCategory(category);
-    setCursor(null); // Reset cursor on filter update
+    if (category !== activeCategory) {
+      setActiveCategory(category);
+      setCursor(null);
+      setAccumulatedFeed([]);
+    }
   };
-
-  const breakingEvent = useMemo(() => {
-    if (!trendingFeed) return null;
-    return trendingFeed.find(item => item.importanceScore >= 85) || null;
-  }, [trendingFeed]);
 
   const renderHeader = useCallback(() => {
     return (
       <View>
         <HomeHeader
-          onSearchPress={() => navigation.navigate('Search')}
           onNotificationsPress={() => navigation.navigate('Notifications')}
           onProfilePress={() => navigation.navigate('Profile')}
-          breakingCount={breakingEvent ? 1 : 0}
-          trendsCount={trends?.length || 0}
         />
 
         {/* Offline Mode Banner */}
@@ -125,51 +112,6 @@ export default function HomeScreen() {
             <Text style={[styles.offlineText, { fontFamily: typography.caption.fontFamily }]}>
               Offline mode. Displaying cached technology updates.
             </Text>
-          </View>
-        )}
-
-        {/* Breaking Release Banner */}
-        {breakingEvent && (
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('EventDetail', { id: breakingEvent.id })}
-            activeOpacity={0.9}
-            style={styles.sectionSpacing}
-          >
-            <Card variant="elevated" style={[styles.breakingCard, { borderColor: colors.danger, backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-              <View style={styles.breakingHeader}>
-                <Icon name="alert-circle" provider="feather" size={18} color={colors.danger} />
-                <Text style={[styles.breakingTitle, { color: colors.danger, fontFamily: typography.titleSmall.fontFamily }]}>
-                  BREAKING ALERTS
-                </Text>
-              </View>
-              <Text style={[styles.breakingText, { color: colors.textPrimary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xxs }]}>
-                {breakingEvent.headline}
-              </Text>
-            </Card>
-          </TouchableOpacity>
-        )}
-
-        {/* Trending Technologies Carousel */}
-        {!isGuest && (
-          <View style={styles.sectionSpacing}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, paddingLeft: spacing.md }]}>
-              Trending Technologies
-            </Text>
-            {isTrendsLoading ? (
-              <TrendingSkeleton />
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizontalList, { paddingLeft: spacing.md }]}>
-                {trends?.map((item) => (
-                  <View key={item.name} style={{ marginRight: spacing.xs }}>
-                    <TechnologyChip 
-                      name={item.name} 
-                      following={item.following} 
-                      trendStatus={item.trendStatus} 
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-            )}
           </View>
         )}
 
@@ -231,7 +173,7 @@ export default function HomeScreen() {
         </View>
       </View>
     );
-  }, [navigation, colors, typography, spacing, breakingEvent, trends, isTrendsLoading, recommended, isRecsLoading, activeCategory, isOnline, isGuest, recordInteraction]);
+  }, [navigation, colors, typography, spacing, recommended, isRecsLoading, activeCategory, isOnline, recordInteraction]);
 
   const renderFooter = () => {
     if (isFeedFetching) {
@@ -313,25 +255,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
-  },
-  breakingCard: {
-    marginHorizontal: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  breakingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  breakingTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  breakingText: {
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   horizontalList: {
     paddingRight: 16,

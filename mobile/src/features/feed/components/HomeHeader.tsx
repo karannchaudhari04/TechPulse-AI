@@ -6,23 +6,17 @@ import { Avatar } from '../../../components/common/Badge';
 import Icon from '../../../components/common/Icon';
 
 export interface HomeHeaderProps {
-  onSearchPress: () => void;
   onNotificationsPress: () => void;
   onProfilePress?: () => void;
-  breakingCount?: number;
-  trendsCount?: number;
 }
 
 /**
- * Purpose: Premium custom greeting header for the main dashboard.
- * Exposes live status indicators and search entry fields.
+ * Purpose: Premium clean greeting header for the main dashboard.
+ * Displays greeting, user identity, notifications, and profile action.
  */
 export default function HomeHeader({
-  onSearchPress,
   onNotificationsPress,
   onProfilePress,
-  breakingCount = 4,
-  trendsCount = 18,
 }: HomeHeaderProps) {
   const { colors, typography, spacing } = useTheme();
   const profile = useAppSelector((state) => state.profile.profile);
@@ -62,35 +56,6 @@ export default function HomeHeader({
           </TouchableOpacity>
         </View>
       </View>
-
-      <View style={[styles.statsRow, { marginTop: spacing.xs }]}>
-        <Text style={[styles.statsText, { color: colors.accent, fontFamily: typography.caption.fontFamily }]}>
-          🔥 {breakingCount} breaking releases
-        </Text>
-        <Text style={[styles.statsDivider, { color: colors.border }]}>|</Text>
-        <Text style={[styles.statsText, { color: colors.primary, fontFamily: typography.caption.fontFamily }]}>
-          📈 {trendsCount} trending topics
-        </Text>
-      </View>
-
-      <TouchableOpacity 
-        onPress={onSearchPress} 
-        activeOpacity={0.8}
-        style={[styles.searchBox, { 
-          backgroundColor: colors.surface, 
-          borderColor: colors.border,
-          borderRadius: 8,
-          marginTop: spacing.sm,
-          paddingHorizontal: spacing.sm,
-        }]}
-        accessibilityRole="search"
-        accessibilityLabel="Search technology updates"
-      >
-        <Icon name="search" provider="feather" size={18} color={colors.textMuted} />
-        <Text style={[styles.searchText, { color: colors.textMuted, fontFamily: typography.bodyMedium.fontFamily, marginLeft: spacing.xs }]}>
-          Search technology updates...
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -118,26 +83,5 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 6,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statsText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statsDivider: {
-    marginHorizontal: 8,
-    fontSize: 12,
-  },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    borderWidth: 1,
-  },
-  searchText: {
-    fontSize: 14,
   },
 });

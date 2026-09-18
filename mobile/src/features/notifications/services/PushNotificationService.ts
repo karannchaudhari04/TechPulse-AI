@@ -2,6 +2,8 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 
+import Constants from 'expo-constants';
+
 export interface NotificationProvider {
   register(): Promise<string | null>;
   getToken(): Promise<string | null>;
@@ -41,9 +43,10 @@ class ExpoPushNotificationProvider implements NotificationProvider {
     }
 
     try {
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId: "b983c33c-0335-471b-9fe4-f7e2ff6b263f",
-      });
+      const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? (Constants as any)?.easConfig?.projectId;
+      const tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
       this.token = tokenData.data;
       return this.token;
     } catch (error: any) {

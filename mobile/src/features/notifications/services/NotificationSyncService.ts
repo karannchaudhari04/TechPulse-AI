@@ -53,6 +53,10 @@ export class NotificationSyncService {
   }
 
   private static triggerFetch() {
+    const state = store.getState();
+    const isAuth = state.auth.sessionStatus === 'authenticated';
+    if (!isAuth) return;
+
     store.dispatch(notificationApiSlice.endpoints.getNotifications.initiate(undefined, { subscribe: false, forceRefetch: true }));
     store.dispatch(notificationApiSlice.endpoints.getUnreadCount.initiate(undefined, { subscribe: false, forceRefetch: true }));
   }

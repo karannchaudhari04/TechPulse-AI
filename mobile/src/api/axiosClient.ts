@@ -59,15 +59,10 @@ axiosClient.interceptors.response.use(
   async (error) => {
     const response = error.response;
 
-    // Handle 401 Unauthorized Session Expiration
+    // Handle 401 Unauthorized Session Expiration without immediate destructive logout
     if (response && response.status === 401) {
-      console.warn('[axiosClient] Received 401 Unauthorized. Signing out of session...');
-      try {
-        await auth.signOut();
-      } catch (signOutError) {
-        console.error('[axiosClient] Failed to sign out user:', signOutError);
-      }
-      return Promise.reject(new Error('Session expired. Please sign in again.'));
+      console.warn('[axiosClient] Received 401 Unauthorized for endpoint:', error.config?.url);
+      return Promise.reject(error);
     }
 
     // Handle Standardized Backend Error Schema (ApiErrorResponse)
@@ -79,7 +74,8 @@ axiosClient.interceptors.response.use(
       const details = errorResponse.details && Array.isArray(errorResponse.details) && errorResponse.details.length > 0
         ? ` (Details: ${errorResponse.details.join(', ')})`
         : '';
-      return Promise.reject(new Error(`${msg}${details}${traceInfo}`));
+      error.message = `${msg}${details}${traceInfo}`;
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);
