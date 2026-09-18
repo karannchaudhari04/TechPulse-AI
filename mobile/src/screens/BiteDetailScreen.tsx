@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, ActivityIndicator, Pressable, Text, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
 import BiteCard from '../components/BiteCard';
-import { getBiteById } from '../api';
+import { useGetBiteByIdQuery } from '../features/feed/api/feedApiSlice';
 import { useBookmarks } from '../hooks/useBookmarks';
 import { auth } from '../utils/firebase';
 import { useTheme } from '../utils/theme';
@@ -34,10 +33,8 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 
   const { isBookmarked, toggleBookmark } = useBookmarks();
 
-  const { data: bite, isLoading, error } = useQuery({
-    queryKey: ['bite', id],
-    queryFn: () => getBiteById(id),
-    enabled: !!id // Only run query if we have an ID
+  const { data: bite, isLoading, error } = useGetBiteByIdQuery(id, {
+    skip: !id,
   });
 
   if (!id) {

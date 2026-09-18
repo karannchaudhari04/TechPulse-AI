@@ -1,4 +1,4 @@
-package com.techbite.app
+package com.techpulse.app
 
 import android.app.Application
 import android.content.res.Configuration

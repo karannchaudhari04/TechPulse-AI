@@ -11,4 +11,22 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# Google Sign-In & Play Services
+-keep class com.google.android.gms.auth.api.signin.** { *; }
+-keep class com.google.android.gms.common.api.** { *; }
+-keep class com.reactnativegooglesignin.** { *; }
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+# Expo modules & image decoders
+-keep class expo.modules.** { *; }
+-keep class com.facebook.fresco.** { *; }
+-keep class com.facebook.imagepipeline.** { *; }
+
+# OkHttp & Networking
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+-dontwarn okhttp3.**
+-dontwarn okio.**
+

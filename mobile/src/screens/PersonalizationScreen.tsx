@@ -12,8 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userApi } from '../api/user';
+import { 
+  useGetCategoriesQuery, 
+  useGetUserPreferencesQuery, 
+  useSaveUserPreferencesMutation 
+} from '../features/personalization/api/personalizationApiSlice';
 import { useTheme } from '../utils/theme';
 import * as Haptics from 'expo-haptics';
 import { auth } from '../utils/firebase';
@@ -45,62 +48,31 @@ interface PersonalizationScreenProps {
 }
 
 export default function PersonalizationScreen({ onClose }: PersonalizationScreenProps) {
-  const queryClient = useQueryClient();
   const { isAmoled, setAmoled, colors } = useTheme();
   const navigation = useNavigation<any>();
   const user = auth.currentUser;
   const dispatch = useAppDispatch();
   
   // 1. Fetch real categories from backend
-  const { data: allCategories, isLoading: loadingCats } = useQuery({
-    queryKey: ['allCategories'],
-    queryFn: () => userApi.getCategories()
-  });
+  const { data: allCategories, isLoading: loadingCats } = useGetCategoriesQuery();
 
   // 2. Fetch current user preferences
-  const { data: userPrefs, isLoading: loadingPrefs } = useQuery({
-    queryKey: ['userPreferences'],
-    queryFn: () => userApi.getPreferences()
-  });
+  const { data: userPrefs, isLoading: loadingPrefs } = useGetUserPreferencesQuery();
+  const [savePreferences, { isLoading: isSaving }] = useSaveUserPreferencesMutation();
 
-  // Toggle interest mutation with instant Optimistic Updates!
-  const toggleMutation = useMutation({
-    mutationFn: async (categoryName: string) => {
-      const current = userPrefs || [];
-      const updated = current.includes(categoryName)
-        ? current.filter(c => c !== categoryName)
-        : [...current, categoryName];
-      return userApi.savePreferences(updated);
-    },
-    onMutate: async (categoryName) => {
-      // Cancel outgoing refetches so they don't overwrite our optimistic update
-      await queryClient.cancelQueries({ queryKey: ['userPreferences'] });
-
-      // Snapshot the previous state
-      const previousPrefs = queryClient.getQueryData<string[]>(['userPreferences']) || [];
-
-      // Optimistically update to the new value instantly
-      const updatedPrefs = previousPrefs.includes(categoryName)
-        ? previousPrefs.filter(c => c !== categoryName)
-        : [...previousPrefs, categoryName];
-        
-      queryClient.setQueryData(['userPreferences'], updatedPrefs);
-
-      // Return context with previous value for rollback
-      return { previousPrefs };
-    },
-    onError: (err, categoryName, context) => {
-      // Rollback to the snapshot if mutation fails
-      if (context?.previousPrefs) {
-        queryClient.setQueryData(['userPreferences'], context.previousPrefs);
-      }
-    },
-    onSuccess: () => {
-      // Quietly invalidate in background to ensure sync
-      queryClient.invalidateQueries({ queryKey: ['userPreferences'] });
-      queryClient.invalidateQueries({ queryKey: ['allCategories'] });
+  // Toggle interest handler
+  const handleToggleCategory = async (categoryName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const current = userPrefs || [];
+    const updated = current.includes(categoryName)
+      ? current.filter(c => c !== categoryName)
+      : [...current, categoryName];
+    try {
+      await savePreferences(updated).unwrap();
+    } catch (err) {
+      console.warn('[Personalization] Failed to save preference:', err);
     }
-  });
+  };
 
   const renderTopic = ({ item }: { item: any }) => {
     const isFollowing = userPrefs?.some(p => p === item.name);
@@ -119,7 +91,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
           <Text style={styles.topicFollowers}>{formatFollowers(item.followerCount || 0)} Followers</Text>
         </View>
         <Pressable 
-          onPress={() => toggleMutation.mutate(item.name)}
+          onPress={() => handleToggleCategory(item.name)}
           style={[
             styles.followBtn, 
             isFollowing && styles.followingBtn

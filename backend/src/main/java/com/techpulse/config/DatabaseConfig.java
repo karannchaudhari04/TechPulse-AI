@@ -42,6 +42,18 @@ public class DatabaseConfig {
     @Value("${DATABASE_REPLICA_PASSWORD:${spring.datasource.replica.password:}}")
     private String replicaPassword;
 
+    @Value("${spring.datasource.writer.hikari.maximum-pool-size:3}")
+    private int writerMaxPoolSize;
+
+    @Value("${spring.datasource.replica.hikari.maximum-pool-size:3}")
+    private int replicaMaxPoolSize;
+
+    @Value("${spring.datasource.writer.hikari.minimum-idle:1}")
+    private int writerMinIdle;
+
+    @Value("${spring.datasource.replica.hikari.minimum-idle:1}")
+    private int replicaMinIdle;
+
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
     private String ddlAuto;
 
@@ -58,7 +70,8 @@ public class DatabaseConfig {
             ds.setUsername(writerUser);
             ds.setPassword(writerPassword);
             ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            ds.setMaximumPoolSize(10);
+            ds.setMaximumPoolSize(writerMaxPoolSize);
+            ds.setMinimumIdle(writerMinIdle);
             ds.setMaxLifetime(300000);
             ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1");
         }
@@ -78,7 +91,8 @@ public class DatabaseConfig {
             ds.setUsername(replicaUser != null && !replicaUser.isEmpty() ? replicaUser : writerUser);
             ds.setPassword(replicaPassword != null && !replicaPassword.isEmpty() ? replicaPassword : writerPassword);
             ds.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            ds.setMaximumPoolSize(20);
+            ds.setMaximumPoolSize(replicaMaxPoolSize);
+            ds.setMinimumIdle(replicaMinIdle);
             ds.setMaxLifetime(300000);
             ds.setConnectionInitSql("SET SESSION tidb_enable_noop_functions = 1, tidb_replica_read = 'leader-and-follower'");
         }

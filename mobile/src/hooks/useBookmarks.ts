@@ -1,71 +1,34 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../api/client';
-import { auth } from '../utils/firebase';
+import { 
+  useGetBookmarksQuery, 
+  useAddBookmarkMutation, 
+  useRemoveBookmarkMutation 
+} from '../features/personalization/api/personalizationApiSlice';
 import { Bite } from '../types';
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-  size: number;
-  empty: boolean;
-}
-
 export const useBookmarks = () => {
-  const queryClient = useQueryClient();
-  const isSignedIn = !!auth.currentUser;
+  const { data: bookmarkItems, isLoading } = useGetBookmarksQuery();
+  const [addBookmark] = useAddBookmarkMutation();
+  const [removeBookmark] = useRemoveBookmarkMutation();
 
-  // ── Load bookmarks from backend (only when signed in) ─────────────────────
-  const { data: bookmarkPage, isLoading } = useQuery({
-    queryKey: ['bookmarks'],
-    queryFn: () => apiClient.get<PageResponse<Bite>>('/bookmarks?page=0&size=100'),
-    enabled: isSignedIn,
-    staleTime: 1000 * 60 * 2, // 2 min cache
-  });
+  const bookmarks = (bookmarkItems || []) as any[];
 
-  const bookmarks: Bite[] = bookmarkPage?.content ?? [];
+  const isBookmarked = (biteId: number | string) => {
+    return bookmarks.some((b) => String(b.id) === String(biteId) || String(b.eventId) === String(biteId));
+  };
 
-  // ── Toggle (add / remove) bookmark ────────────────────────────────────────
-  const toggleBookmark = useMutation({
-    mutationFn: async (bite: Bite) => {
-      const alreadyBookmarked = bookmarks.some(b => b.id === bite.id);
-      if (alreadyBookmarked) {
-        await apiClient.delete(`/bookmarks/${bite.id}`);
-      } else {
-        await apiClient.post(`/bookmarks/${bite.id}`, {});
-      }
-      return bite;
-    },
-    // Optimistic update — instant UI response
-    onMutate: async (bite: Bite) => {
-      await queryClient.cancelQueries({ queryKey: ['bookmarks'] });
-      const previous = queryClient.getQueryData<PageResponse<Bite>>(['bookmarks']);
-
-      queryClient.setQueryData<PageResponse<Bite>>(['bookmarks'], (old: PageResponse<Bite> | undefined) => {
-        if (!old) return { content: [bite], totalPages: 1, totalElements: 1, number: 0, size: 100, empty: false };
-        const isBookmarked = old.content.some((b: Bite) => b.id === bite.id);
-        const newContent = isBookmarked
-          ? old.content.filter((b: Bite) => b.id !== bite.id)
-          : [bite, ...old.content];
-        return { ...old, content: newContent, totalElements: newContent.length };
-      });
-
-      return { previous };
-    },
-    onError: (_err, _bite, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['bookmarks'], context.previous);
-      }
-    },
-  });
-
-  const isBookmarked = (biteId: number) => bookmarks.some(b => b.id === biteId);
+  const toggleBookmark = async (bite: Bite) => {
+    const idStr = String(bite.id);
+    if (isBookmarked(bite.id)) {
+      await removeBookmark(idStr);
+    } else {
+      await addBookmark(idStr);
+    }
+  };
 
   return {
     bookmarks,
     isLoading,
-    toggleBookmark: toggleBookmark.mutate,
+    toggleBookmark,
     isBookmarked,
   };
 };

@@ -107,7 +107,7 @@ export default function HomeScreen() {
     return trendingFeed.find(item => item.importanceScore >= 85) || null;
   }, [trendingFeed]);
 
-  const renderHeader = () => {
+  const renderHeader = useCallback(() => {
     return (
       <View>
         <HomeHeader
@@ -231,7 +231,7 @@ export default function HomeScreen() {
         </View>
       </View>
     );
-  };
+  }, [navigation, colors, typography, spacing, breakingEvent, trends, isTrendsLoading, recommended, isRecsLoading, activeCategory, isOnline, isGuest, recordInteraction]);
 
   const renderFooter = () => {
     if (isFeedFetching) {

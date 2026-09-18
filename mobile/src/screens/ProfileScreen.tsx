@@ -6,7 +6,7 @@ import { signOut } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../utils/firebase';
 import { userApi } from '../api/user';
-import { useQuery } from '@tanstack/react-query';
+import { useGetProfileQuery } from '../features/auth/api/authApiSlice';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../store';
@@ -126,10 +126,8 @@ export default function ProfileScreen({ navigation }: any) {
     getToken();
   }, [user]);
 
-  const { data: profile, isLoading, refetch } = useQuery({
-    queryKey: ['userProfile'],
-    queryFn: () => userApi.getProfile(),
-    enabled: !!user
+  const { data: profile, isLoading, refetch } = useGetProfileQuery(undefined, {
+    skip: !user,
   });
 
   const handleSignOut = () => {

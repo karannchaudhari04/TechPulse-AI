@@ -19,8 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { explainBite } from '../api/bites';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useExplainBiteMutation } from '../features/feed/api/feedApiSlice';
 import ExplainModal from './ExplainModal';
 import { useTheme } from '../utils/theme';
 import { userApi } from '../api/user';
@@ -41,7 +40,6 @@ interface BiteCardProps {
 
 const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight, fullScreen = false }: BiteCardProps) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const queryClient = useQueryClient();
   const { isAmoled, colors } = useTheme();
   const [localBookmarked, setLocalBookmarked] = React.useState(isBookmarked);
   const [logoError, setLogoError] = React.useState(false);
@@ -130,18 +128,15 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
   });
 
   const [explainModalVisible, setExplainModalVisible] = React.useState(false);
-
-  const explainMutation = useMutation({
-    mutationFn: () => explainBite(item.id),
-  });
+  const [explainBiteTrigger, { data: explainData, isLoading: isExplainLoading, error: explainError, reset: resetExplain }] = useExplainBiteMutation();
 
   const handleExplainSimply = () => {
     Haptics.selectionAsync().catch(() => {});
     setExplainModalVisible(true);
     userApi.recordInteraction('category:' + item.categoryName, 'SEARCH')
       .catch((err) => console.warn('[Analytics] Failed to record search interaction:', err));
-    if (!explainMutation.data && !explainMutation.isPending) {
-      explainMutation.mutate();
+    if (!explainData && !isExplainLoading) {
+      explainBiteTrigger({ biteId: item.id });
     }
   };
 
@@ -293,13 +288,13 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
         visible={explainModalVisible}
         onClose={() => {
           setExplainModalVisible(false);
-          explainMutation.reset();
+          resetExplain();
         }}
         title={item.title}
-        explanation={explainMutation.data?.explanation || null}
-        loading={explainMutation.isPending}
-        error={explainMutation.error ? explainMutation.error.message : null}
-        onRetry={() => explainMutation.mutate()}
+        explanation={explainData?.explanation || null}
+        loading={isExplainLoading}
+        error={explainError ? (typeof explainError === 'string' ? explainError : (explainError as any).data || 'Failed to generate explanation') : null}
+        onRetry={() => explainBiteTrigger({ biteId: item.id })}
       />
     </View>
   );

@@ -15,7 +15,7 @@ import VerifyEmailScreen from '../features/auth/screens/VerifyEmailScreen';
 import CompleteProfileScreen from '../features/auth/screens/CompleteProfileScreen';
 import AccountLoadingScreen from '../features/auth/screens/AccountLoadingScreen';
 import SessionExpiredScreen from '../features/auth/screens/SessionExpiredScreen';
-import AppNavigator from './AppNavigator';
+import AppNavigator, { linking } from './AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
 
 /**
@@ -49,40 +49,44 @@ export default function RootNavigator() {
     return unsubscribe;
   }, [dispatch]);
 
-  // 1. Session state checking loaders
-  if (sessionStatus === 'idle' || sessionStatus === 'checking') {
-    return <AccountLoadingScreen />;
-  }
+  const renderContent = () => {
+    // 1. Session state checking loaders
+    if (sessionStatus === 'idle' || sessionStatus === 'checking') {
+      return <AccountLoadingScreen />;
+    }
 
-  // 2. Session expired notification dialogs
-  if (sessionStatus === 'expired') {
-    return <SessionExpiredScreen />;
-  }
+    // 2. Session expired notification dialogs
+    if (sessionStatus === 'expired') {
+      return <SessionExpiredScreen />;
+    }
 
-  // 3. Unauthenticated auth forms stack
-  if (sessionStatus === 'unauthenticated') {
-    return (
-      <NavigationContainer>
-        <AuthNavigator />
-      </NavigationContainer>
-    );
-  }
+    // 3. Unauthenticated auth forms stack
+    if (sessionStatus === 'unauthenticated') {
+      return <AuthNavigator />;
+    }
 
-  // 4. Authenticated profile bootstrap checks
-  if (sessionStatus === 'authenticated' && (!profile || profileLoading)) {
-    return <AccountLoadingScreen />;
-  }
+    // 4. Authenticated profile bootstrap checks
+    if (sessionStatus === 'authenticated' && (!profile || profileLoading)) {
+      return <AccountLoadingScreen />;
+    }
 
-  // 5. Verification checks
-  if (sessionStatus === 'authenticated' && !profile?.emailVerified) {
-    return <VerifyEmailScreen />;
-  }
+    // 5. Verification checks
+    if (sessionStatus === 'authenticated' && !profile?.emailVerified) {
+      return <VerifyEmailScreen />;
+    }
 
-  // 6. Onboarding checks
-  if (sessionStatus === 'authenticated' && !profile?.isOnboarded) {
-    return <CompleteProfileScreen />;
-  }
+    // 6. Onboarding checks
+    if (sessionStatus === 'authenticated' && !profile?.isOnboarded) {
+      return <CompleteProfileScreen />;
+    }
 
-  // 7. Render main application stacks
-  return <AppNavigator />;
+    // 7. Render main application stacks
+    return <AppNavigator />;
+  };
+
+  return (
+    <NavigationContainer linking={linking}>
+      {renderContent()}
+    </NavigationContainer>
+  );
 }

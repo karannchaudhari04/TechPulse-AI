@@ -92,53 +92,53 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+export { linking };
+
 /**
  * Purpose: Main Application stack navigator (rendered once verified/authenticated).
  */
 export default function AppNavigator() {
   return (
-    <NavigationContainer linking={linking}>
-      <Stack.Navigator 
-        initialRouteName="Home"
-        screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}
+    <Stack.Navigator 
+      initialRouteName="Home"
+      screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}
+    >
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
+      <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="Library" component={LibraryScreen} />
+      <Stack.Screen name="Collections" component={CollectionsScreen} />
+      <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
+      <Stack.Screen name="ReadingHistory" component={ReadingHistoryScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="TechnologyFollowing" component={TechnologyFollowingScreen} />
+      <Stack.Screen name="RecommendationCenter" component={RecommendationCenterScreen} />
+      <Stack.Screen name="Assistant" component={AssistantScreen} />
+      <Stack.Screen name="ConversationHistory" component={ConversationHistoryScreen} />
+      <Stack.Screen name="SystemSettings" component={SystemSettingsScreen} />
+      <Stack.Screen name="Technology" component={TechnologyScreen} />
+      <Stack.Screen name="Company" component={CompanyScreen} />
+      <Stack.Screen name="Release" component={ReleaseScreen} />
+      <Stack.Screen name="Timeline" component={TimelineScreen} />
+      <Stack.Screen name="KnowledgeGraph" component={KnowledgeGraphScreen} />
+      <Stack.Screen name="Workspace" component={WorkspaceScreen} />
+      <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
+      
+      <Stack.Screen 
+        name="Personalization" 
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="BiteDetail" component={BiteDetailScreen} />
-        <Stack.Screen name="EventDetail" component={EventDetailScreen} />
-        <Stack.Screen name="Search" component={SearchScreen} />
-        <Stack.Screen name="Library" component={LibraryScreen} />
-        <Stack.Screen name="Collections" component={CollectionsScreen} />
-        <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
-        <Stack.Screen name="ReadingHistory" component={ReadingHistoryScreen} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
-        <Stack.Screen name="TechnologyFollowing" component={TechnologyFollowingScreen} />
-        <Stack.Screen name="RecommendationCenter" component={RecommendationCenterScreen} />
-        <Stack.Screen name="Assistant" component={AssistantScreen} />
-        <Stack.Screen name="ConversationHistory" component={ConversationHistoryScreen} />
-        <Stack.Screen name="SystemSettings" component={SystemSettingsScreen} />
-        <Stack.Screen name="Technology" component={TechnologyScreen} />
-        <Stack.Screen name="Company" component={CompanyScreen} />
-        <Stack.Screen name="Release" component={ReleaseScreen} />
-        <Stack.Screen name="Timeline" component={TimelineScreen} />
-        <Stack.Screen name="KnowledgeGraph" component={KnowledgeGraphScreen} />
-        <Stack.Screen name="Workspace" component={WorkspaceScreen} />
-        <Stack.Screen name="Article" component={ArticleScreen} options={{ animation: 'slide_from_right' }} />
-        
-        <Stack.Screen 
-          name="Personalization" 
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        >
-          {(props) => (
-            <PersonalizationScreen 
-              onClose={() => props.navigation.goBack()}
-            />
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
+        {(props) => (
+          <PersonalizationScreen 
+            onClose={() => props.navigation.goBack()}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
   );
 }
 

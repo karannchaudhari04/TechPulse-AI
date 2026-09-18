@@ -1,11 +1,11 @@
-# application-prod.yml - Tuned for low-memory container environments (Render 512MB)
+# application-prod.yml - Tuned for ultra-lean memory container environments (Render 512MB)
 server:
   tomcat:
     threads:
-      max: 20
+      max: 10
       min-spare: 2
-    max-connections: 100
-    accept-count: 20
+    max-connections: 50
+    accept-count: 10
 
 spring:
   datasource:
@@ -14,17 +14,17 @@ spring:
       username: ${DATABASE_WRITER_USER}
       password: ${DATABASE_WRITER_PASSWORD}
       hikari:
-        maximum-pool-size: 3
+        maximum-pool-size: 2
         minimum-idle: 1
-        connection-timeout: 30000
+        connection-timeout: 20000
     replica:
       url: ${DATABASE_REPLICA_URL:${DATABASE_WRITER_URL}}
       username: ${DATABASE_REPLICA_USER:${DATABASE_WRITER_USER}}
       password: ${DATABASE_REPLICA_PASSWORD:${DATABASE_WRITER_PASSWORD}}
       hikari:
-        maximum-pool-size: 3
+        maximum-pool-size: 2
         minimum-idle: 1
-        connection-timeout: 30000
+        connection-timeout: 20000
 
   jpa:
     hibernate:
@@ -35,6 +35,16 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 5000ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when_authorized
 
 logging:
   level:
@@ -47,4 +57,5 @@ app:
     model: gemini-flash-latest
   discovery:
     thread-pool-size: 2
+
 

@@ -85,6 +85,27 @@ export const feedApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ['User'],
     }),
+    getBiteById: builder.query<any, number>({
+      query: (id) => ({
+        url: `/bites/${id}`,
+        method: 'GET',
+      }),
+      providesTags: (_res, _err, id) => [{ type: 'Bite', id }],
+    }),
+    explainBite: builder.mutation<{ explanation: string }, { biteId: number | string }>({
+      query: ({ biteId }) => ({
+        url: '/bites/explain',
+        method: 'POST',
+        data: { biteId },
+      }),
+    }),
+    likeBite: builder.mutation<number, number>({
+      query: (id) => ({
+        url: `/bites/${id}/like`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_res, _err, id) => [{ type: 'Bite', id }],
+    }),
   }),
 });
 
@@ -93,4 +114,7 @@ export const {
   useGetTrendingFeedQuery,
   useGetRecommendedFeedQuery,
   useGetTrendsQuery,
+  useGetBiteByIdQuery,
+  useExplainBiteMutation,
+  useLikeBiteMutation,
 } = feedApiSlice;

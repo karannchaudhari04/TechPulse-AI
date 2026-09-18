@@ -33,18 +33,18 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 EXPOSE 8080
 
-# Tuned for Render Free Tier (512MB RAM):
-# -Xmx192m                  = max heap 192MB (leaves 320MB for metaspace, threads, native)
-# -Xms96m                   = initial heap 96MB
-# -XX:MaxMetaspaceSize=128m = prevent unbounded classloader metaspace growth
-# -XX:ReservedCodeCacheSize=48m = cap JIT code cache
+# Tuned for Render Free Tier (512MB RAM) — Ultra-Lean Profile:
+# -Xmx160m                  = max heap 160MB (leaves >300MB for non-heap & OS)
+# -Xms64m                   = initial heap 64MB
+# -XX:MaxMetaspaceSize=100m = prevent unbounded classloader metaspace growth
+# -XX:ReservedCodeCacheSize=32m = cap JIT code cache
 # -XX:+UseSerialGC          = lightweight single-thread GC with minimal memory metadata
 # -Xss256k                  = reduce thread stack size to 256KB to save memory per thread
 # -XX:+ExitOnOutOfMemoryError
 ENTRYPOINT ["java", \
-  "-Xmx192m", "-Xms96m", \
-  "-XX:MaxMetaspaceSize=128m", \
-  "-XX:ReservedCodeCacheSize=48m", \
+  "-Xmx160m", "-Xms64m", \
+  "-XX:MaxMetaspaceSize=100m", \
+  "-XX:ReservedCodeCacheSize=32m", \
   "-XX:+UseSerialGC", \
   "-Xss256k", \
   "-XX:+ExitOnOutOfMemoryError", \

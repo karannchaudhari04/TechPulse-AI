@@ -2,14 +2,9 @@ import './global.css';
 import React, { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
-import { QueryClient } from '@tanstack/react-query';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import RootNavigator from './src/navigation/RootNavigator';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { NotificationService } from './src/utils/NotificationService';
 import { store, persistor } from './src/store';
 import { ThemeProvider } from './src/theme';
 
@@ -21,18 +16,6 @@ LogBox.ignoreLogs([
   '[Reanimated] Writing to `value` during component render',
   'Cannot record touch end without a touch start',
 ]);
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-    },
-  },
-});
-
-const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-});
 
 import { OfflineQueueService } from './src/features/personalization/services/OfflineQueueService';
 import { PushNotificationService } from './src/features/notifications/services/PushNotificationService';
@@ -73,13 +56,8 @@ export default function App() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider>
-          <PersistQueryClientProvider 
-            client={queryClient}
-            persistOptions={{ persister: asyncStoragePersister }}
-          >
-            <RootNavigator />
-            <StatusBar style="light" />
-          </PersistQueryClientProvider>
+          <RootNavigator />
+          <StatusBar style="light" />
         </ThemeProvider>
       </PersistGate>
     </Provider>

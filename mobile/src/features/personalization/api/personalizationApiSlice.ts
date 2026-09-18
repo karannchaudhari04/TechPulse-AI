@@ -122,6 +122,27 @@ export const personalizationApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ['User'],
     }),
+    getUserPreferences: builder.query<string[], void>({
+      query: () => ({
+        url: '/users/preferences',
+        method: 'GET',
+      }),
+      providesTags: ['Preferences'],
+    }),
+    saveUserPreferences: builder.mutation<void, string[]>({
+      query: (categories) => ({
+        url: '/users/preferences',
+        method: 'POST',
+        data: { categories },
+      }),
+      invalidatesTags: ['Preferences', 'Recommendation', 'Bite'],
+    }),
+    getCategories: builder.query<any[], void>({
+      query: () => ({
+        url: '/categories',
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -138,4 +159,7 @@ export const {
   useGetReadingHistoryQuery,
   useClearReadingHistoryMutation,
   useGetLibraryStatsQuery,
+  useGetUserPreferencesQuery,
+  useSaveUserPreferencesMutation,
+  useGetCategoriesQuery,
 } = personalizationApiSlice;

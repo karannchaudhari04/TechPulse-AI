@@ -28,7 +28,17 @@ export const authApiSlice = apiSlice.injectEndpoints({
         data: payload,
       }),
     }),
+    getProfile: builder.query<any, void>({
+      query: () => ({
+        url: '/users/profile',
+        method: 'GET',
+      }),
+      providesTags: ['User'],
+    }),
   }),
 });
 
-export const { useRegisterOrLoginMutation } = authApiSlice;
+export const { 
+  useRegisterOrLoginMutation,
+  useGetProfileQuery,
+} = authApiSlice;

@@ -19,6 +19,7 @@ export interface QueueAction {
  */
 export class OfflineQueueService {
   private static subscribers: ((count: number) => void)[] = [];
+  private static isReplaying = false;
 
   static async enqueue(type: QueueAction['type'], payload: any): Promise<string> {
     const queue = await this.getQueue();
@@ -71,28 +72,38 @@ export class OfflineQueueService {
   }
 
   static async replayQueue(): Promise<void> {
-    const queue = await this.getQueue();
-    if (queue.length === 0) return;
-
-    console.info(`[OfflineQueue] Replaying ${queue.length} pending actions...`);
-    const remainingActions: QueueAction[] = [];
-
-    for (const action of queue) {
-      try {
-        await this.executeAction(action);
-        console.info(`[OfflineQueue] Action ${action.type} (${action.operationId}) synced successfully.`);
-      } catch (err: any) {
-        console.warn(`[OfflineQueue] Action ${action.type} failed to sync:`, err.message || err);
-        action.retryCount++;
-        action.lastStatus = err.message || 'Network Fail';
-        if (action.retryCount < 5) {
-          remainingActions.push(action);
-        }
-      }
+    if (this.isReplaying) {
+      console.info('[OfflineQueue] Replay already in progress, skipping duplicate call.');
+      return;
     }
 
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remainingActions));
-    this.notifySubscribers(remainingActions.length);
+    this.isReplaying = true;
+    try {
+      const queue = await this.getQueue();
+      if (queue.length === 0) return;
+
+      console.info(`[OfflineQueue] Replaying ${queue.length} pending actions...`);
+      const remainingActions: QueueAction[] = [];
+
+      for (const action of queue) {
+        try {
+          await this.executeAction(action);
+          console.info(`[OfflineQueue] Action ${action.type} (${action.operationId}) synced successfully.`);
+        } catch (err: any) {
+          console.warn(`[OfflineQueue] Action ${action.type} failed to sync:`, err.message || err);
+          action.retryCount++;
+          action.lastStatus = err.message || 'Network Fail';
+          if (action.retryCount < 5) {
+            remainingActions.push(action);
+          }
+        }
+      }
+
+      await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remainingActions));
+      this.notifySubscribers(remainingActions.length);
+    } finally {
+      this.isReplaying = false;
+    }
   }
 
   private static async executeAction(action: QueueAction): Promise<any> {
