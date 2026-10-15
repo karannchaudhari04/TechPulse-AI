@@ -58,7 +58,7 @@ public class AISynthesisAgent {
             org.springframework.http.HttpStatus.BAD_REQUEST
     );
 
-    static final int MAX_RETRIES = 5;
+    public static final int MAX_RETRIES = 5;
 
     @Transactional
     public TechnologyEvent synthesizeAndSave(RawIngestion rawUpdate) {
