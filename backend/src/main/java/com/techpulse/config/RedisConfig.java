@@ -26,10 +26,10 @@ import java.time.Duration;
 @EnableCaching
 public class RedisConfig implements CachingConfigurer {
 
-    @Value("${REDIS_URL:}")
+    @Value("${REDIS_URL:redis://red-d7tl3a1kh4rs73aruutg:6379}")
     private String redisUrl;
 
-    @Value("${spring.data.redis.host:localhost}")
+    @Value("${spring.data.redis.host:red-d7tl3a1kh4rs73aruutg}")
     private String redisHost;
 
     @Value("${spring.data.redis.port:6379}")
@@ -41,10 +41,11 @@ public class RedisConfig implements CachingConfigurer {
             try {
                 URI uri = new URI(redisUrl);
                 RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-                config.setHostName(uri.getHost());
-                config.setPort(uri.getPort());
+                config.setHostName(uri.getHost() != null ? uri.getHost() : "red-d7tl3a1kh4rs73aruutg");
+                config.setPort(uri.getPort() > 0 ? uri.getPort() : 6379);
                 if (uri.getUserInfo() != null) {
-                    config.setPassword(uri.getUserInfo().split(":", 2)[1]);
+                    String userInfo = uri.getUserInfo();
+                    config.setPassword(userInfo.contains(":") ? userInfo.split(":", 2)[1] : userInfo);
                 }
                 return new LettuceConnectionFactory(config);
             } catch (URISyntaxException e) {

@@ -17,7 +17,7 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:red-d7tl3a1kh4rs73aruutg}}
       port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
 
 app:
