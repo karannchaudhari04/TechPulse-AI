@@ -50,9 +50,19 @@ public class AISynthesisAgent {
         this.objectMapper = new ObjectMapper();
     }
 
+    // Permanent client errors that should NOT be retried (e.g. auth, bad request)
+    private static final Set<org.springframework.http.HttpStatus> NON_RETRYABLE_STATUSES = Set.of(
+            org.springframework.http.HttpStatus.UNAUTHORIZED,
+            org.springframework.http.HttpStatus.FORBIDDEN,
+            org.springframework.http.HttpStatus.NOT_FOUND,
+            org.springframework.http.HttpStatus.BAD_REQUEST
+    );
+
+    static final int MAX_RETRIES = 5;
+
     @Transactional
     public TechnologyEvent synthesizeAndSave(RawIngestion rawUpdate) {
-        log.info("[AISynthesisAgent] Processing raw update for AI synthesis: '{}' (Event ID: {})", 
+        log.info("[AISynthesisAgent] Processing raw update for AI synthesis: '{}' (Event ID: {})",
                 rawUpdate.getTitle(), rawUpdate.getEventId());
 
         String prompt = buildStructuredPrompt(rawUpdate.getTitle(), rawUpdate.getRawContent());
@@ -71,8 +81,25 @@ public class AISynthesisAgent {
         try {
             response = aiClient.generate(request);
         } catch (Exception e) {
-            log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=FAILED reason=\"{}\"", rawUpdate.getId(), rawUpdate.getEventId(), e.getMessage());
-            rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
+            boolean isPermanentFailure = isPermanentFailure(e);
+            int retries = rawUpdate.getRetryCount() == null ? 0 : rawUpdate.getRetryCount();
+            retries++;
+
+            rawUpdate.setRetryCount(retries);
+            rawUpdate.setLastAttemptAt(java.time.LocalDateTime.now());
+            rawUpdate.setFailureReason(e.getMessage());
+
+            if (isPermanentFailure || retries >= MAX_RETRIES) {
+                // Permanent error (e.g. 401) OR exceeded max retries → abandon it
+                rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.FAILED);
+                log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=ABANDONED retries={} reason=\"{}\"",
+                        rawUpdate.getId(), rawUpdate.getEventId(), retries, e.getMessage());
+            } else {
+                // Transient error — keep as NEW so it can be retried next cycle
+                rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
+                log.warn("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=RETRYABLE retries={}/{} reason=\"{}\"",
+                        rawUpdate.getId(), rawUpdate.getEventId(), retries, MAX_RETRIES, e.getMessage());
+            }
             rawIngestionRepository.save(rawUpdate);
             throw new RuntimeException("Gemini generation failed: " + e.getMessage(), e);
         }
@@ -88,8 +115,20 @@ public class AISynthesisAgent {
         try {
             dto = objectMapper.readValue(jsonContent, StructuredEventResponseDTO.class);
         } catch (Exception e) {
-            log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=FAILED reason=\"JSON parsing failed: {}\"", rawUpdate.getId(), rawUpdate.getEventId(), e.getMessage());
-            rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW); // retry later
+            int retries = rawUpdate.getRetryCount() == null ? 0 : rawUpdate.getRetryCount();
+            retries++;
+            rawUpdate.setRetryCount(retries);
+            rawUpdate.setLastAttemptAt(java.time.LocalDateTime.now());
+            rawUpdate.setFailureReason("JSON parse failed: " + e.getMessage());
+            if (retries >= MAX_RETRIES) {
+                rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.FAILED);
+                log.error("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=ABANDONED retries={} reason=\"JSON parsing failed: {}\"",
+                        rawUpdate.getId(), rawUpdate.getEventId(), retries, e.getMessage());
+            } else {
+                rawUpdate.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
+                log.warn("[AI_SYNTHESIS] rawIngestionId={} eventId={} status=RETRYABLE retries={}/{} reason=\"JSON parsing failed: {}\"",
+                        rawUpdate.getId(), rawUpdate.getEventId(), retries, MAX_RETRIES, e.getMessage());
+            }
             rawIngestionRepository.save(rawUpdate);
             throw new RuntimeException("Structured output parsing failed", e);
         }
@@ -184,5 +223,21 @@ public class AISynthesisAgent {
                   "imageUrl": "string or null (URL to a representative technology logo/image or official vendor image, or null)"
                 }
                 """.formatted(title, content.substring(0, Math.min(content.length(), 3500)), categoriesStr);
+    }
+
+    /**
+     * Returns true if the exception represents a permanent, non-retryable failure
+     * (e.g. 401 Unauthorized, 403 Forbidden). These should immediately mark the
+     * record as FAILED rather than burning retries.
+     */
+    private boolean isPermanentFailure(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof org.springframework.web.client.HttpClientErrorException httpEx) {
+                return NON_RETRYABLE_STATUSES.contains(httpEx.getStatusCode());
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }

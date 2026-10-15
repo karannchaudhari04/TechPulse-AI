@@ -73,9 +73,11 @@ public class NewsIngestionService {
             return;
         }
         try {
-            // ── Phase 0: Retry pending NEW records from previous failed Gemini calls ──────
+            // ── Phase 0: Retry pending NEW records that haven't exceeded max retries ──────
             List<RawIngestion> pendingRetries = rawIngestionRepository
-                    .findTop50ByProcessingStatusOrderByFetchedAtAsc(RawIngestion.ProcessingStatus.NEW);
+                    .findTop50RetryableNew(
+                            AISynthesisAgent.MAX_RETRIES,
+                            org.springframework.data.domain.PageRequest.of(0, 50));
 
             int retryCount = pendingRetries.size();
             int retrySuccessCount = 0;

@@ -109,11 +109,21 @@ public class RawIngestion {
     @Column(name = "event_source_count")
     private Integer eventSourceCount = 1;
 
+    @Column(name = "retry_count")
+    private Integer retryCount = 0;
+
+    @Column(name = "last_attempt_at")
+    private LocalDateTime lastAttemptAt;
+
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    private String failureReason;
+
     public enum ProcessingStatus {
         NEW,
         CLEANED,
         CLASSIFIED,
         DUPLICATE,
-        PROCESSED
+        PROCESSED,
+        FAILED        // Gemini synthesis failed — will be retried up to MAX_RETRIES
     }
 }

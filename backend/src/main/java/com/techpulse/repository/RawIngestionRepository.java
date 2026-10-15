@@ -56,8 +56,21 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     boolean existsByUrlHash(String urlHash);
 
     /**
-     * Returns up to 50 RawIngestion records stuck in NEW status, oldest first.
-     * Used by NewsIngestionService to retry failed Gemini synthesis on each ingestion cycle.
+     * Deletes raw ingestion records stuck in FAILED status older than the cutoff.
+     * Used by PruningScheduler to clean up records that exhausted all retries.
      */
+    @Transactional
+    @Modifying
+    @Query("DELETE FROM RawIngestion r WHERE r.fetchedAt < :cutoff AND r.processingStatus = 'FAILED'")
+    int pruneOldFailed(@Param("cutoff") LocalDateTime cutoff);
+
+    /**
+     * Returns up to 50 RawIngestion records stuck in NEW status with retryCount < maxRetries, oldest first.
+     * Used by NewsIngestionService to retry transient synthesis failures on each ingestion cycle.
+     */
+    @Query("SELECT r FROM RawIngestion r WHERE r.processingStatus = 'NEW' AND (r.retryCount IS NULL OR r.retryCount < :maxRetries) ORDER BY r.fetchedAt ASC")
+    java.util.List<RawIngestion> findTop50RetryableNew(@Param("maxRetries") int maxRetries, org.springframework.data.domain.Pageable pageable);
+
+    // Legacy method kept for backward-compatibility (used in tests)
     java.util.List<RawIngestion> findTop50ByProcessingStatusOrderByFetchedAtAsc(RawIngestion.ProcessingStatus status);
 }
