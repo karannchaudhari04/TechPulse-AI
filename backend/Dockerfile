@@ -33,20 +33,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 EXPOSE 8080
 
-# Tuned for Render Free Tier (512MB RAM) — Ultra-Lean Profile:
-# -Xmx160m                  = max heap 160MB (leaves >300MB for non-heap & OS)
+# Tuned for Render Free Tier (512MB RAM) — Lean Profile with adequate Metaspace:
+# -Xmx180m                  = max heap 180MB
 # -Xms64m                   = initial heap 64MB
-# -XX:MaxMetaspaceSize=100m = prevent unbounded classloader metaspace growth
+# -XX:MaxMetaspaceSize=192m = allow Spring Boot 3 + Hibernate 6 + Firebase Admin SDK to load classes
 # -XX:ReservedCodeCacheSize=32m = cap JIT code cache
 # -XX:+UseSerialGC          = lightweight single-thread GC with minimal memory metadata
 # -Xss256k                  = reduce thread stack size to 256KB to save memory per thread
 # -XX:+ExitOnOutOfMemoryError
-ENTRYPOINT ["java", \
-  "-Xmx160m", "-Xms64m", \
-  "-XX:MaxMetaspaceSize=100m", \
-  "-XX:ReservedCodeCacheSize=32m", \
-  "-XX:+UseSerialGC", \
-  "-Xss256k", \
-  "-XX:+ExitOnOutOfMemoryError", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["/bin/sh", "-c", "unset JAVA_TOOL_OPTIONS; exec java -Xmx180m -Xms64m -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=32m -XX:+UseSerialGC -Xss256k -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+
