@@ -65,12 +65,12 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     int pruneOldFailed(@Param("cutoff") LocalDateTime cutoff);
 
     /**
-     * Deletes any raw ingestion records that are not PROCESSED or DUPLICATE.
-     * Guarantees no failed or stuck records remain in the database.
+     * Deletes any raw ingestion records that are not PROCESSED.
+     * Guarantees only clean PROCESSED records remain in the database.
      */
     @Transactional
     @Modifying
-    @Query("DELETE FROM RawIngestion r WHERE r.processingStatus != 'PROCESSED' AND r.processingStatus != 'DUPLICATE'")
+    @Query("DELETE FROM RawIngestion r WHERE r.processingStatus != 'PROCESSED'")
     int deleteUnprocessed();
 
     // Legacy method kept for backward-compatibility (used in tests)

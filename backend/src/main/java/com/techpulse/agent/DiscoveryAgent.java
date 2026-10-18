@@ -91,7 +91,6 @@ public class DiscoveryAgent {
         List<RawIngestionRepository.CandidateProjection> dbCandidates = rawIngestionRepository.findRecentCandidateProjections(since);
 
         List<RawIngestion> uniqueUpdates = new ArrayList<>();
-        List<RawIngestion> allIngested = new ArrayList<>();
         int duplicateCount = 0;
 
         for (RawUpdateDTO update : rawUpdates) {
@@ -115,16 +114,19 @@ public class DiscoveryAgent {
             String urlHash = HashUtil.sha256(canonicalUrl);
             String titleHash = HashUtil.sha256(HashUtil.normalizeTitle(cleanedTitle));
 
-            // Layered Duplicate Detection — track isUrlDuplicate inline to avoid redundant query
+            // Layered Duplicate Detection
             boolean isDuplicate = false;
-            boolean isUrlDuplicate = false;
             String matchedEventId = null;
 
-            // Layer 1: Check in-memory batch for exact URL match
-            for (RawIngestion ing : allIngested) {
+            // Layer 1: Check in-memory batch for exact URL or Title Fingerprint match
+            for (RawIngestion ing : uniqueUpdates) {
                 if (ing.getUrlHash().equals(urlHash)) {
                     isDuplicate = true;
-                    isUrlDuplicate = true;
+                    matchedEventId = ing.getEventId();
+                    break;
+                }
+                if (ing.getTitleHash().equals(titleHash)) {
+                    isDuplicate = true;
                     matchedEventId = ing.getEventId();
                     break;
                 }
@@ -135,7 +137,6 @@ public class DiscoveryAgent {
                 Optional<RawIngestion> dbUrlMatch = rawIngestionRepository.findByUrlHash(urlHash);
                 if (dbUrlMatch.isPresent()) {
                     isDuplicate = true;
-                    isUrlDuplicate = true;
                     matchedEventId = dbUrlMatch.get().getEventId();
                 }
             }
@@ -168,6 +169,12 @@ public class DiscoveryAgent {
                 }
             }
 
+            if (isDuplicate) {
+                duplicateCount++;
+                log.debug("[DiscoveryAgent] Duplicate detected and discarded: '{}' (Matched Event ID: {})", cleanedTitle, matchedEventId);
+                continue;
+            }
+
             RawIngestion entity = new RawIngestion();
             entity.setId(UUID.randomUUID().toString());
             entity.setRunId(runId);
@@ -181,33 +188,21 @@ public class DiscoveryAgent {
             entity.setTitleHash(titleHash);
             entity.setPublishedAt(update.getPublishedAt());
             entity.setFetchedAt(LocalDateTime.now());
+            entity.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
+            entity.setEventId(UUID.randomUUID().toString());
 
-            if (isDuplicate) {
-                entity.setProcessingStatus(RawIngestion.ProcessingStatus.DUPLICATE);
-                entity.setEventId(matchedEventId != null ? matchedEventId : UUID.randomUUID().toString());
-                duplicateCount++;
-                log.debug("[DiscoveryAgent] Duplicate detected for title '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
-            } else {
-                entity.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
-                entity.setEventId(UUID.randomUUID().toString());
-                uniqueUpdates.add(entity);
-                log.info("[DiscoveryAgent] Unique article discovered: '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
-            }
-
-            // Only save if not an exact URL duplicate (to respect unique index on url_hash)
-            if (!isUrlDuplicate) {
-                allIngested.add(entity);
-            }
+            uniqueUpdates.add(entity);
+            log.info("[DiscoveryAgent] Unique article discovered: '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
         }
 
-        if (!allIngested.isEmpty()) {
-            rawIngestionRepository.saveAll(allIngested);
+        if (!uniqueUpdates.isEmpty()) {
+            rawIngestionRepository.saveAll(uniqueUpdates);
         }
 
         long durationMs = System.currentTimeMillis() - startMs;
         log.info("[DISCOVERY] runId={} sources={} successful={} failed={} candidates={} unique={} duplicates={} saved={} durationMs={}",
                 runId, totalSources, successfulSources.get(), failedSources.get(),
-                rawUpdates.size(), uniqueUpdates.size(), duplicateCount, allIngested.size(), durationMs);
+                rawUpdates.size(), uniqueUpdates.size(), duplicateCount, uniqueUpdates.size(), durationMs);
 
         return uniqueUpdates;
     }

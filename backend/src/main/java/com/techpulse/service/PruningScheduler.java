@@ -33,7 +33,7 @@ public class PruningScheduler {
         log.info("[PruningScheduler] Starting daily pruning of raw ingestion table (processed cutoff: {})", processedCutoff);
         try {
             int deletedProcessed = rawIngestionRepository.pruneOldProcessed(processedCutoff);
-            log.info("[PruningScheduler] Pruned {} PROCESSED/DUPLICATE raw ingestion rows.", deletedProcessed);
+            log.info("[PruningScheduler] Pruned {} old PROCESSED raw ingestion rows.", deletedProcessed);
         } catch (Exception e) {
             log.error("[PruningScheduler] Error pruning processed raw ingestions: {}", e.getMessage(), e);
         }

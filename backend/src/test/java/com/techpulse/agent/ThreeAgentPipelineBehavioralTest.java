@@ -180,12 +180,12 @@ public class ThreeAgentPipelineBehavioralTest {
         List<RawIngestion> uniqueList3 = discoveryAgent.discoverAndDeduplicate();
         assertTrue(uniqueList3.isEmpty());
 
-        // Verify duplicate raw ingestion exists for similar content under different URL
+        // Verify duplicate was discarded in-memory and NOT saved to raw_ingestion
         List<RawIngestion> duplicates = rawIngestionRepository.findAll().stream()
                 .filter(r -> r.getProcessingStatus() == RawIngestion.ProcessingStatus.DUPLICATE)
                 .toList();
-        assertEquals(1, duplicates.size());
-        assertEquals(raw1.getEventId(), duplicates.get(0).getEventId());
+        assertTrue(duplicates.isEmpty(), "Zero duplicate rows should be saved to database");
+        assertEquals(1, rawIngestionRepository.count(), "Only original unique article should exist in raw_ingestion");
     }
 
     @Test

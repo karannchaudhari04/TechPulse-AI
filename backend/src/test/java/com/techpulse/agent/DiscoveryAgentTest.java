@@ -89,7 +89,10 @@ public class DiscoveryAgentTest {
         assertNotNull(uniqueResults);
         assertEquals(1, uniqueResults.size());
         assertEquals("Unique Title", uniqueResults.get(0).getTitle());
-        verify(rawIngestionRepository, times(1)).saveAll(anyList());
+        org.mockito.ArgumentCaptor<List<RawIngestion>> captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(rawIngestionRepository, times(1)).saveAll(captor.capture());
+        assertEquals(1, captor.getValue().size());
+        assertEquals("Unique Title", captor.getValue().get(0).getTitle());
     }
 
     @Test
@@ -126,5 +129,6 @@ public class DiscoveryAgentTest {
 
         List<RawIngestion> uniqueResults = discoveryAgent.discoverAndDeduplicate();
         assertTrue(uniqueResults.isEmpty());
+        verify(rawIngestionRepository, never()).saveAll(anyList());
     }
 }
