@@ -73,31 +73,14 @@ public class NewsIngestionService {
             return;
         }
         try {
-            // ── Phase 0: Retry pending NEW records that haven't exceeded max retries ──────
-            List<RawIngestion> pendingRetries = rawIngestionRepository
-                    .findTop50RetryableNew(
-                            AISynthesisAgent.MAX_RETRIES,
-                            org.springframework.data.domain.PageRequest.of(0, 50));
-
-            int retryCount = pendingRetries.size();
-            int retrySuccessCount = 0;
-
-            if (!pendingRetries.isEmpty()) {
-                log.info("[NewsIngestion] Found {} pending NEW records to retry with AISynthesisAgent.", retryCount);
-                for (RawIngestion pending : pendingRetries) {
-                    try {
-                        TechnologyEvent event = aiSynthesisAgent.synthesizeAndSave(pending);
-                        if (event != null) {
-                            retrySuccessCount++;
-                        }
-                        Thread.sleep(2000);
-                    } catch (Exception e) {
-                        log.error("[NewsIngestion] Retry synthesis failed for raw update ID '{}': {}", pending.getId(), e.getMessage());
-                    }
+            // Clean up any stale un-synthesized records so DB is pristine
+            try {
+                int cleaned = rawIngestionRepository.deleteUnprocessed();
+                if (cleaned > 0) {
+                    log.info("[NewsIngestion] Cleaned up {} old unprocessed/failed records from DB.", cleaned);
                 }
-                log.info("[NewsIngestion] Retry phase complete. Succeeded: {}/{}", retrySuccessCount, retryCount);
-            } else {
-                log.info("[NewsIngestion] No pending NEW records to retry.");
+            } catch (Exception e) {
+                log.warn("[NewsIngestion] Could not clean old unprocessed records: {}", e.getMessage());
             }
 
             // ── Phase 1: Fresh RSS Discovery ─────────────────────────────────────────────
@@ -112,23 +95,32 @@ public class NewsIngestionService {
                     TechnologyEvent event = aiSynthesisAgent.synthesizeAndSave(candidate);
                     if (event != null) {
                         savedCount++;
+                    } else {
+                        // Synthesis returned null — delete raw update immediately
+                        rawIngestionRepository.deleteById(candidate.getId());
                     }
                     Thread.sleep(2000);
                 } catch (Exception e) {
-                    log.error("[NewsIngestion] AI Synthesis failed for raw update ID '{}': {}", candidate.getId(), e.getMessage());
+                    log.warn("[NewsIngestion] AI Synthesis failed for raw update ID '{}': {}. Deleting immediately from DB.",
+                            candidate.getId(), e.getMessage());
+                    try {
+                        rawIngestionRepository.deleteById(candidate.getId());
+                    } catch (Exception deleteEx) {
+                        log.error("[NewsIngestion] Failed to delete failed raw update '{}': {}", candidate.getId(), deleteEx.getMessage());
+                    }
                 }
             }
 
             this.lastSavedCount = savedCount;
             this.lastRunTime = LocalDateTime.now();
 
-            if (savedCount > 0 || retrySuccessCount > 0) {
+            if (savedCount > 0) {
                 log.info("[NewsIngestion] Evicting feed and personalization caches...");
                 invalidateCaches();
             }
 
-            log.info("[NewsIngestion] Ingestion Completed. Retried: {}/{} | Fresh synthesized: {}",
-                    retrySuccessCount, retryCount, savedCount);
+            log.info("[NewsIngestion] Ingestion Completed. Successfully synthesized: {}/{}",
+                    savedCount, uniqueCandidates.size());
         } finally {
             isIngesting.set(false);
         }

@@ -113,4 +113,23 @@ public class AISynthesisAgentTest {
         assertNotNull(event);
         assertTrue(event.getCategoriesJson().contains("Emerging Tech"));
     }
+
+    @Test
+    public void testSynthesizeFailureDeletesRawUpdateImmediately() {
+        RawIngestion raw = new RawIngestion();
+        raw.setId("raw-fail-789");
+        raw.setEventId("event-fail-789");
+        raw.setTitle("Failing Gemini Update");
+        raw.setRawContent("This article fails during synthesis.");
+
+        when(aiClient.generate(any(AIRequest.class)))
+                .thenThrow(new RuntimeException("Gemini 401 Unauthorized"));
+
+        assertThrows(RuntimeException.class, () -> aiSynthesisAgent.synthesizeAndSave(raw));
+
+        // Must delete the raw update immediately from the database
+        verify(rawIngestionRepository, times(1)).deleteById("raw-fail-789");
+        // Must never save any TechnologyEvent
+        verify(technologyEventRepository, never()).save(any());
+    }
 }

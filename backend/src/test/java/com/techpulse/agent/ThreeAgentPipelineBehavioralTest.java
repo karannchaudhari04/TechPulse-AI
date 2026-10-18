@@ -212,10 +212,9 @@ public class ThreeAgentPipelineBehavioralTest {
 
         assertThrows(RuntimeException.class, () -> aiSynthesisAgent.synthesizeAndSave(raw));
 
-        // Verify status remains NEW for retry and no event is saved
-        RawIngestion updatedRaw = rawIngestionRepository.findById(raw.getId()).orElse(null);
-        assertNotNull(updatedRaw);
-        assertEquals(RawIngestion.ProcessingStatus.NEW, updatedRaw.getProcessingStatus());
+        // Verify raw update is deleted immediately from DB and no event is saved
+        Optional<RawIngestion> updatedRaw = rawIngestionRepository.findById(raw.getId());
+        assertTrue(updatedRaw.isEmpty(), "Failed raw update should be deleted immediately from DB");
 
         Optional<TechnologyEvent> eventOpt = technologyEventRepository.findById(raw.getEventId());
         assertTrue(eventOpt.isEmpty());

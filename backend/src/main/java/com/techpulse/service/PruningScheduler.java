@@ -23,15 +23,14 @@ public class PruningScheduler {
 
     /**
      * Deletes raw updates that are processed or duplicates and older than 14 days.
-     * Also cleans up FAILED records (exhausted retries) older than 3 days.
+     * Also immediately wipes any leftover unprocessed records so DB stays pristine.
      * Runs automatically at midnight every day.
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void pruneRawIngestions() {
         LocalDateTime processedCutoff = LocalDateTime.now().minusDays(14);
-        LocalDateTime failedCutoff = LocalDateTime.now().minusDays(3);
 
-        log.info("[PruningScheduler] Starting daily pruning. Processed cutoff: {}, Failed cutoff: {}", processedCutoff, failedCutoff);
+        log.info("[PruningScheduler] Starting daily pruning of raw ingestion table (processed cutoff: {})", processedCutoff);
         try {
             int deletedProcessed = rawIngestionRepository.pruneOldProcessed(processedCutoff);
             log.info("[PruningScheduler] Pruned {} PROCESSED/DUPLICATE raw ingestion rows.", deletedProcessed);
@@ -39,10 +38,12 @@ public class PruningScheduler {
             log.error("[PruningScheduler] Error pruning processed raw ingestions: {}", e.getMessage(), e);
         }
         try {
-            int deletedFailed = rawIngestionRepository.pruneOldFailed(failedCutoff);
-            log.info("[PruningScheduler] Pruned {} FAILED raw ingestion rows (exhausted retries).", deletedFailed);
+            int deletedUnprocessed = rawIngestionRepository.deleteUnprocessed();
+            if (deletedUnprocessed > 0) {
+                log.info("[PruningScheduler] Cleaned up {} leftover unprocessed/failed raw ingestion rows.", deletedUnprocessed);
+            }
         } catch (Exception e) {
-            log.error("[PruningScheduler] Error pruning failed raw ingestions: {}", e.getMessage(), e);
+            log.error("[PruningScheduler] Error cleaning unprocessed raw ingestions: {}", e.getMessage(), e);
         }
     }
 }
