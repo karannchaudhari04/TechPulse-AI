@@ -6,19 +6,40 @@ SET name = 'Problem Solving',
 WHERE name = 'DSA & Problem Solving';
 
 -- Preserve mobile-development preferences by merging them into the web-development category.
-INSERT IGNORE INTO user_preferences (user_id, category_id)
+INSERT INTO user_preferences (user_id, category_id)
 SELECT mobile_pref.user_id, web_category.id
 FROM user_preferences mobile_pref
 JOIN categories mobile_category ON mobile_category.id = mobile_pref.category_id
 JOIN categories web_category ON web_category.name = 'Web Development'
-WHERE mobile_category.name = 'Mobile Development';
+WHERE mobile_category.name = 'Mobile Development'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM user_preferences existing_pref
+      WHERE existing_pref.user_id = mobile_pref.user_id
+        AND existing_pref.category_id = web_category.id
+  );
 
 DELETE mobile_pref
 FROM user_preferences mobile_pref
 JOIN categories mobile_category ON mobile_category.id = mobile_pref.category_id
 WHERE mobile_category.name = 'Mobile Development';
 
--- The legacy bites table was dropped by V5; current event categories are stored in technology_event.
+-- Some deployed databases still contain the legacy bites table even though V5 drops it.
+-- Remap its category foreign keys only when that table exists.
+SET @techpulse_bites_exists = (
+    SELECT COUNT(*)
+    FROM information_schema.tables
+    WHERE table_schema = DATABASE() AND table_name = 'bites'
+);
+SET @techpulse_remap_bites_sql = IF(
+    @techpulse_bites_exists > 0,
+    'UPDATE bites b JOIN categories mobile_category ON mobile_category.id = b.category_id JOIN categories development_category ON development_category.name = ''Web Development'' SET b.category_id = development_category.id WHERE mobile_category.name = ''Mobile Development''',
+    'SELECT 1'
+);
+PREPARE techpulse_remap_bites_stmt FROM @techpulse_remap_bites_sql;
+EXECUTE techpulse_remap_bites_stmt;
+DEALLOCATE PREPARE techpulse_remap_bites_stmt;
+
 DELETE FROM categories WHERE name = 'Mobile Development';
 UPDATE categories
 SET name = 'Development',
