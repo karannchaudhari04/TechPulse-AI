@@ -124,6 +124,7 @@ public class AISynthesisAgent {
                 .lifecycleStatus(dto.getLifecycleStatus())
                 .firstSeen(rawUpdate.getPublishedAt() != null ? rawUpdate.getPublishedAt() : LocalDateTime.now())
                 .lastUpdated(LocalDateTime.now())
+                .fetchedAt(rawUpdate.getFetchedAt() != null ? rawUpdate.getFetchedAt() : LocalDateTime.now())
                 .summaryStatus("READY")
                 .llmModel(modelName)
                 .promptTokens(response.getPromptTokens())

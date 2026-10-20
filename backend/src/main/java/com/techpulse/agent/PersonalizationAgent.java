@@ -162,10 +162,15 @@ public class PersonalizationAgent {
             return Collections.emptyList();
         }
         candidates.sort(Comparator
-                .comparing(TechnologyEvent::getFirstSeen, Comparator.nullsLast(Comparator.reverseOrder()))
-                .thenComparing(TechnologyEvent::getLastUpdated, Comparator.nullsLast(Comparator.reverseOrder()))
+                .comparing(PersonalizationAgent::getFetchTime, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(TechnologyEvent::getId, Comparator.nullsLast(Comparator.reverseOrder())));
         return candidates;
+    }
+
+    private static LocalDateTime getFetchTime(TechnologyEvent event) {
+        if (event.getFetchedAt() != null) return event.getFetchedAt();
+        if (event.getLastUpdated() != null) return event.getLastUpdated();
+        return event.getFirstSeen();
     }
 
     private List<String> parseJsonList(String json) {

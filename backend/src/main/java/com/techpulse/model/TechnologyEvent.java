@@ -47,6 +47,9 @@ public class TechnologyEvent {
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
 
+    @Column(name = "fetched_at")
+    private LocalDateTime fetchedAt;
+
     @Column(name = "lifecycle_status", length = 50)
     private String lifecycleStatus;
 

@@ -6,6 +6,7 @@ export interface FeedItem {
   headline: string;
   summary: string;
   publishedTime: string;
+  fetchedAt: string;
   sourceName: string;
   sourceUrl: string;
   importanceScore: number;

@@ -40,8 +40,8 @@ export default function HomeScreen() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [accumulatedFeed, setAccumulatedFeed] = useState<FeedItem[]>([]);
   const newestFirstFeed = React.useMemo(() => [...accumulatedFeed].sort((a, b) => {
-    const dateA = Date.parse(a.publishedTime);
-    const dateB = Date.parse(b.publishedTime);
+    const dateA = Date.parse(a.fetchedAt || a.publishedTime);
+    const dateB = Date.parse(b.fetchedAt || b.publishedTime);
     const timestampA = Number.isNaN(dateA) ? Number.NEGATIVE_INFINITY : dateA;
     const timestampB = Number.isNaN(dateB) ? Number.NEGATIVE_INFINITY : dateB;
     return timestampB - timestampA || b.id.localeCompare(a.id);

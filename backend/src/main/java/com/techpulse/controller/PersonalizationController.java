@@ -113,13 +113,8 @@ public class PersonalizationController {
         Long userId = getOptionalUserId();
         List<TechnologyEvent> events = technologyEventRepository.findAll();
 
-        // Trending: Sort by importance score & firstSeen descending
-        events.sort((a, b) -> {
-            double impA = a.getImportanceScore() != null ? a.getImportanceScore() : 0.0;
-            double impB = b.getImportanceScore() != null ? b.getImportanceScore() : 0.0;
-            if (impA != impB) return Double.compare(impB, impA);
-            return b.getFirstSeen().compareTo(a.getFirstSeen());
-        });
+        // All update lists use fetch recency; importance and user activity do not affect order.
+        personalizationService.sortNewestFirst(events);
 
         List<Map<String, Object>> response = events.stream()
                 .limit(20)
@@ -522,7 +517,7 @@ public class PersonalizationController {
 
     @SuppressWarnings("unchecked")
     private List<TechnologyEvent> getCachedFeed(Long userId) {
-        String cacheKey = "chronological-v1:" + (userId == null ? "guest" : userId);
+        String cacheKey = "chronological-v2:" + (userId == null ? "guest" : userId);
         
         try {
             Cache cache = cacheManager.getCache("chronologicalFeed");
@@ -556,7 +551,7 @@ public class PersonalizationController {
             }
 
             log.info("[PersonalizationController] Fetching newest-first feed for key: {}", cacheKey);
-            List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFirstSeenDesc();
+            List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFetchedAtDesc();
             List<TechnologyEvent> newestFirst = personalizationService.sortNewestFirst(candidates);
 
             try {
@@ -576,9 +571,9 @@ public class PersonalizationController {
             Cache cache = cacheManager.getCache("chronologicalFeed");
             if (cache != null) {
                 if (userId != null) {
-                    cache.evict("chronological-v1:" + userId);
+                    cache.evict("chronological-v2:" + userId);
                 }
-                cache.evict("chronological-v1:guest");
+                cache.evict("chronological-v2:guest");
             }
         } catch (Exception e) {
             log.warn("[PersonalizationController] Cache eviction warning: {}", e.getMessage());
@@ -612,6 +607,7 @@ public class PersonalizationController {
         map.put("summary", event.getSummary() != null ? event.getSummary() : "");
         map.put("contentSummary", event.getSummary() != null ? event.getSummary() : "");
         map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : "");
+        map.put("fetchedAt", getFetchTime(event) != null ? getFetchTime(event).toString() : "");
         map.put("sourceName", "TechCrunch"); // default source template matching RN cards
         map.put("thumbnailUrl", event.getImageUrl());
 
@@ -651,6 +647,12 @@ public class PersonalizationController {
         map.put("bookmarked", bookmarked);
         map.put("read", read);
         return map;
+    }
+
+    private LocalDateTime getFetchTime(TechnologyEvent event) {
+        if (event.getFetchedAt() != null) return event.getFetchedAt();
+        if (event.getLastUpdated() != null) return event.getLastUpdated();
+        return event.getFirstSeen();
     }
 
     private List<String> parseJsonList(String json) {
