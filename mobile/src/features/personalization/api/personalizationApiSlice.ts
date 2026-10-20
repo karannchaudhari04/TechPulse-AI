@@ -47,14 +47,24 @@ export const personalizationApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         data: { eventId },
       }),
-      invalidatesTags: ['Bookmark', 'Recommendation'],
+      invalidatesTags: (_result, _error, eventId) => [
+        'Bookmark',
+        'Recommendation',
+        { type: 'Bite', id: eventId },
+        { type: 'Bite', id: 'LIST' },
+      ],
     }),
     removeBookmark: builder.mutation<void, string>({
       query: (id) => ({
         url: `/user/bookmark/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Bookmark', 'Recommendation'],
+      invalidatesTags: (_result, _error, id) => [
+        'Bookmark',
+        'Recommendation',
+        { type: 'Bite', id },
+        { type: 'Bite', id: 'LIST' },
+      ],
     }),
     getCollections: builder.query<UserCollection[], void>({
       query: () => ({

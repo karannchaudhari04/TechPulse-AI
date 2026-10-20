@@ -24,12 +24,7 @@ export default function BookmarksScreen() {
   const [recordInteraction] = useRecordInteractionMutation();
 
   const handleBookmarkToggle = async (eventId: string) => {
-    try {
-      await removeBookmark(eventId).unwrap();
-      refetch();
-    } catch (err) {
-      console.error('[Bookmarks] Failed to remove bookmark:', err);
-    }
+    await removeBookmark(eventId).unwrap();
   };
 
   if (isLoading) {

@@ -10,6 +10,7 @@ import {
   useGetRecommendationExplanationsQuery 
 } from '../api/recommendationApiSlice';
 import { useNotificationAnalytics } from '../hooks/useNotificationAnalytics';
+import { useAddBookmarkMutation, useRemoveBookmarkMutation } from '../../personalization/api/personalizationApiSlice';
 
 /**
  * Purpose: AI recommendations listings screen displaying explanation headers.
@@ -18,6 +19,8 @@ export default function RecommendationCenterScreen() {
   const navigation = useNavigation<any>();
   const { colors, typography, spacing } = useTheme();
   const analytics = useNotificationAnalytics();
+  const [addBookmark] = useAddBookmarkMutation();
+  const [removeBookmark] = useRemoveBookmarkMutation();
 
   const { data: recommendations, isLoading: isRecsLoading, refetch: refetchRecs } = useGetRecommendationsQuery();
   const { data: explanations, isLoading: isExpsLoading, refetch: refetchExps } = useGetRecommendationExplanationsQuery();
@@ -30,6 +33,11 @@ export default function RecommendationCenterScreen() {
   const getExplanation = (eventId: string) => {
     if (!explanations) return null;
     return explanations.find(exp => exp.eventId === eventId)?.reason;
+  };
+
+  const handleBookmarkToggle = async (item: { id: string; bookmarked: boolean }) => {
+    if (item.bookmarked) await removeBookmark(item.id).unwrap();
+    else await addBookmark(item.id).unwrap();
   };
 
   if (isRecsLoading || isExpsLoading) {
@@ -78,7 +86,7 @@ export default function RecommendationCenterScreen() {
                       analytics.trackRecommendationOpened(item.id);
                       navigation.navigate('EventDetail', { id: item.id });
                     }}
-                    onBookmarkToggle={() => {}}
+                    onBookmarkToggle={() => handleBookmarkToggle(item)}
                   />
                 </View>
               </View>

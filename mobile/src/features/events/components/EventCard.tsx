@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useTheme } from '../../../theme';
@@ -11,7 +11,7 @@ import { getCategoryUpdateImage } from '../../feed/utils/categoryUpdateImages';
 export interface EventCardProps {
   item: FeedItem;
   onPress: () => void;
-  onBookmarkToggle: () => void;
+  onBookmarkToggle: () => void | Promise<void>;
   fullScreen?: boolean;
   imageHeight?: number;
 }
@@ -27,6 +27,28 @@ export default function EventCard({
   imageHeight,
 }: EventCardProps) {
   const { colors, typography, spacing, radius } = useTheme();
+  const [bookmarked, setBookmarked] = useState(item.bookmarked);
+  const [bookmarkPending, setBookmarkPending] = useState(false);
+
+  useEffect(() => {
+    setBookmarked(item.bookmarked);
+  }, [item.id, item.bookmarked]);
+
+  const handleBookmarkPress = async () => {
+    if (bookmarkPending) return;
+
+    const previousValue = bookmarked;
+    setBookmarked(!previousValue);
+    setBookmarkPending(true);
+    try {
+      await onBookmarkToggle();
+    } catch (error) {
+      setBookmarked(previousValue);
+      console.error('[EventCard] Failed to toggle bookmark:', error);
+    } finally {
+      setBookmarkPending(false);
+    }
+  };
 
   const fetchedDate = item.fetchedAt || item.publishedTime;
   const categoryUpdateImage = getCategoryUpdateImage(item.id, item.category);
@@ -36,61 +58,73 @@ export default function EventCard({
     : '';
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={[styles.container, fullScreen && styles.fullScreenContainer]}>
+    <View style={[styles.container, fullScreen && styles.fullScreenContainer]}>
       <Card variant="standard" style={[
         { borderColor: colors.border, backgroundColor: colors.cardBackground, padding: 0, borderRadius: radius.md },
         fullScreen && styles.fullScreenCard,
       ]}>
-        <View style={[styles.dateRow, { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }]}>
-          <TouchableOpacity onPress={onBookmarkToggle} style={styles.bookmarkButton} accessibilityRole="button" accessibilityLabel="Bookmark Event">
-            <Icon 
-              name={item.bookmarked ? 'bookmark' : 'bookmark-outline'} 
-              provider="ionicons" 
-              size={20} 
-              color={item.bookmarked ? colors.primary : colors.textSecondary} 
+        <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={[styles.cardContent, fullScreen && styles.fullScreenContent]}>
+          <View style={styles.imageContainer}>
+            <ExpoImage
+              source={categoryUpdateImage}
+              style={[styles.image, fullScreen && styles.fullScreenImage, fullScreen && { height: imageHeight ?? 120 }]}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={100}
+              accessibilityLabel={`Image for ${item.category} update`}
+            />
+            <Text style={[styles.date, { fontFamily: typography.caption.fontFamily }]}>
+              {fetchedDateLabel}
+            </Text>
+          </View>
+
+          <View style={[{ padding: spacing.md }, fullScreen && styles.fullScreenBody]}>
+            <Text
+              style={[
+                styles.headline,
+                { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, marginTop: spacing.xs }
+              ]}
+              numberOfLines={fullScreen ? undefined : 2}
+            >
+              {item.headline}
+            </Text>
+
+            <Text
+              style={[
+                styles.summary,
+                { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
+              ]}
+              numberOfLines={fullScreen ? undefined : 3}
+            >
+              {item.summary}
+            </Text>
+
+            <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+              <Tag label={item.category} type="primary" />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.bookmarkRow}>
+          <TouchableOpacity
+            onPress={handleBookmarkPress}
+            style={[styles.bookmarkButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
+            activeOpacity={0.75}
+            disabled={bookmarkPending}
+            accessibilityRole="button"
+            accessibilityState={{ selected: bookmarked, busy: bookmarkPending }}
+            accessibilityLabel={bookmarked ? 'Remove bookmark' : 'Bookmark update'}
+          >
+            <Icon
+              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
+              provider="ionicons"
+              size={20}
+              color={bookmarked ? colors.primary : colors.textSecondary}
             />
           </TouchableOpacity>
-          <Text style={[styles.date, { color: colors.textSecondary, fontFamily: typography.caption.fontFamily }]}>
-            {fetchedDateLabel}
-          </Text>
-        </View>
-
-        <ExpoImage
-          source={categoryUpdateImage}
-          style={[styles.image, fullScreen && styles.fullScreenImage, fullScreen && { height: imageHeight ?? 120 }]}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          transition={100}
-          accessibilityLabel={`Image for ${item.category} update`}
-        />
-
-        <View style={[{ padding: spacing.md }, fullScreen && styles.fullScreenBody]}>
-          <Text
-            style={[
-              styles.headline,
-              { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, marginTop: spacing.xs }
-            ]}
-            numberOfLines={fullScreen ? undefined : 2}
-          >
-            {item.headline}
-          </Text>
-
-          <Text
-            style={[
-              styles.summary,
-              { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
-            ]}
-            numberOfLines={fullScreen ? undefined : 3}
-          >
-            {item.summary}
-          </Text>
-
-          <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
-            <Tag label={item.category} type="primary" />
-          </View>
         </View>
       </Card>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -109,19 +143,41 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  cardContent: {
+    width: '100%',
+  },
+  fullScreenContent: {
+    flex: 1,
+  },
+  imageContainer: {
+    position: 'relative',
   },
   date: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.62)',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,
+    overflow: 'hidden',
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
   bookmarkButton: {
-    paddingVertical: 2,
-    paddingRight: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookmarkRow: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 14,
+    paddingBottom: 12,
   },
   image: {
     width: '100%',

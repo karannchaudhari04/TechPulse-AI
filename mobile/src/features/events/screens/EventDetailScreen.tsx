@@ -14,6 +14,7 @@ import { Tag } from '../../../components/common/Badge';
 import AIInsightCard from '../components/AIInsightCard';
 import { Divider } from '../../../components/common/Layout';
 import EventCard from '../components/EventCard';
+import { useAddBookmarkMutation, useRemoveBookmarkMutation } from '../../personalization/api/personalizationApiSlice';
 
 /**
  * Purpose: Premium Detailed Screen displaying AI summary timelines, Knowledge Graph nodes,
@@ -28,6 +29,13 @@ export default function EventDetailScreen() {
   const { data: event, isLoading, error, refetch } = useGetEventDetailsQuery(eventId, { skip: !eventId });
   const { data: relatedEvents } = useGetRelatedEventsQuery(eventId, { skip: !eventId });
   const [recordInteraction] = useRecordInteractionMutation();
+  const [addBookmark] = useAddBookmarkMutation();
+  const [removeBookmark] = useRemoveBookmarkMutation();
+
+  const handleRelatedBookmarkToggle = async (item: { id: string; bookmarked: boolean }) => {
+    if (item.bookmarked) await removeBookmark(item.id).unwrap();
+    else await addBookmark(item.id).unwrap();
+  };
 
   useEffect(() => {
     if (eventId) {
@@ -158,7 +166,7 @@ export default function EventDetailScreen() {
                   <EventCard 
                     item={item} 
                     onPress={() => navigation.push('EventDetail', { id: item.id })}
-                    onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
+                    onBookmarkToggle={() => handleRelatedBookmarkToggle(item)}
                   />
                 </View>
               ))}

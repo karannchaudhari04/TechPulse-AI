@@ -11,7 +11,10 @@ import {
   useGetFeedQuery,
   FeedItem
 } from '../features/feed/api/feedApiSlice';
-import { useRecordInteractionMutation } from '../features/events/api/eventsApiSlice';
+import {
+  useAddBookmarkMutation,
+  useRemoveBookmarkMutation,
+} from '../features/personalization/api/personalizationApiSlice';
 import { 
   HeaderSkeleton, 
   CardSkeleton
@@ -61,7 +64,13 @@ export default function HomeScreen() {
     category: activeCategory === 'all' ? undefined : activeCategory,
   });
 
-  const [recordInteraction] = useRecordInteractionMutation();
+  const [addBookmark] = useAddBookmarkMutation();
+  const [removeBookmark] = useRemoveBookmarkMutation();
+
+  const handleBookmarkToggle = useCallback(async (item: FeedItem) => {
+    if (item.bookmarked) await removeBookmark(item.id).unwrap();
+    else await addBookmark(item.id).unwrap();
+  }, [addBookmark, removeBookmark]);
 
   // 3. Accumulate items during cursor pagination and category updates
   useEffect(() => {
@@ -183,7 +192,7 @@ export default function HomeScreen() {
                   <EventCard
                     item={item}
                     onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-                    onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
+                    onBookmarkToggle={() => handleBookmarkToggle(item)}
                     fullScreen
                     imageHeight={feedPageHeight > 0 ? Math.round((feedPageHeight - 16) * 0.3) : 180}
                   />

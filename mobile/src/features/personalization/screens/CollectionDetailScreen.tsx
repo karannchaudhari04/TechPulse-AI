@@ -10,7 +10,7 @@ import { useGetFeedQuery } from '../../feed/api/feedApiSlice';
 import { SafeAreaWrapper } from '../../../components/common/Layout';
 import Icon from '../../../components/common/Icon';
 import EventCard from '../../events/components/EventCard';
-import { useRecordInteractionMutation } from '../../events/api/eventsApiSlice';
+import { useAddBookmarkMutation, useRemoveBookmarkMutation } from '../api/personalizationApiSlice';
 
 /**
  * Purpose: Collection Details Screen displaying bookmarks inside a collection folder.
@@ -26,7 +26,13 @@ export default function CollectionDetailScreen() {
 
   const { data: collections, isLoading } = useGetCollectionsQuery();
   const [removeEvent] = useRemoveEventFromCollectionMutation();
-  const [recordInteraction] = useRecordInteractionMutation();
+  const [addBookmark] = useAddBookmarkMutation();
+  const [removeBookmark] = useRemoveBookmarkMutation();
+
+  const handleBookmarkToggle = async (item: { id: string; bookmarked: boolean }) => {
+    if (item.bookmarked) await removeBookmark(item.id).unwrap();
+    else await addBookmark(item.id).unwrap();
+  };
 
   const collection = collections?.find(c => c.id === collectionId);
 
@@ -117,7 +123,7 @@ export default function CollectionDetailScreen() {
               <EventCard
                 item={item}
                 onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-                onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
+                onBookmarkToggle={() => handleBookmarkToggle(item)}
               />
               <TouchableOpacity 
                 onPress={() => handleRemoveEvent(item.id)}
