@@ -1,15 +1,19 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useTheme } from '../../../theme';
 import { FeedItem } from '../../feed/api/feedApiSlice';
 import Icon from '../../../components/common/Icon';
 import Card from '../../../components/common/Card';
 import { Tag } from '../../../components/common/Badge';
+import { getCategoryUpdateImage } from '../../feed/utils/categoryUpdateImages';
 
 export interface EventCardProps {
   item: FeedItem;
   onPress: () => void;
   onBookmarkToggle: () => void;
+  fullScreen?: boolean;
+  imageHeight?: number;
 }
 
 /**
@@ -19,66 +23,25 @@ export default function EventCard({
   item,
   onPress,
   onBookmarkToggle,
+  fullScreen = false,
+  imageHeight,
 }: EventCardProps) {
   const { colors, typography, spacing, radius } = useTheme();
 
-  const getTrendColor = (status: FeedItem['trendStatus']) => {
-    switch (status) {
-      case 'EXPLODING':
-        return colors.primary;
-      case 'RISING':
-        return colors.success;
-      case 'STABLE':
-        return colors.info;
-      case 'COOLING':
-        return colors.warning;
-      case 'DECLINING':
-      case 'DORMANT':
-      default:
-        return colors.textSecondary;
-    }
-  };
-
-  const getTrendIcon = (status: FeedItem['trendStatus']) => {
-    switch (status) {
-      case 'EXPLODING':
-        return 'zap';
-      case 'RISING':
-        return 'trending-up';
-      case 'STABLE':
-        return 'minus';
-      case 'COOLING':
-        return 'trending-down';
-      case 'DECLINING':
-      case 'DORMANT':
-      default:
-        return 'slash';
-    }
-  };
-
-  const getCredibilityType = (score: number) => {
-    if (score >= 80) return 'success';
-    if (score >= 50) return 'warning';
-    return 'danger';
-  };
+  const fetchedDate = item.fetchedAt || item.publishedTime;
+  const categoryUpdateImage = getCategoryUpdateImage(item.id, item.category);
+  const parsedDate = fetchedDate ? new Date(fetchedDate) : null;
+  const fetchedDateLabel = parsedDate && !Number.isNaN(parsedDate.getTime())
+    ? `${String(parsedDate.getDate()).padStart(2, '0')}-${parsedDate.toLocaleString('en', { month: 'short' }).toUpperCase()}`
+    : '';
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.container}>
-      <Card variant="standard" style={{ borderColor: colors.border, backgroundColor: colors.cardBackground, padding: spacing.md, borderRadius: radius.md }}>
-        <View style={styles.topRow}>
-          <View style={styles.tagsRow}>
-            <Tag label={item.technology} type="primary" />
-            {item.version && (
-              <Tag label={`v${item.version}`} type="info" />
-            )}
-            <View style={[styles.trendRow, { backgroundColor: 'rgba(255,255,255,0.02)', borderColor: colors.border, borderRadius: radius.xs }]}>
-              <Icon name={getTrendIcon(item.trendStatus)} provider="feather" size={12} color={getTrendColor(item.trendStatus)} />
-              <Text style={[styles.trendText, { color: getTrendColor(item.trendStatus), fontFamily: typography.caption.fontFamily }]}>
-                {item.trendStatus}
-              </Text>
-            </View>
-          </View>
-          
+    <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={[styles.container, fullScreen && styles.fullScreenContainer]}>
+      <Card variant="standard" style={[
+        { borderColor: colors.border, backgroundColor: colors.cardBackground, padding: 0, borderRadius: radius.md },
+        fullScreen && styles.fullScreenCard,
+      ]}>
+        <View style={[styles.dateRow, { paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.sm }]}>
           <TouchableOpacity onPress={onBookmarkToggle} style={styles.bookmarkButton} accessibilityRole="button" accessibilityLabel="Bookmark Event">
             <Icon 
               name={item.bookmarked ? 'bookmark' : 'bookmark-outline'} 
@@ -87,48 +50,44 @@ export default function EventCard({
               color={item.bookmarked ? colors.primary : colors.textSecondary} 
             />
           </TouchableOpacity>
+          <Text style={[styles.date, { color: colors.textSecondary, fontFamily: typography.caption.fontFamily }]}>
+            {fetchedDateLabel}
+          </Text>
         </View>
 
-        <Text 
-          style={[
-            styles.headline, 
-            { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, marginTop: spacing.xs }
-          ]}
-          numberOfLines={2}
-        >
-          {item.headline}
-        </Text>
+        <ExpoImage
+          source={categoryUpdateImage}
+          style={[styles.image, fullScreen && styles.fullScreenImage, fullScreen && { height: imageHeight ?? 120 }]}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={100}
+          accessibilityLabel={`Image for ${item.category} update`}
+        />
 
-        <Text 
-          style={[
-            styles.summary, 
-            { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
-          ]}
-          numberOfLines={3}
-        >
-          {item.summary}
-        </Text>
-
-        <View style={[styles.footerRow, { marginTop: spacing.md }]}>
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]}>
-              Credibility
-            </Text>
-            <Tag label={`${item.credibilityScore}%`} type={getCredibilityType(item.credibilityScore)} />
-          </View>
-
-          <View style={styles.metricItem}>
-            <Text style={[styles.metricLabel, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]}>
-              Importance
-            </Text>
-            <Text style={[styles.metricValue, { color: colors.textPrimary, fontFamily: typography.bodySmall.fontFamily }]}>
-              {item.importanceScore}/100
-            </Text>
-          </View>
-
-          <Text style={[styles.time, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]}>
-            {item.publishedTime}
+        <View style={[{ padding: spacing.md }, fullScreen && styles.fullScreenBody]}>
+          <Text
+            style={[
+              styles.headline,
+              { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, marginTop: spacing.xs }
+            ]}
+            numberOfLines={fullScreen ? undefined : 2}
+          >
+            {item.headline}
           </Text>
+
+          <Text
+            style={[
+              styles.summary,
+              { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
+            ]}
+            numberOfLines={fullScreen ? undefined : 3}
+          >
+            {item.summary}
+          </Text>
+
+          <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+            <Tag label={item.category} type="primary" />
+          </View>
         </View>
       </Card>
     </TouchableOpacity>
@@ -140,31 +99,40 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
   },
-  topRow: {
+  fullScreenContainer: {
+    flex: 1,
+    marginHorizontal: 0,
+    marginVertical: 0,
+  },
+  fullScreenCard: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  tagsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-  },
-  trendText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 3,
+  date: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
   bookmarkButton: {
-    padding: 4,
+    paddingVertical: 2,
+    paddingRight: 8,
+  },
+  image: {
+    width: '100%',
+    height: 160,
+  },
+  fullScreenImage: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  fullScreenBody: {
+    flex: 1,
   },
   headline: {
     fontSize: 16,
@@ -173,26 +141,5 @@ const styles = StyleSheet.create({
   summary: {
     fontSize: 14,
     lineHeight: 20,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  metricItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metricLabel: {
-    fontSize: 11,
-  },
-  metricValue: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  time: {
-    fontSize: 11,
   },
 });

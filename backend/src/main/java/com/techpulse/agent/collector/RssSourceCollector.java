@@ -21,9 +21,6 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * RSS source collector implementing retry logic and failure isolation.
@@ -115,8 +112,6 @@ public class RssSourceCollector implements SourceCollector {
         String rawContent = extractText(entry);
         if (rawContent.isBlank()) return null;
 
-        String thumbUrl = extractImage(entry);
-
         LocalDateTime publishedAt = entry.getPublishedDate() != null
                 ? entry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
                 : LocalDateTime.now();
@@ -128,7 +123,6 @@ public class RssSourceCollector implements SourceCollector {
                 .rawContent(rawContent)
                 .sourceUrl(sourceUrl)
                 .author(author)
-                .thumbnailUrl(thumbUrl)
                 .publishedAt(publishedAt)
                 .sourceType(SourceType.RSS)
                 .sourceName(sourceName)
@@ -151,30 +145,4 @@ public class RssSourceCollector implements SourceCollector {
         return doc.text().trim();
     }
 
-    private String extractImage(SyndEntry entry) {
-        if (entry.getEnclosures() != null && !entry.getEnclosures().isEmpty()) {
-            return entry.getEnclosures().get(0).getUrl();
-        }
-
-        if (entry.getForeignMarkup() != null) {
-            String url = entry.getForeignMarkup().stream()
-                    .filter(el -> el.getName().equals("content") || el.getName().equals("thumbnail"))
-                    .map(el -> el.getAttributeValue("url"))
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElse(null);
-            if (url != null) return url;
-        }
-
-        String content = extractText(entry);
-        if (content != null && content.contains("<img")) {
-            Pattern imgPattern = Pattern.compile("<img[^>]+src=\"([^\"]+)\"");
-            Matcher matcher = imgPattern.matcher(content);
-            if (matcher.find()) {
-                return matcher.group(1);
-            }
-        }
-
-        return null;
-    }
 }

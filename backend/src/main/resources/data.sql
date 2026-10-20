@@ -13,11 +13,10 @@ TRUNCATE TABLE categories;
 TRUNCATE TABLE news_sources;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Seed exactly 12 fresh categories that Gemini AI uses for classification
+-- Seed the canonical categories that Gemini AI uses for classification
 INSERT IGNORE INTO categories (id, name, description, created_at) VALUES
-(1, 'DSA & Problem Solving',   'Master the fundamentals of DSA and solve complex problems', NOW()),
-(2, 'Web Development',         'Modern frameworks, frontend, and backend web tech',          NOW()),
-(3, 'Mobile Development',      'Build apps for iOS & Android with Swift, Kotlin, and React Native', NOW()),
+(1, 'Problem Solving',         'Master the fundamentals of DSA and solve complex problems', NOW()),
+(2, 'Development',             'Build web, mobile, frontend, and backend applications', NOW()),
 (4, 'AI & Machine Learning',   'Neural networks, LLMs, and intelligent engineering',        NOW()),
 (5, 'Cloud & DevOps',          'Docker, Kubernetes, CI/CD, and cloud scaling',               NOW()),
 (6, 'System Design & Backend', 'Scale distributed systems and write optimized backend code', NOW()),
@@ -29,7 +28,7 @@ INSERT IGNORE INTO categories (id, name, description, created_at) VALUES
 (12, 'Emerging Tech',          'Quantum computing, Web3, blockchain, and tech future',       NOW());
 
 -- ── Seed Sample Bites ─────────────────────────────────────────────────────────
--- Remapped to match the new category IDs exactly (1 through 12)
+-- Category IDs remain stable for seeded sample bites.
 INSERT IGNORE INTO bites (id, category_id, title, content_summary, original_source_url, thumbnail_url, status, published_at, created_at, updated_at) VALUES
 (1,  1, 'Understanding Big O Notation',
      'Mastering O(1), O(n), and O(log n) is the first step toward passing technical interviews at top firms. Big O describes how your algorithm scales — the difference between a solution that handles 10 inputs and one that handles 10 million.',
@@ -115,13 +114,13 @@ INSERT IGNORE INTO bites (id, category_id, title, content_summary, original_sour
      'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=800',
      'PUBLISHED', DATE_ADD(NOW(), INTERVAL 13 MINUTE), NOW(), NOW()),
 
-(15, 3, 'React Native Architecture Reborn',
+(15, 2, 'React Native Architecture Reborn',
      'React Native''s new architecture replaces the asynchronous bridge with JSI (JavaScript Interface), enabling synchronous, direct invocation of native functions. Fabric and TurboModules provide lightning-fast UI renders and lazy native modules initialization.',
      'https://reactnative.dev/docs/the-new-architecture/landing',
      'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800',
      'PUBLISHED', DATE_ADD(NOW(), INTERVAL 14 MINUTE), NOW(), NOW()),
 
-(16, 3, 'Jetpack Compose Dynamic Theming',
+(16, 2, 'Jetpack Compose Dynamic Theming',
      'Jetpack Compose simplifies Android UI development through declarative programming. With Material Design 3 and dynamic theming, Compose pulls system accent colors in real time, making Android applications feel integrated and aesthetically unified with minimal code.',
      'https://developer.android.com/jetpack/compose',
      'https://images.unsplash.com/photo-1607252681355-89f5ce5e69e2?w=800',
@@ -179,7 +178,7 @@ INSERT IGNORE INTO technology_event (
  'Deprecated legacy thread constructor structures.',
  'Resolved 14 minor JDK CVE vulnerabilities.', '["https://openjdk.org/jeps/444"]', 'gemini-1.5-flash', 'v1', 'v1', 'NEW', 120, 240, 0.0005, 0.04, 800, NOW()),
 
-('e2', 'React 19 Actions & React Compiler', '["Web Development"]', 96.0, 89.0, 1.0,
+('e2', 'React 19 Actions & React Compiler', '["Development"]', 96.0, 89.0, 1.0,
  NOW(), NOW(), 'RELEASED', 19, 0, 0,
  '19.0.0', '["React", "NextJS"]', 'React 19 introduces automatic re-render optimization via the new React Compiler, alongside support for server actions and form hook states.',
  'Eliminates the need for manual useMemo and useCallback optimization triggers.',

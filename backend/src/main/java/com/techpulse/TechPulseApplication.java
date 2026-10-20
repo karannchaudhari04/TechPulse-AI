@@ -78,7 +78,7 @@ public class TechPulseApplication {
                 if (categoryRepository.count() == 0) {
                     log.info(">>> [System] Seeding categories...");
                     List<Category> cats = List.of(
-                        "DSA & Problem Solving", "Web Development", "Mobile Development",
+                        "Problem Solving", "Development",
                         "AI & Machine Learning", "Cloud & DevOps", "System Design & Backend",
                         "Cybersecurity", "Data Science & Analytics", "Product & UI/UX",
                         "Open Source & GitHub", "Career & Placements", "Emerging Tech"
@@ -154,7 +154,7 @@ public class TechPulseApplication {
                         com.techpulse.model.TechnologyEvent.builder()
                             .id("e2")
                             .title("React 19 Release: Server Actions & React Compiler")
-                            .categoriesJson("[\"Web Development\"]")
+                            .categoriesJson("[\"Development\"]")
                             .credibilityScore(96.0)
                             .importanceScore(92.0)
                             .mergeConfidence(1.0)
@@ -223,7 +223,7 @@ public class TechPulseApplication {
                         com.techpulse.model.TechnologyEvent.builder()
                             .id("e5")
                             .title("Android Jetpack Compose 1.7: Performance & Dynamic Color")
-                            .categoriesJson("[\"Mobile Development\"]")
+                            .categoriesJson("[\"Development\"]")
                             .credibilityScore(94.0)
                             .importanceScore(86.0)
                             .mergeConfidence(1.0)

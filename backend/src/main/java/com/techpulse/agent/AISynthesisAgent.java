@@ -27,7 +27,7 @@ public class AISynthesisAgent {
     private static final Logger log = LoggerFactory.getLogger(AISynthesisAgent.class);
 
     private static final List<String> KNOWN_CATEGORIES = List.of(
-            "DSA & Problem Solving", "Web Development", "Mobile Development",
+            "Problem Solving", "Development",
             "AI & Machine Learning", "Cloud & DevOps", "System Design & Backend",
             "Cybersecurity", "Data Science & Analytics", "Product & UI/UX",
             "Open Source & GitHub", "Career & Placements", "Emerging Tech"
@@ -131,7 +131,6 @@ public class AISynthesisAgent {
                 .completionTokens(response.getCompletionTokens())
                 .generationLatency((int) response.getLatency())
                 .summaryGeneratedAt(LocalDateTime.now())
-                .imageUrl(dto.getImageUrl() != null ? dto.getImageUrl() : rawUpdate.getImageUrl())
                 .build();
 
         try {
@@ -189,8 +188,7 @@ public class AISynthesisAgent {
                   "migrationNotes": "string",
                   "breakingChanges": "string",
                   "securityNotes": "string",
-                  "officialLinks": ["string"],
-                  "imageUrl": "string or null (URL to a representative technology logo/image or official vendor image, or null)"
+                  "officialLinks": ["string"]
                 }
                 """.formatted(title, content.substring(0, Math.min(content.length(), 3500)), categoriesStr);
     }

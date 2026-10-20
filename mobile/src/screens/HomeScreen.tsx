@@ -21,8 +21,7 @@ import Icon from '../components/common/Icon';
 const ALL_CATEGORIES = [
   { id: 'all', label: 'All Updates' },
   { id: 'AI & Machine Learning', label: 'AI & ML' },
-  { id: 'Web Development', label: 'Web Dev' },
-  { id: 'Mobile Development', label: 'Mobile Dev' },
+  { id: 'Development', label: 'Development' },
   { id: 'Cloud & DevOps', label: 'Cloud' },
   { id: 'Cybersecurity', label: 'Security' },
 ];
@@ -39,6 +38,7 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [cursor, setCursor] = useState<string | null>(null);
   const [accumulatedFeed, setAccumulatedFeed] = useState<FeedItem[]>([]);
+  const [feedPageHeight, setFeedPageHeight] = useState(0);
   const newestFirstFeed = React.useMemo(() => [...accumulatedFeed].sort((a, b) => {
     const dateA = Date.parse(a.fetchedAt || a.publishedTime);
     const dateB = Date.parse(b.fetchedAt || b.publishedTime);
@@ -168,40 +168,62 @@ export default function HomeScreen() {
         <ScrollView>
           <HeaderSkeleton />
           <CardSkeleton />
-          <CardSkeleton />
         </ScrollView>
       ) : (
-        <FlatList
-          data={newestFirstFeed}
-          renderItem={({ item }) => (
-            <EventCard
-              item={item}
-              onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-              onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
+        <View style={styles.feedContainer}>
+          {renderHeader()}
+          <View
+            style={styles.pagedFeed}
+            onLayout={(event) => setFeedPageHeight(event.nativeEvent.layout.height)}
+          >
+            <FlatList
+              data={newestFirstFeed}
+              renderItem={({ item }) => (
+                <View style={[styles.feedPage, feedPageHeight > 0 ? { height: feedPageHeight } : null]}>
+                  <EventCard
+                    item={item}
+                    onPress={() => navigation.navigate('EventDetail', { id: item.id })}
+                    onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
+                    fullScreen
+                    imageHeight={feedPageHeight > 0 ? Math.round((feedPageHeight - 16) * 0.3) : 180}
+                  />
+                </View>
+              )}
+              keyExtractor={(item) => item.id}
+              ListFooterComponent={renderFooter}
+              ListEmptyComponent={
+                !isFeedFetching ? (
+                  <View style={{ paddingVertical: spacing.xl, paddingHorizontal: spacing.md, alignItems: 'center' }}>
+                    <Icon name="newspaper-outline" provider="ionicons" size={44} color={colors.textMuted} />
+                    <Text style={{ color: colors.textSecondary, fontFamily: typography.titleSmall.fontFamily, marginTop: spacing.sm }}>
+                      No technology updates available
+                    </Text>
+                    <Text style={{ color: colors.textMuted, fontFamily: typography.caption.fontFamily, marginTop: spacing.xxs, textAlign: 'center' }}>
+                      Pull down to refresh or select a different category filter.
+                    </Text>
+                  </View>
+                ) : null
+              }
+              refreshControl={
+                <RefreshControl refreshing={isFeedFetching && cursor === null} onRefresh={handleRefresh} tintColor={colors.primary} />
+              }
+              pagingEnabled={feedPageHeight > 0}
+              disableIntervalMomentum
+              decelerationRate="fast"
+              showsVerticalScrollIndicator={false}
+              removeClippedSubviews
+              initialNumToRender={2}
+              maxToRenderPerBatch={1}
+              updateCellsBatchingPeriod={40}
+              windowSize={3}
+              getItemLayout={feedPageHeight > 0
+                ? (_data, index) => ({ length: feedPageHeight, offset: feedPageHeight * index, index })
+                : undefined}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.8}
             />
-          )}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderHeader}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={
-            !isFeedFetching ? (
-              <View style={{ paddingVertical: spacing.xl, paddingHorizontal: spacing.md, alignItems: 'center' }}>
-                <Icon name="newspaper-outline" provider="ionicons" size={44} color={colors.textMuted} />
-                <Text style={{ color: colors.textSecondary, fontFamily: typography.titleSmall.fontFamily, marginTop: spacing.sm }}>
-                  No technology updates available
-                </Text>
-                <Text style={{ color: colors.textMuted, fontFamily: typography.caption.fontFamily, marginTop: spacing.xxs, textAlign: 'center' }}>
-                  Pull down to refresh or select a different category filter.
-                </Text>
-              </View>
-            ) : null
-          }
-          refreshControl={
-            <RefreshControl refreshing={isFeedFetching && cursor === null} onRefresh={handleRefresh} tintColor={colors.primary} />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.4}
-        />
+          </View>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -210,6 +232,17 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  feedContainer: {
+    flex: 1,
+  },
+  pagedFeed: {
+    flex: 1,
+  },
+  feedPage: {
+    flex: 1,
+    paddingHorizontal: 2,
+    paddingVertical: 8,
   },
   offlineBanner: {
     flexDirection: 'row',

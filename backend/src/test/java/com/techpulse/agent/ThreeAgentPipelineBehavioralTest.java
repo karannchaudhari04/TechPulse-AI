@@ -238,7 +238,7 @@ public class ThreeAgentPipelineBehavioralTest {
         TechnologyEvent eventMobile = TechnologyEvent.builder()
                 .id("ev-mobile")
                 .title("React Native Expo 52")
-                .categoriesJson("[\"Mobile Development\"]")
+                .categoriesJson("[\"Development\"]")
                 .entitiesJson("[\"React Native\", \"Expo\"]")
                 .importanceScore(80.0)
                 .credibilityScore(90.0)

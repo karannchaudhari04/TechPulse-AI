@@ -21,8 +21,7 @@ const AVAILABLE_TOPICS = [
   { id: 'cloud', name: 'Cloud & DevOps' },
   { id: 'cybersecurity', name: 'Cybersecurity' },
   { id: 'backend', name: 'System Design & Backend' },
-  { id: 'mobile', name: 'Mobile Development' },
-  { id: 'web', name: 'Web Development' },
+  { id: 'development', name: 'Development' },
   { id: 'data', name: 'Data Science & Analytics' },
   { id: 'blockchain', name: 'Emerging Tech' },
 ];

@@ -29,9 +29,8 @@ const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 // Sample data to match the screenshot's aesthetic
 const TOPIC_METADATA: Record<string, { label: string, emoji: string }> = {
-  'DSA & Problem Solving': { label: 'DSA & Problem Solving', emoji: '🧠' },
-  'Web Development': { label: 'Web Development', emoji: '💻' },
-  'Mobile Development': { label: 'Mobile Development', emoji: '📱' },
+  'Problem Solving': { label: 'Problem Solving', emoji: '🧠' },
+  Development: { label: 'Development', emoji: '💻' },
   'AI & Machine Learning': { label: 'AI & Machine Learning', emoji: '🤖' },
   'Cloud & DevOps': { label: 'Cloud & DevOps', emoji: '☁️' },
   'System Design & Backend': { label: 'System Design & Backend', emoji: '🏗️' },

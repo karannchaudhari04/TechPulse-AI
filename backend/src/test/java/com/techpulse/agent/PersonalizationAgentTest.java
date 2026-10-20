@@ -44,13 +44,13 @@ public class PersonalizationAgentTest {
     public void testRecordInteractionLike() {
         TechnologyEvent event = TechnologyEvent.builder()
                 .id("event-123")
-                .categoriesJson("[\"Web Development\"]")
+                .categoriesJson("[\"Development\"]")
                 .entitiesJson("[\"React\"]")
                 .build();
 
         when(technologyEventRepository.findById("event-123")).thenReturn(Optional.of(event));
 
-        UserInterestId catId = new UserInterestId(1L, "CATEGORY", "Web Development");
+        UserInterestId catId = new UserInterestId(1L, "CATEGORY", "Development");
         when(userInterestRepository.findById(catId)).thenReturn(Optional.empty());
 
         UserInterestId topicId = new UserInterestId(1L, "TOPIC", "React");

@@ -23,8 +23,7 @@ export interface SearchFilterBottomSheetProps {
 
 const CATEGORIES_LIST = [
   'AI & Machine Learning',
-  'Web Development',
-  'Mobile Development',
+  'Development',
   'Cloud & DevOps',
   'Cybersecurity',
 ];

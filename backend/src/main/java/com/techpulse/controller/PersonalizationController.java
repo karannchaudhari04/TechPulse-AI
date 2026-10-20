@@ -609,7 +609,6 @@ public class PersonalizationController {
         map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : "");
         map.put("fetchedAt", getFetchTime(event) != null ? getFetchTime(event).toString() : "");
         map.put("sourceName", "TechCrunch"); // default source template matching RN cards
-        map.put("thumbnailUrl", event.getImageUrl());
 
         String sourceUrl = "";
         List<String> links = parseJsonList(event.getOfficialLinksJson());

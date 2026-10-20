@@ -15,7 +15,6 @@ public class RawUpdateDTO {
     String rawContent;
     String sourceUrl;
     String author;
-    String thumbnailUrl;
     LocalDateTime publishedAt;
     
     // Extended Metadata

@@ -187,7 +187,7 @@ public class DiscoveryAgent {
             entity.setUrlHash(urlHash);
             entity.setTitleHash(titleHash);
             entity.setPublishedAt(update.getPublishedAt());
-            entity.setFetchedAt(LocalDateTime.now());
+            entity.setFetchedAt(update.getFetchedAt() != null ? update.getFetchedAt() : LocalDateTime.now());
             entity.setProcessingStatus(RawIngestion.ProcessingStatus.NEW);
             entity.setEventId(UUID.randomUUID().toString());
 
