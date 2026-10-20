@@ -75,7 +75,7 @@ public class PersonalizationController {
             @RequestParam(required = false) String tech) {
 
         Long userId = getOptionalUserId();
-        List<TechnologyEvent> events = getCachedPersonalizedFeed(userId);
+        List<TechnologyEvent> events = getCachedFeed(userId);
 
         // Filter by category and technology tags if requested
         List<TechnologyEvent> filtered = events.stream()
@@ -127,35 +127,6 @@ public class PersonalizationController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.success(response, "Trending feed fetched successfully."));
-    }
-
-    @GetMapping("/feed/recommended")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRecommendedFeed() {
-        Long userId = getOptionalUserId();
-        if (userId == null) {
-            List<TechnologyEvent> events = getCachedPersonalizedFeed(null);
-            List<Map<String, Object>> response = events.stream()
-                    .limit(10)
-                    .map(event -> mapToFeedItem(event, null))
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(ApiResponse.success(response, "Recommended feed fetched successfully."));
-        }
-
-        List<TechnologyEvent> events = getCachedPersonalizedFeed(userId);
-
-        // Filter out read events
-        Set<String> readEventIds = userHistoryLogRepository.findByUserId(userId).stream()
-                .filter(h -> h.getCompletionPercentage() != null && h.getCompletionPercentage() >= 100)
-                .map(UserHistoryLog::getEventId)
-                .collect(Collectors.toSet());
-
-        List<Map<String, Object>> response = events.stream()
-                .filter(e -> !readEventIds.contains(e.getId()))
-                .limit(20)
-                .map(event -> mapToFeedItem(event, userId))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(ApiResponse.success(response, "Recommended feed fetched successfully."));
     }
 
     @GetMapping("/trends")
@@ -550,11 +521,11 @@ public class PersonalizationController {
     // ── Helper Caching and Filtering ────────────────────────────────────────────────
 
     @SuppressWarnings("unchecked")
-    private List<TechnologyEvent> getCachedPersonalizedFeed(Long userId) {
-        String cacheKey = userId == null ? "guest" : String.valueOf(userId);
+    private List<TechnologyEvent> getCachedFeed(Long userId) {
+        String cacheKey = "chronological-v1:" + (userId == null ? "guest" : userId);
         
         try {
-            Cache cache = cacheManager.getCache("personalizedFeed");
+            Cache cache = cacheManager.getCache("chronologicalFeed");
             if (cache != null) {
                 Cache.ValueWrapper wrapper = cache.get(cacheKey);
                 if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
@@ -571,7 +542,7 @@ public class PersonalizationController {
         Object lock = feedLocks.computeIfAbsent(cacheKey, k -> new Object());
         synchronized (lock) {
             try {
-                Cache cache = cacheManager.getCache("personalizedFeed");
+                Cache cache = cacheManager.getCache("chronologicalFeed");
                 if (cache != null) {
                     Cache.ValueWrapper wrapper = cache.get(cacheKey);
                     if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
@@ -584,30 +555,30 @@ public class PersonalizationController {
                 // Ignore, fallback to DB
             }
 
-            log.info("[PersonalizationController] Fetching & ranking feed for key: {}", cacheKey);
+            log.info("[PersonalizationController] Fetching newest-first feed for key: {}", cacheKey);
             List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFirstSeenDesc();
-            List<TechnologyEvent> ranked = personalizationService.rankEvents(userId, candidates);
+            List<TechnologyEvent> newestFirst = personalizationService.sortNewestFirst(candidates);
 
             try {
-                Cache cache = cacheManager.getCache("personalizedFeed");
+                Cache cache = cacheManager.getCache("chronologicalFeed");
                 if (cache != null) {
-                    cache.put(cacheKey, ranked);
+                    cache.put(cacheKey, newestFirst);
                 }
             } catch (Exception e) {
                 log.warn("[PersonalizationController] Cache write warning: {}", e.getMessage());
             }
-            return ranked;
+            return newestFirst;
         }
     }
 
     private void evictFeedCache(Long userId) {
         try {
-            Cache cache = cacheManager.getCache("personalizedFeed");
+            Cache cache = cacheManager.getCache("chronologicalFeed");
             if (cache != null) {
                 if (userId != null) {
-                    cache.evict(String.valueOf(userId));
+                    cache.evict("chronological-v1:" + userId);
                 }
-                cache.evict("guest");
+                cache.evict("chronological-v1:guest");
             }
         } catch (Exception e) {
             log.warn("[PersonalizationController] Cache eviction warning: {}", e.getMessage());
@@ -640,7 +611,7 @@ public class PersonalizationController {
         map.put("title", event.getTitle());
         map.put("summary", event.getSummary() != null ? event.getSummary() : "");
         map.put("contentSummary", event.getSummary() != null ? event.getSummary() : "");
-        map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : LocalDateTime.now().toString());
+        map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : "");
         map.put("sourceName", "TechCrunch"); // default source template matching RN cards
         map.put("thumbnailUrl", event.getImageUrl());
 
@@ -679,8 +650,6 @@ public class PersonalizationController {
 
         map.put("bookmarked", bookmarked);
         map.put("read", read);
-        map.put("recommendationReason", "Matching your interests.");
-
         return map;
     }
 

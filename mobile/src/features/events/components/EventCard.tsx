@@ -13,8 +13,7 @@ export interface EventCardProps {
 }
 
 /**
- * Purpose: Design System styled Event Card.
- * Surfaces AI credibility indicators, importance metrics, and recommendation details.
+ * Purpose: Design System styled event card for the chronological technology feed.
  */
 export default function EventCard({
   item,
@@ -66,15 +65,6 @@ export default function EventCard({
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={styles.container}>
       <Card variant="standard" style={{ borderColor: colors.border, backgroundColor: colors.cardBackground, padding: spacing.md, borderRadius: radius.md }}>
-        {item.recommendationReason && (
-          <View style={[styles.recommendationBanner, { borderBottomColor: colors.border, paddingBottom: spacing.xs, marginBottom: spacing.sm }]}>
-            <Icon name="info" provider="feather" size={14} color={colors.primary} />
-            <Text style={[styles.recommendationText, { color: colors.textSecondary, fontFamily: typography.caption.fontFamily, marginLeft: spacing.xxs }]}>
-              {item.recommendationReason}
-            </Text>
-          </View>
-        )}
-
         <View style={styles.topRow}>
           <View style={styles.tagsRow}>
             <Tag label={item.technology} type="primary" />
@@ -175,15 +165,6 @@ const styles = StyleSheet.create({
   },
   bookmarkButton: {
     padding: 4,
-  },
-  recommendationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-  },
-  recommendationText: {
-    fontSize: 11,
-    fontWeight: '500',
   },
   headline: {
     fontSize: 16,

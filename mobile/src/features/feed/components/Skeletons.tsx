@@ -84,24 +84,6 @@ export function TimelineSkeleton() {
   );
 }
 
-export function RecommendationSkeleton() {
-  const { spacing, radius } = useTheme();
-
-  return (
-    <View style={[styles.card, { padding: spacing.md, marginHorizontal: spacing.md, marginVertical: spacing.xs, borderRadius: radius.md }]}>
-      <Shimmer width={240} height={14} style={{ marginBottom: spacing.sm }} />
-      <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: spacing.sm }} />
-      <Shimmer width="85%" height={18} style={{ marginBottom: spacing.xs }} />
-      <Shimmer width="100%" height={12} style={{ marginBottom: spacing.xs }} />
-      <Shimmer width="40%" height={12} style={{ marginBottom: spacing.md }} />
-      <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-        <Shimmer width={70} height={20} borderRadius={10} />
-        <Shimmer width={70} height={20} borderRadius={10} />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     width: '100%',

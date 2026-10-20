@@ -17,7 +17,6 @@ export interface FeedItem {
   trendStatus: 'EXPLODING' | 'RISING' | 'STABLE' | 'COOLING' | 'DECLINING' | 'DORMANT';
   bookmarked: boolean;
   read: boolean;
-  recommendationReason?: string;
 }
 
 export interface CursorPageResponse<T> {
@@ -71,13 +70,6 @@ export const feedApiSlice = apiSlice.injectEndpoints({
       }),
       providesTags: ['Bite'],
     }),
-    getRecommendedFeed: builder.query<FeedItem[], void>({
-      query: () => ({
-        url: '/feed/recommended',
-        method: 'GET',
-      }),
-      providesTags: ['Bite'],
-    }),
     getTrends: builder.query<TechnologyTrend[], void>({
       query: () => ({
         url: '/trends',
@@ -112,7 +104,6 @@ export const feedApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetFeedQuery,
   useGetTrendingFeedQuery,
-  useGetRecommendedFeedQuery,
   useGetTrendsQuery,
   useGetBiteByIdQuery,
   useExplainBiteMutation,

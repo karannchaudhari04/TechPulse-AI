@@ -64,7 +64,6 @@ public class SecurityConfig {
                 // Strictly lock admin ingestion and bite management
                 .requestMatchers("/api/v1/bites/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                 // Strictly protect personalized feeds, preferences, notifications, bookmarks, and user library
-                .requestMatchers("/api/v1/feed/recommended").authenticated()
                 .requestMatchers("/api/v1/users/**").authenticated()
                 .requestMatchers("/api/v1/user/**").authenticated()
                 .requestMatchers("/api/v1/bookmarks/**").authenticated()

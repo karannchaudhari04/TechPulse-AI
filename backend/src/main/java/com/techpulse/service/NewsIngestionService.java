@@ -127,7 +127,7 @@ public class NewsIngestionService {
     }
 
     private void invalidateCaches() {
-        String[] caches = {"personalizedFeed", "globalFeed", "categoryFeed", "trends", "totalBiteCount"};
+        String[] caches = {"chronologicalFeed", "globalFeed", "categoryFeed", "trends", "totalBiteCount"};
         for (String cName : caches) {
             org.springframework.cache.Cache cache = cacheManager.getCache(cName);
             if (cache != null) {

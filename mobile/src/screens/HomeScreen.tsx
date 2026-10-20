@@ -4,20 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { networkTracker } from '../utils/network';
-import { useAppSelector } from '../store';
 
 import HomeHeader from '../features/feed/components/HomeHeader';
 import EventCard from '../features/events/components/EventCard';
 import { 
-  useGetFeedQuery, 
-  useGetRecommendedFeedQuery, 
+  useGetFeedQuery,
   FeedItem
 } from '../features/feed/api/feedApiSlice';
 import { useRecordInteractionMutation } from '../features/events/api/eventsApiSlice';
 import { 
   HeaderSkeleton, 
-  CardSkeleton, 
-  RecommendationSkeleton 
+  CardSkeleton
 } from '../features/feed/components/Skeletons';
 import Icon from '../components/common/Icon';
 
@@ -32,7 +29,7 @@ const ALL_CATEGORIES = [
 
 /**
  * Purpose: Streamlined Tech Intelligence Dashboard screen.
- * Displays greeting header, optional AI highlights, category filters, and a vertical feed list.
+ * Displays a date-ordered technology updates feed and category filters.
  */
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -42,6 +39,13 @@ export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [cursor, setCursor] = useState<string | null>(null);
   const [accumulatedFeed, setAccumulatedFeed] = useState<FeedItem[]>([]);
+  const newestFirstFeed = React.useMemo(() => [...accumulatedFeed].sort((a, b) => {
+    const dateA = Date.parse(a.publishedTime);
+    const dateB = Date.parse(b.publishedTime);
+    const timestampA = Number.isNaN(dateA) ? Number.NEGATIVE_INFINITY : dateA;
+    const timestampB = Number.isNaN(dateB) ? Number.NEGATIVE_INFINITY : dateB;
+    return timestampB - timestampA || b.id.localeCompare(a.id);
+  }), [accumulatedFeed]);
 
   // 1. Listen to connectivity state changes
   useEffect(() => {
@@ -51,16 +55,12 @@ export default function HomeScreen() {
     return unsubscribe;
   }, []);
 
-  const { sessionStatus } = useAppSelector(state => state.auth);
-  const isGuest = sessionStatus === 'skipped';
-
   // 2. Fetch Dashboard Feed and Stats
   const { data: feedData, isFetching: isFeedFetching, refetch: refetchFeed } = useGetFeedQuery({
     cursor: cursor || undefined,
     category: activeCategory === 'all' ? undefined : activeCategory,
   });
 
-  const { data: recommended, isLoading: isRecsLoading } = useGetRecommendedFeedQuery(undefined, { skip: isGuest });
   const [recordInteraction] = useRecordInteractionMutation();
 
   // 3. Accumulate items during cursor pagination and category updates
@@ -115,30 +115,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Recommended Updates Carousel */}
-        {recommended && recommended.length > 0 && (
-          <View style={styles.sectionSpacing}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: typography.titleMedium.fontFamily, paddingLeft: spacing.md }]}>
-              AI Highlights For You
-            </Text>
-            {isRecsLoading ? (
-              <RecommendationSkeleton />
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizontalList, { paddingLeft: spacing.md }]}>
-                {recommended.map((item) => (
-                  <View key={item.id} style={{ width: 280, marginRight: -8 }}>
-                    <EventCard
-                      item={item}
-                      onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-                      onBookmarkToggle={() => recordInteraction({ eventId: item.id, type: 'BOOKMARK' })}
-                    />
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-        )}
-
         {/* Main Feed Filters */}
         <View style={[styles.filtersContainer, { marginTop: spacing.md }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizontalList, { paddingLeft: spacing.md }]}>
@@ -173,7 +149,7 @@ export default function HomeScreen() {
         </View>
       </View>
     );
-  }, [navigation, colors, typography, spacing, recommended, isRecsLoading, activeCategory, isOnline, recordInteraction]);
+  }, [navigation, colors, typography, spacing, activeCategory, isOnline]);
 
   const renderFooter = () => {
     if (isFeedFetching) {
@@ -196,7 +172,7 @@ export default function HomeScreen() {
         </ScrollView>
       ) : (
         <FlatList
-          data={accumulatedFeed}
+          data={newestFirstFeed}
           renderItem={({ item }) => (
             <EventCard
               item={item}
@@ -247,14 +223,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 11,
     fontWeight: 'bold',
-  },
-  sectionSpacing: {
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
   },
   horizontalList: {
     paddingRight: 16,

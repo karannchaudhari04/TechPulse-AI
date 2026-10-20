@@ -18,14 +18,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Core Agent responsible for recording user interaction logs, managing personalization interest profiles,
- * and performing deterministic feed ranking.
+ * Records user interactions and maintains user interest profiles while ordering feeds by recency.
  */
 @Service
 public class PersonalizationAgent {
@@ -159,79 +157,15 @@ public class PersonalizationAgent {
         }
     }
 
-    public List<TechnologyEvent> rankEvents(Long userId, List<TechnologyEvent> candidates) {
+    public List<TechnologyEvent> sortNewestFirst(List<TechnologyEvent> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             return Collections.emptyList();
         }
-
-        // If user is guest or has no interests, fallback to default ranking (cold start)
-        List<UserInterest> interests = userId != null ? userInterestRepository.findByUserId(userId) : Collections.emptyList();
-        if (interests.isEmpty()) {
-            candidates.sort((a, b) -> Double.compare(calculateColdStartScore(b), calculateColdStartScore(a)));
-            return candidates;
-        }
-
-        // Parse decayed weights into maps
-        Map<String, Double> categoryWeights = new HashMap<>();
-        Map<String, Double> topicWeights = new HashMap<>();
-
-        LocalDateTime now = LocalDateTime.now();
-        for (UserInterest interest : interests) {
-            LocalDateTime lastInteraction = interest.getLastInteractionAt() != null ? interest.getLastInteractionAt() : now;
-            long days = Duration.between(lastInteraction, now).toDays();
-            double decayedWeight = interest.getWeight() * Math.pow(0.95, days);
-
-            if ("CATEGORY".equalsIgnoreCase(interest.getInterestType())) {
-                categoryWeights.put(interest.getInterestKey().toLowerCase(), decayedWeight);
-            } else if ("TOPIC".equalsIgnoreCase(interest.getInterestType())) {
-                topicWeights.put(interest.getInterestKey().toLowerCase(), decayedWeight);
-            }
-        }
-
-        // Calculate and sort candidates by combined personalization and event rank score
-        Map<TechnologyEvent, Double> scoredEvents = new HashMap<>();
-        for (TechnologyEvent event : candidates) {
-            double personalizationScore = 0.0;
-
-            List<String> eventCategories = parseJsonList(event.getCategoriesJson());
-            for (String cat : eventCategories) {
-                personalizationScore += categoryWeights.getOrDefault(cat.toLowerCase(), 0.0);
-            }
-
-            List<String> eventTopics = parseJsonList(event.getEntitiesJson());
-            for (String topic : eventTopics) {
-                personalizationScore += topicWeights.getOrDefault(topic.toLowerCase(), 0.0);
-            }
-
-            double importance = event.getImportanceScore() != null ? event.getImportanceScore() / 100.0 : 0.7;
-            double quality = event.getCredibilityScore() != null ? event.getCredibilityScore() / 100.0 : 0.8;
-
-            long daysSincePublished = 0;
-            if (event.getFirstSeen() != null) {
-                daysSincePublished = Duration.between(event.getFirstSeen(), now).toDays();
-            }
-            double recency = Math.pow(0.9, Math.max(0, daysSincePublished));
-            double clippedPersonalization = Math.max(-5.0, Math.min(5.0, personalizationScore));
-            double finalScore = clippedPersonalization + (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
-            scoredEvents.put(event, finalScore);
-        }
-
-        candidates.sort((a, b) -> Double.compare(scoredEvents.get(b), scoredEvents.get(a)));
-        log.info("[PERSONALIZATION] userId={} candidateCount={} rankedCount={}", userId, candidates.size(), candidates.size());
+        candidates.sort(Comparator
+                .comparing(TechnologyEvent::getFirstSeen, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(TechnologyEvent::getLastUpdated, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(TechnologyEvent::getId, Comparator.nullsLast(Comparator.reverseOrder())));
         return candidates;
-    }
-
-    private double calculateColdStartScore(TechnologyEvent event) {
-        double importance = event.getImportanceScore() != null ? event.getImportanceScore() / 100.0 : 0.7;
-        double quality = event.getCredibilityScore() != null ? event.getCredibilityScore() / 100.0 : 0.8;
-
-        long daysSincePublished = 0;
-        if (event.getFirstSeen() != null) {
-            daysSincePublished = Duration.between(event.getFirstSeen(), LocalDateTime.now()).toDays();
-        }
-        double recency = Math.pow(0.9, Math.max(0, daysSincePublished));
-
-        return (1.5 * importance) + (2.0 * recency) + (0.5 * quality);
     }
 
     private List<String> parseJsonList(String json) {
