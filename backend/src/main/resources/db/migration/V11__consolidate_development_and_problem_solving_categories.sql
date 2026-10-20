@@ -6,8 +6,8 @@ SET name = 'Problem Solving',
 WHERE name = 'DSA & Problem Solving';
 
 -- Preserve mobile-development preferences by merging them into the web-development category.
-INSERT IGNORE INTO user_preferences (user_id, category_id, created_at)
-SELECT mobile_pref.user_id, web_category.id, mobile_pref.created_at
+INSERT IGNORE INTO user_preferences (user_id, category_id)
+SELECT mobile_pref.user_id, web_category.id
 FROM user_preferences mobile_pref
 JOIN categories mobile_category ON mobile_category.id = mobile_pref.category_id
 JOIN categories web_category ON web_category.name = 'Web Development'
@@ -18,13 +18,7 @@ FROM user_preferences mobile_pref
 JOIN categories mobile_category ON mobile_category.id = mobile_pref.category_id
 WHERE mobile_category.name = 'Mobile Development';
 
--- Keep legacy bite records attached to the surviving Development category.
-UPDATE bites bite
-JOIN categories mobile_category ON mobile_category.id = bite.category_id
-JOIN categories web_category ON web_category.name = 'Web Development'
-SET bite.category_id = web_category.id
-WHERE mobile_category.name = 'Mobile Development';
-
+-- The legacy bites table was dropped by V5; current event categories are stored in technology_event.
 DELETE FROM categories WHERE name = 'Mobile Development';
 UPDATE categories
 SET name = 'Development',
