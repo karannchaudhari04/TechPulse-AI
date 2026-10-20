@@ -26,17 +26,16 @@ spring:
     redis:
       repositories:
         enabled: false
-      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:red-d7tl3a1kh4rs73aruutg}}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
       port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
 
   ai:
     openai:
-      api-key: ${GEMINI_API_KEY:mock-gemini-key}
+      api-key: ${GEMINI_API_KEY:}
       base-url: https://generativelanguage.googleapis.com/v1beta/openai/
-      explain-api-key: ${GEMINI_EXPLAIN_API_KEY:${GEMINI_API_KEY:mock-gemini-key}}
+      explain-api-key: ${GEMINI_EXPLAIN_API_KEY:${GEMINI_API_KEY:}}
 
 jwt:
-  secret: ${JWT_SECRET:9a76a1c84b5c7f8a9e102b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e}
   expiration: 86400000
 
 android:
@@ -70,6 +69,10 @@ management:
       enabled: false
 
 app:
+  rate-limit:
+    ai:
+      per-user-per-minute: ${AI_RATE_LIMIT_PER_USER_PER_MINUTE:12}
+      per-ip-per-minute: ${AI_RATE_LIMIT_PER_IP_PER_MINUTE:30}
   gemini:
     model: ${GEMINI_MODEL:gemini-1.5-flash}
   discovery:

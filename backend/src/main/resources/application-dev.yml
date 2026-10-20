@@ -2,13 +2,13 @@
 spring:
   datasource:
     writer:
-      url: ${DATABASE_WRITER_URL:jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/techbite?useSSL=true&enabledTLSProtocols=TLSv1.2&serverTimezone=UTC&readOnlyPropagatesToServer=false}
-      username: ${DATABASE_WRITER_USER:jvZRRNRdZRCKGPP.root}
-      password: ${DATABASE_WRITER_PASSWORD:JscNYE6VuCFACo4x}
+      url: ${DATABASE_WRITER_URL:jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL}
+      username: ${DATABASE_WRITER_USER:sa}
+      password: ${DATABASE_WRITER_PASSWORD:}
     replica:
-      url: ${DATABASE_REPLICA_URL:jdbc:mysql://gateway01.us-east-1.prod.aws.tidbcloud.com:4000/techbite?useSSL=true&enabledTLSProtocols=TLSv1.2&serverTimezone=UTC&readOnlyPropagatesToServer=false}
-      username: ${DATABASE_REPLICA_USER:jvZRRNRdZRCKGPP.root}
-      password: ${DATABASE_REPLICA_PASSWORD:JscNYE6VuCFACo4x}
+      url: ${DATABASE_REPLICA_URL:${DATABASE_WRITER_URL:jdbc:h2:mem:techpulse;DB_CLOSE_DELAY=-1;MODE=MySQL}}
+      username: ${DATABASE_REPLICA_USER:${DATABASE_WRITER_USER:sa}}
+      password: ${DATABASE_REPLICA_PASSWORD:${DATABASE_WRITER_PASSWORD:}}
 
   jpa:
     hibernate:
@@ -17,7 +17,7 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:red-d7tl3a1kh4rs73aruutg}}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
       port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
 
 app:

@@ -37,7 +37,13 @@ export interface ConversationInfo {
 export interface ChatResponse {
   conversationId: string;
   title: string;
+  persisted: boolean;
   message: ChatMessage;
+}
+
+export interface AssistantHistoryResponse {
+  persisted: boolean;
+  conversations: ConversationInfo[];
 }
 
 export interface SuggestionPrompt {
@@ -61,19 +67,12 @@ export const assistantApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Conversation', 'History'],
     }),
-    getHistory: builder.query<ConversationInfo[], void>({
+    getHistory: builder.query<AssistantHistoryResponse, void>({
       query: () => ({
         url: '/assistant/history',
         method: 'GET',
       }),
       providesTags: ['History'],
-    }),
-    deleteHistory: builder.mutation<void, void>({
-      query: () => ({
-        url: '/assistant/history',
-        method: 'DELETE',
-      }),
-      invalidatesTags: ['History', 'Conversation'],
     }),
     getSuggestions: builder.query<SuggestionPrompt[], void>({
       query: () => ({
@@ -118,7 +117,6 @@ export const assistantApiSlice = apiSlice.injectEndpoints({
 export const {
   useSendChatMessageMutation,
   useGetHistoryQuery,
-  useDeleteHistoryMutation,
   useGetSuggestionsQuery,
   useSendFeedbackMutation,
   useRegenerateResponseMutation,

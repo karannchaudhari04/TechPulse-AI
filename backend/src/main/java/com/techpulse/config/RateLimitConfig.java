@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 
@@ -32,7 +34,7 @@ public class RateLimitConfig {
 
     @Bean
     @SuppressWarnings("unchecked")
-    public ProxyManager<String> proxyManager(RedisConnectionFactory connectionFactory) {
+    public ProxyManager<String> proxyManager(RedisConnectionFactory connectionFactory, Environment environment) {
         try {
             if (connectionFactory instanceof LettuceConnectionFactory lettuceFactory) {
                 RedisClient redisClient = (RedisClient) lettuceFactory.getNativeClient();
@@ -47,10 +49,14 @@ public class RateLimitConfig {
                 }
             }
         } catch (Exception e) {
-            log.warn("[RateLimitConfig] Redis server unavailable ({}). Falling back to In-Memory rate limiting for local development.", e.getMessage());
+            log.warn("[RateLimitConfig] Redis server unavailable: {}", e.getMessage());
         }
 
-        log.info("[RateLimitConfig] Initializing In-Memory Fallback ProxyManager.");
+        if (environment.acceptsProfiles(Profiles.of("prod"))) {
+            throw new IllegalStateException("Redis is required for production rate limiting.");
+        }
+
+        log.info("[RateLimitConfig] Initializing in-memory rate limiting for non-production use.");
         ConcurrentHashMap<String, Bucket> localBuckets = new ConcurrentHashMap<>();
 
         return (ProxyManager<String>) java.lang.reflect.Proxy.newProxyInstance(

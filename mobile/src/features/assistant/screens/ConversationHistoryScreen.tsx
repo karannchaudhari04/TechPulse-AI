@@ -7,10 +7,8 @@ import { SafeAreaWrapper } from '../../../components/common/Layout';
 import Icon from '../../../components/common/Icon';
 import Card from '../../../components/common/Card';
 import { 
-  useGetHistoryQuery, 
-  useDeleteHistoryMutation 
+  useGetHistoryQuery
 } from '../api/assistantApiSlice';
-import { setActiveConversationId } from '../store/conversationSlice';
 
 /**
  * Purpose: Conversations History selection and deletion screen.
@@ -20,18 +18,8 @@ export default function ConversationHistoryScreen() {
   const dispatch = useAppDispatch();
   const { colors, typography, spacing, radius } = useTheme();
 
-  const { data: history, isLoading, refetch } = useGetHistoryQuery();
-  const [deleteHistory] = useDeleteHistoryMutation();
-
-  const handleClearAll = async () => {
-    try {
-      await deleteHistory().unwrap();
-      dispatch(setActiveConversationId(null));
-      refetch();
-    } catch (err) {
-      console.error('[ConversationHistory] Failed to clear history:', err);
-    }
-  };
+  const { data: historyResponse, isLoading, refetch } = useGetHistoryQuery();
+  const history = historyResponse?.conversations ?? [];
 
   const handleSelect = (id: string) => {
     dispatch(setActiveConversationId(id));
@@ -55,20 +43,14 @@ export default function ConversationHistoryScreen() {
         <Text style={[styles.navTitle, { color: colors.textPrimary, fontFamily: typography.titleSmall.fontFamily }]} numberOfLines={1}>
           Conversations Logs
         </Text>
-        {history && history.length > 0 ? (
-          <TouchableOpacity onPress={handleClearAll} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Clear all history">
-            <Icon name="trash" provider="feather" size={20} color={colors.danger} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.navButtonPlaceholder} />
-        )}
+        <View style={styles.navButtonPlaceholder} />
       </View>
 
       {history && history.length === 0 ? (
         <View style={styles.center}>
           <Icon name="message-square" provider="feather" size={48} color={colors.textMuted} />
           <Text style={[styles.emptyText, { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }]}>
-            No conversation logs found. Start a new session in Assistant!
+            Chat history is not persisted by the server. The history list is empty.
           </Text>
         </View>
       ) : (

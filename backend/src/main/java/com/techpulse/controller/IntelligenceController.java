@@ -4,6 +4,9 @@ import com.techpulse.dto.ApiResponse;
 import com.techpulse.agent.AIClient;
 import com.techpulse.agent.dto.AIRequest;
 import com.techpulse.agent.dto.AIResponse;
+import com.techpulse.dto.AssistantBriefRequest;
+import jakarta.validation.Valid;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
@@ -13,9 +16,11 @@ import java.util.*;
 public class IntelligenceController {
 
     private final AIClient aiClient;
+    private final ObjectMapper objectMapper;
 
-    public IntelligenceController(AIClient aiClient) {
+    public IntelligenceController(AIClient aiClient, ObjectMapper objectMapper) {
         this.aiClient = aiClient;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/graph")
@@ -128,14 +133,15 @@ public class IntelligenceController {
     }
 
     @PostMapping("/brief")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> brief(@RequestBody Map<String, Object> request) {
-        String topic = (String) request.get("topic");
-        String format = (String) request.get("format");
+    public ResponseEntity<ApiResponse<Map<String, Object>>> brief(@Valid @RequestBody AssistantBriefRequest request) {
+        String topic = request.topic().trim();
+        String format = request.format().trim().toLowerCase(Locale.ROOT);
 
         AIRequest aiRequest = AIRequest.builder()
                 .systemPrompt("You are an engineering analyst. Return a JSON object with a single field 'content' containing a technical summary and guide for the topic.")
                 .userPrompt("Generate an engineering brief for: " + topic + " in " + format + " format.")
                 .temperature(0.5)
+                .maxTokens(1200)
                 .build();
 
         AIResponse response = aiClient.generate(aiRequest);
@@ -144,8 +150,7 @@ public class IntelligenceController {
         String message = rawContent;
         try {
             if (rawContent.trim().startsWith("{")) {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(rawContent);
+                com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(rawContent);
                 if (node.has("content")) {
                     message = node.get("content").asText();
                 } else if (node.has("response")) {

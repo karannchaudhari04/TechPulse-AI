@@ -43,8 +43,10 @@ public class SecurityConfig {
                 // Health check, Swagger, and AssetLinks
                 .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/", "/bite/**", "/.well-known/assetlinks.json").permitAll()
                 // Public bite feed
-                .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/{id}", "/api/v1/bites/explain").permitAll()
-                // Public events feed, trends, categories, intelligence, and assistant
+                .requestMatchers("/api/v1/bites", "/api/v1/bites/foryou", "/api/v1/bites/{id}").permitAll()
+                // AI generation is authenticated and separately rate-limited.
+                .requestMatchers("/api/v1/assistant/**", "/api/v1/intelligence/brief", "/api/v1/bites/explain").authenticated()
+                // Public events feed, trends, categories, and read-only intelligence
                 .requestMatchers(
                     "/api/v1/feed",
                     "/api/v1/feed/trending",
@@ -55,8 +57,7 @@ public class SecurityConfig {
                     "/api/v1/event/**",
                     "/api/v1/categories",
                     "/api/v1/categories/**",
-                    "/api/v1/intelligence/**",
-                    "/api/v1/assistant/**"
+                    "/api/v1/intelligence/**"
                 ).permitAll()
                 // Permit register-or-login for initial handshake
                 .requestMatchers("/api/v1/users/register-or-login").permitAll()

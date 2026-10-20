@@ -12,14 +12,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.techpulse.model.User;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -28,40 +32,40 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Autowired
     private ProxyManager<String> proxyManager;
 
-    private BucketConfiguration createNewBucketConfig(boolean isAuthenticated) {
-        long capacity = isAuthenticated ? 200 : 60;
+    @Value("${app.rate-limit.ai.per-user-per-minute:12}")
+    private long aiRequestsPerUserPerMinute;
+
+    @Value("${app.rate-limit.ai.per-ip-per-minute:30}")
+    private long aiRequestsPerIpPerMinute;
+
+    private BucketConfiguration createNewBucketConfig(long capacity) {
         Refill refill = Refill.greedy(capacity, Duration.ofMinutes(1));
         Bandwidth limit = Bandwidth.classic(capacity, refill);
         return BucketConfiguration.builder().addLimit(limit).build();
     }
 
-    private Bucket resolveBucket(HttpServletRequest request) {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAuthenticated = auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser");
-            
-            String key;
-            if (isAuthenticated) {
-                key = "AUTH_" + auth.getPrincipal().toString();
-            } else {
-                // Fallback to IP address for guests
-                String xfHeader = request.getHeader("X-Forwarded-For");
-                key = "GUEST_" + (xfHeader == null ? request.getRemoteAddr() : xfHeader.split(",")[0]);
-            }
-            
-            log.debug("[RateLimitFilter] Resolved key: {}, isAuthenticated: {}", key, isAuthenticated);
-            if (proxyManager == null) {
-                return null;
-            }
-            var builder = proxyManager.builder();
-            if (builder == null) {
-                return null;
-            }
-            return builder.build(key, () -> createNewBucketConfig(isAuthenticated));
-        } catch (Exception e) {
-            log.warn("[RateLimitFilter] Error resolving rate limit bucket: {}. Bypassing rate limit check.", e.getMessage());
-            return null;
+    private Bucket resolveBucket(String key, long capacity) {
+        if (proxyManager == null) {
+            throw new IllegalStateException("Rate limit store is unavailable");
         }
+        var builder = proxyManager.builder();
+        if (builder == null) {
+            throw new IllegalStateException("Rate limit store is unavailable");
+        }
+        return builder.build(key, () -> createNewBucketConfig(capacity));
+    }
+
+    private boolean isPaidAiEndpoint(String uri) {
+        return uri.equals("/api/v1/assistant/chat") || uri.equals("/api/v1/assistant/regenerate")
+                || uri.equals("/api/v1/intelligence/brief")
+                || uri.equals("/api/v1/bites/explain");
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        return forwarded == null || forwarded.isBlank()
+                ? request.getRemoteAddr()
+                : forwarded.split(",")[0].trim();
     }
 
     @Override
@@ -70,13 +74,43 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
         if (uri.startsWith("/api/v1/")) {
-            Bucket bucket = resolveBucket(request);
-            if (bucket != null) {
-                log.info("[RateLimitFilter] Request to URI: {}, Resolved Remote Address: {}", uri, request.getRemoteAddr());
-                if (!bucket.tryConsume(1)) {
-                    log.warn("[RateLimitFilter] 🛑 RATE LIMIT EXCEEDED for key. Blocking request to {}", uri);
+            boolean paidAi = isPaidAiEndpoint(uri);
+            try {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                boolean isAuthenticated = auth != null && auth.isAuthenticated()
+                        && !"anonymousUser".equals(auth.getPrincipal());
+                List<Bucket> buckets = new ArrayList<>();
+                if (paidAi) {
+                    if (!isAuthenticated) {
+                        response.sendError(HttpStatus.UNAUTHORIZED.value());
+                        return;
+                    }
+                    Object principal = auth.getPrincipal();
+                    String firebaseUid = principal instanceof User user ? user.getFirebaseUid() : auth.getName();
+                    String userKey = "AI_USER_" + firebaseUid;
+                    String ipKey = "AI_IP_" + clientIp(request);
+                    buckets.add(resolveBucket(userKey, aiRequestsPerUserPerMinute));
+                    buckets.add(resolveBucket(ipKey, aiRequestsPerIpPerMinute));
+                } else {
+                    String key = isAuthenticated ? "AUTH_" + auth.getName() : "GUEST_" + clientIp(request);
+                    buckets.add(resolveBucket(key, isAuthenticated ? 200 : 60));
+                }
+
+                boolean allowed = true;
+                for (Bucket bucket : buckets) {
+                    if (!bucket.tryConsume(1)) {
+                        allowed = false;
+                    }
+                }
+                if (!allowed) {
                     response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
                     response.getWriter().write("Too many requests. Please try again later.");
+                    return;
+                }
+            } catch (Exception e) {
+                log.warn("[RateLimitFilter] Rate limit check failed for {}: {}", uri, e.getMessage());
+                if (paidAi) {
+                    response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value(), "AI request throttling is unavailable.");
                     return;
                 }
             }

@@ -26,10 +26,10 @@ import java.time.Duration;
 @EnableCaching
 public class RedisConfig implements CachingConfigurer {
 
-    @Value("${REDIS_URL:redis://red-d7tl3a1kh4rs73aruutg:6379}")
+    @Value("${REDIS_URL:redis://localhost:6379}")
     private String redisUrl;
 
-    @Value("${spring.data.redis.host:red-d7tl3a1kh4rs73aruutg}")
+    @Value("${spring.data.redis.host:localhost}")
     private String redisHost;
 
     @Value("${spring.data.redis.port:6379}")
@@ -41,7 +41,7 @@ public class RedisConfig implements CachingConfigurer {
             try {
                 URI uri = new URI(redisUrl);
                 RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
-                config.setHostName(uri.getHost() != null ? uri.getHost() : "red-d7tl3a1kh4rs73aruutg");
+                config.setHostName(uri.getHost() != null ? uri.getHost() : "localhost");
                 config.setPort(uri.getPort() > 0 ? uri.getPort() : 6379);
                 if (uri.getUserInfo() != null) {
                     String userInfo = uri.getUserInfo();
