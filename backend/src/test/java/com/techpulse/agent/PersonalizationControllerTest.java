@@ -25,6 +25,7 @@ public class PersonalizationControllerTest {
 
     private MockMvc mockMvc;
     private TechnologyEventRepository technologyEventRepository;
+    private RawIngestionRepository rawIngestionRepository;
     private UserSavedEventRepository userSavedEventRepository;
     private UserHistoryLogRepository userHistoryLogRepository;
     private UserCollectionRepository userCollectionRepository;
@@ -38,6 +39,7 @@ public class PersonalizationControllerTest {
     @BeforeEach
     public void setUp() {
         technologyEventRepository = mock(TechnologyEventRepository.class);
+        rawIngestionRepository = mock(RawIngestionRepository.class);
         userSavedEventRepository = mock(UserSavedEventRepository.class);
         userHistoryLogRepository = mock(UserHistoryLogRepository.class);
         userCollectionRepository = mock(UserCollectionRepository.class);
@@ -52,7 +54,7 @@ public class PersonalizationControllerTest {
         when(cacheManager.getCache(anyString())).thenReturn(mockCache);
 
         PersonalizationController controller = new PersonalizationController(
-                technologyEventRepository, userSavedEventRepository, userHistoryLogRepository,
+                technologyEventRepository, rawIngestionRepository, userSavedEventRepository, userHistoryLogRepository,
                 userCollectionRepository, collectionEventRepository, userFollowRepository,
                 userRepository, interactionLogRepository, personalizationAgent, cacheManager
         );

@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../../theme';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { 
@@ -9,9 +9,7 @@ import {
 } from '../api/eventsApiSlice';
 import { SafeAreaWrapper } from '../../../components/common/Layout';
 import Icon from '../../../components/common/Icon';
-import Card from '../../../components/common/Card';
 import { Tag } from '../../../components/common/Badge';
-import AIInsightCard from '../components/AIInsightCard';
 import { Divider } from '../../../components/common/Layout';
 import EventCard from '../components/EventCard';
 import { useAddBookmarkMutation, useRemoveBookmarkMutation } from '../../personalization/api/personalizationApiSlice';
@@ -31,6 +29,12 @@ export default function EventDetailScreen() {
   const [recordInteraction] = useRecordInteractionMutation();
   const [addBookmark] = useAddBookmarkMutation();
   const [removeBookmark] = useRemoveBookmarkMutation();
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkPending, setBookmarkPending] = useState(false);
+
+  useEffect(() => {
+    if (event) setIsBookmarked(event.bookmarked);
+  }, [event?.id, event?.bookmarked]);
 
   const handleRelatedBookmarkToggle = async (item: { id: string; bookmarked: boolean }) => {
     if (item.bookmarked) await removeBookmark(item.id).unwrap();
@@ -45,21 +49,34 @@ export default function EventDetailScreen() {
     }
   }, [eventId]);
 
-  const handleSourcePress = (url: string) => {
-    Linking.openURL(url).catch(err => {
-      console.error('[Browser] Failed to open URL:', err);
-    });
+  const articleUrl = event?.articleUrl || event?.sourceUrl || event?.officialSources?.[0]?.url || '';
+  const hasArticleUrl = /^https?:\/\//i.test(articleUrl);
+
+  const handleOpenArticle = () => {
+    if (!hasArticleUrl || !event) return;
+    navigation.navigate('Article', { url: articleUrl, title: event.headline });
   };
 
   const handleBookmarkToggle = async () => {
-    if (!event) return;
+    if (!event || bookmarkPending) return;
+    const previousValue = isBookmarked;
+    setIsBookmarked(!previousValue);
+    setBookmarkPending(true);
     try {
-      await recordInteraction({ eventId, type: 'BOOKMARK' }).unwrap();
-      refetch();
+      if (previousValue) await removeBookmark(eventId).unwrap();
+      else await addBookmark(eventId).unwrap();
     } catch (err) {
+      setIsBookmarked(previousValue);
       console.error('[EventDetails] Failed to toggle bookmark:', err);
+    } finally {
+      setBookmarkPending(false);
     }
   };
+
+  const publishedDate = event?.publishedTime ? new Date(event.publishedTime) : null;
+  const publishedLabel = publishedDate && !Number.isNaN(publishedDate.getTime())
+    ? publishedDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'Date unavailable';
 
   if (isLoading) {
     return (
@@ -90,14 +107,22 @@ export default function EventDetailScreen() {
           <Icon name="arrow-left" provider="feather" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.textPrimary, fontFamily: typography.titleSmall.fontFamily }]} numberOfLines={1}>
-          Event Analysis
+          Update Details
         </Text>
-        <TouchableOpacity onPress={handleBookmarkToggle} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Toggle Bookmark">
+        <TouchableOpacity
+          onPress={handleBookmarkToggle}
+          style={[styles.bookmarkNavButton, { backgroundColor: colors.divider }]}
+          activeOpacity={0.75}
+          disabled={bookmarkPending}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isBookmarked, busy: bookmarkPending }}
+          accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark update'}
+        >
           <Icon 
-            name={event.bookmarked ? 'bookmark' : 'bookmark-outline'} 
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
             provider="ionicons" 
             size={22} 
-            color={event.bookmarked ? colors.primary : colors.textPrimary} 
+            color={isBookmarked ? colors.primary : colors.textPrimary}
           />
         </TouchableOpacity>
       </View>
@@ -114,57 +139,62 @@ export default function EventDetailScreen() {
           {event.headline}
         </Text>
         
-        <Text style={[styles.published, { color: colors.textMuted, fontFamily: typography.caption.fontFamily, marginTop: spacing.xxs }]}>
-          Published {event.publishedTime}
-        </Text>
+        <View style={styles.metadataRow}>
+          <Icon name="calendar" provider="feather" size={14} color={colors.textMuted} />
+          <Text style={[styles.published, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]}>
+            Published {publishedLabel}
+          </Text>
+        </View>
 
-        <Text style={[styles.summary, { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.md }]}>
-          {event.summary}
-        </Text>
+        <View style={[styles.overviewCard, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, marginTop: spacing.lg, padding: spacing.md }]}>
+          <Text style={[styles.sectionHeader, { color: colors.textPrimary, fontFamily: typography.titleSmall.fontFamily, marginBottom: spacing.xs }]}>
+            Overview
+          </Text>
+          <Text style={[styles.summary, { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily }]}>
+            {event.summary || 'No summary is available for this update.'}
+          </Text>
+        </View>
 
-        <Divider style={{ marginVertical: spacing.md }} />
-
-        <AIInsightCard 
-          technicalImpact={event.technicalImpact}
-          developerImpact={event.developerImpact}
-          enterpriseImpact={event.enterpriseImpact}
-          migrationNotes={event.migrationNotes}
-          breakingChanges={event.breakingChanges}
-          securityNotes={event.securityNotes}
-          timeline={event.timeline}
-          knowledgeGraph={event.knowledgeGraph}
-        />
-
-        {event.officialSources && event.officialSources.length > 0 && (
-          <View style={{ marginTop: spacing.md }}>
+        {hasArticleUrl && (
+          <View style={{ marginTop: spacing.lg }}>
             <Text style={[styles.sectionHeader, { color: colors.textPrimary, fontFamily: typography.titleSmall.fontFamily, marginBottom: spacing.xs }]}>
-              Official Sources & References
+              Full Article
             </Text>
-            {event.officialSources.map((src, index) => (
-              <TouchableOpacity 
-                key={index} 
-                onPress={() => handleSourcePress(src.url)}
-                style={[styles.sourceLink, { borderBottomColor: colors.border }]}
-              >
-                <Icon name="external-link" provider="feather" size={14} color={colors.primary} />
-                <Text style={[styles.sourceText, { color: colors.primary, fontFamily: typography.bodySmall.fontFamily }]} numberOfLines={1}>
-                  {src.title}
+            <TouchableOpacity
+              onPress={handleOpenArticle}
+              style={[styles.sourceLink, { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, paddingHorizontal: spacing.sm }]}
+              activeOpacity={0.75}
+              accessibilityRole="link"
+              accessibilityLabel="Read the complete article inside the app"
+            >
+              <View style={[styles.sourceIcon, { backgroundColor: colors.divider }]}>
+                <Icon name="book-open" provider="feather" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.articleLinkText}>
+                <Text style={[styles.sourceText, { color: colors.textPrimary, fontFamily: typography.bodySmall.fontFamily }]} numberOfLines={1}>
+                  Read full article
                 </Text>
-              </TouchableOpacity>
-            ))}
+                <Text style={[styles.articleHost, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]} numberOfLines={1}>
+                  {articleUrl.replace(/^https?:\/\//i, '').split('/')[0]}
+                </Text>
+              </View>
+              <Icon name="chevron-right" provider="feather" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
         )}
 
+        <Divider style={{ marginVertical: spacing.lg }} />
+
         {relatedEvents && relatedEvents.length > 0 && (
-          <View style={{ marginTop: spacing.lg, marginBottom: spacing.xl }}>
+          <View style={{ marginTop: spacing.xs, marginBottom: spacing.xl }}>
             <Text style={[styles.sectionHeader, { color: colors.textPrimary, fontFamily: typography.titleSmall.fontFamily, paddingLeft: spacing.xs, marginBottom: spacing.xs }]}>
-              Related Updates & Analysis
+              Related Updates
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
               {relatedEvents.map((item) => (
                 <View key={item.id} style={{ width: 280, marginRight: -8 }}>
-                  <EventCard 
-                    item={item} 
+                  <EventCard
+                    item={item}
                     onPress={() => navigation.push('EventDetail', { id: item.id })}
                     onBookmarkToggle={() => handleRelatedBookmarkToggle(item)}
                   />
@@ -206,6 +236,13 @@ const styles = StyleSheet.create({
   navButton: {
     padding: 8,
   },
+  bookmarkNavButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   navTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -229,6 +266,15 @@ const styles = StyleSheet.create({
   published: {
     fontSize: 12,
   },
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  overviewCard: {
+    borderWidth: 1,
+  },
   summary: {
     fontSize: 15,
     lineHeight: 22,
@@ -242,11 +288,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderBottomWidth: 1,
+    borderWidth: 1,
+  },
+  sourceIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sourceText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  articleLinkText: {
+    flex: 1,
+  },
+  articleHost: {
+    fontSize: 11,
+    marginTop: 2,
   },
   horizontalScroll: {
     paddingRight: 16,

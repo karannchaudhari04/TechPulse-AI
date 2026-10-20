@@ -12,6 +12,8 @@ export interface EventDetails {
   breakingChanges: string | null;
   securityNotes: string | null;
   publishedTime: string;
+  articleUrl: string;
+  sourceUrl?: string;
   importanceScore: number;
   credibilityScore: number;
   category: string;

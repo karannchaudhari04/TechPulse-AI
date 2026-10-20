@@ -99,13 +99,11 @@ export default function EventCard({
               {item.summary}
             </Text>
 
-            <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
-              <Tag label={item.category} type="primary" />
-            </View>
           </View>
         </TouchableOpacity>
 
-        <View style={styles.bookmarkRow}>
+        <View style={[styles.bookmarkRow, { backgroundColor: colors.divider, borderTopColor: colors.border }]}>
+          <Tag label={item.category} type="primary" />
           <TouchableOpacity
             onPress={handleBookmarkPress}
             style={[styles.bookmarkButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
@@ -175,9 +173,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bookmarkRow: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 14,
+    paddingTop: 10,
     paddingBottom: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   image: {
     width: '100%',

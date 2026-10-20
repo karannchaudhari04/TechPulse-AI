@@ -181,10 +181,7 @@ export default function HomeScreen() {
       ) : (
         <View style={styles.feedContainer}>
           {renderHeader()}
-          <View
-            style={styles.pagedFeed}
-            onLayout={(event) => setFeedPageHeight(event.nativeEvent.layout.height)}
-          >
+          <View style={styles.pagedFeed} onLayout={(event) => setFeedPageHeight(event.nativeEvent.layout.height)}>
             <FlatList
               data={newestFirstFeed}
               renderItem={({ item }) => (
@@ -250,7 +247,7 @@ const styles = StyleSheet.create({
   },
   feedPage: {
     flex: 1,
-    paddingHorizontal: 2,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
   offlineBanner: {

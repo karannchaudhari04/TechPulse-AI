@@ -52,6 +52,7 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     List<RawIngestion> findRecentRawIngestions(@Param("since") LocalDateTime since);
 
     java.util.Optional<RawIngestion> findByUrlHash(String urlHash);
+    java.util.Optional<RawIngestion> findFirstByEventIdOrderByFetchedAtDesc(String eventId);
     java.util.List<RawIngestion> findByTitleHash(String titleHash);
     boolean existsByUrlHash(String urlHash);
 

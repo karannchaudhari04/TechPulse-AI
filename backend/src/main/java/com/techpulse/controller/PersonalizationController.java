@@ -30,6 +30,7 @@ public class PersonalizationController {
     private static final Logger log = LoggerFactory.getLogger(PersonalizationController.class);
 
     private final TechnologyEventRepository technologyEventRepository;
+    private final RawIngestionRepository rawIngestionRepository;
     private final UserSavedEventRepository userSavedEventRepository;
     private final UserHistoryLogRepository userHistoryLogRepository;
     private final UserCollectionRepository userCollectionRepository;
@@ -45,6 +46,7 @@ public class PersonalizationController {
     private final ConcurrentHashMap<String, Object> feedLocks = new ConcurrentHashMap<>();
 
     public PersonalizationController(TechnologyEventRepository technologyEventRepository,
+                                     RawIngestionRepository rawIngestionRepository,
                                      UserSavedEventRepository userSavedEventRepository,
                                      UserHistoryLogRepository userHistoryLogRepository,
                                      UserCollectionRepository userCollectionRepository,
@@ -55,6 +57,7 @@ public class PersonalizationController {
                                      PersonalizationAgent personalizationService,
                                      CacheManager cacheManager) {
         this.technologyEventRepository = technologyEventRepository;
+        this.rawIngestionRepository = rawIngestionRepository;
         this.userSavedEventRepository = userSavedEventRepository;
         this.userHistoryLogRepository = userHistoryLogRepository;
         this.userCollectionRepository = userCollectionRepository;
@@ -296,7 +299,20 @@ public class PersonalizationController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getEventById(@PathVariable String id) {
         Long userId = getOptionalUserId();
         return technologyEventRepository.findById(id)
-                .map(event -> ResponseEntity.ok(ApiResponse.success(mapToFeedItem(event, userId), "Event found.")))
+                .map(event -> {
+                    Map<String, Object> eventDetails = mapToFeedItem(event, userId);
+                    String articleUrl = rawIngestionRepository.findFirstByEventIdOrderByFetchedAtDesc(id)
+                            .map(RawIngestion::getUrl)
+                            .filter(url -> url != null && !url.isBlank())
+                            .orElseGet(() -> {
+                                List<String> links = parseJsonList(event.getOfficialLinksJson());
+                                return links.isEmpty() ? "" : links.get(0);
+                            });
+                    eventDetails.put("articleUrl", articleUrl);
+                    eventDetails.put("sourceUrl", articleUrl);
+                    eventDetails.put("originalSourceUrl", articleUrl);
+                    return ResponseEntity.ok(ApiResponse.success(eventDetails, "Event found."));
+                })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Event not found.")));
     }
 
