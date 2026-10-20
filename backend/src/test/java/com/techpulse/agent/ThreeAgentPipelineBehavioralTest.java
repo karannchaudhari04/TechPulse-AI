@@ -231,6 +231,7 @@ public class ThreeAgentPipelineBehavioralTest {
                 .importanceScore(90.0)
                 .credibilityScore(95.0)
                 .firstSeen(LocalDateTime.now())
+                .fetchedAt(LocalDateTime.now().minusDays(2))
                 .build();
         technologyEventRepository.save(eventAI);
 
@@ -242,6 +243,7 @@ public class ThreeAgentPipelineBehavioralTest {
                 .importanceScore(80.0)
                 .credibilityScore(90.0)
                 .firstSeen(LocalDateTime.now())
+                .fetchedAt(LocalDateTime.now().minusDays(1))
                 .build();
         technologyEventRepository.save(eventMobile);
 
@@ -253,6 +255,7 @@ public class ThreeAgentPipelineBehavioralTest {
                 .importanceScore(70.0)
                 .credibilityScore(85.0)
                 .firstSeen(LocalDateTime.now())
+                .fetchedAt(LocalDateTime.now())
                 .build();
         technologyEventRepository.save(eventCloud);
 
@@ -263,11 +266,10 @@ public class ThreeAgentPipelineBehavioralTest {
         user.setFirebaseUid("test-uid-123");
         userRepository.save(user);
 
-        // Guest Ranking
+        // Update order is based on fetch time, regardless of user identity or event scores.
         List<TechnologyEvent> listGuest = new ArrayList<>(List.of(eventCloud, eventMobile, eventAI));
-        personalizationAgent.rankEvents(null, listGuest);
-        // By default, based on quality + importance + recency: eventAI should rank first
-        assertEquals("ev-ai", listGuest.get(0).getId());
+        personalizationAgent.sortNewestFirst(listGuest);
+        assertEquals("ev-cloud", listGuest.get(0).getId());
 
         // Perform User Journey interactions
         personalizationAgent.recordInteraction(user.getId(), "ev-ai", "VIEW", "1");
@@ -277,12 +279,11 @@ public class ThreeAgentPipelineBehavioralTest {
         // Skip Cloud event (lowers its interest score)
         personalizationAgent.recordInteraction(user.getId(), "ev-cloud", "SKIP", "1");
 
-        // Personalize ranking
+        // User interactions do not change the date-based feed order.
         List<TechnologyEvent> listUser = new ArrayList<>(List.of(eventCloud, eventMobile, eventAI));
-        personalizationAgent.rankEvents(user.getId(), listUser);
+        personalizationAgent.sortNewestFirst(listUser);
 
-        // Verify Event AI ranks first, and Event Cloud ranks last
-        assertEquals("ev-ai", listUser.get(0).getId());
-        assertEquals("ev-cloud", listUser.get(2).getId());
+        assertEquals("ev-cloud", listUser.get(0).getId());
+        assertEquals("ev-ai", listUser.get(2).getId());
     }
 }

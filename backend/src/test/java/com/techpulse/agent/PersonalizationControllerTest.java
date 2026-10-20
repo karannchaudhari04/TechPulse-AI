@@ -65,8 +65,8 @@ public class PersonalizationControllerTest {
 
     @Test
     public void testGetFeeds() throws Exception {
-        when(technologyEventRepository.findAll()).thenReturn(new ArrayList<>());
-        when(personalizationAgent.rankEvents(any(), any())).thenReturn(new ArrayList<>());
+        when(technologyEventRepository.findTop500ByOrderByFetchedAtDesc()).thenReturn(new ArrayList<>());
+        when(personalizationAgent.sortNewestFirst(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         mockMvc.perform(get("/api/v1/feed"))
                 .andExpect(status().isOk())

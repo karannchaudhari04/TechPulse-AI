@@ -64,26 +64,25 @@ public class PersonalizationAgentTest {
     }
 
     @Test
-    public void testRankEventsGuestFallback() {
+    public void testSortNewestFirstUsesFetchTimestamp() {
         TechnologyEvent event1 = TechnologyEvent.builder()
                 .id("event-1")
                 .importanceScore(90.0)
                 .credibilityScore(80.0)
-                .firstSeen(LocalDateTime.now())
+                .fetchedAt(LocalDateTime.parse("2026-10-20T10:00:00"))
                 .build();
 
         TechnologyEvent event2 = TechnologyEvent.builder()
                 .id("event-2")
                 .importanceScore(50.0)
                 .credibilityScore(90.0)
-                .firstSeen(LocalDateTime.now())
+                .fetchedAt(LocalDateTime.parse("2026-10-21T10:00:00"))
                 .build();
 
         List<TechnologyEvent> candidates = new ArrayList<>(List.of(event2, event1));
 
-        // Guest user (userId = null) -> returns cold start score comparison (event1 should rank higher)
-        List<TechnologyEvent> ranked = personalizationAgent.rankEvents(null, candidates);
+        List<TechnologyEvent> ranked = personalizationAgent.sortNewestFirst(candidates);
 
-        assertEquals("event-1", ranked.get(0).getId());
+        assertEquals("event-2", ranked.get(0).getId());
     }
 }
