@@ -56,6 +56,9 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
     java.util.List<RawIngestion> findByTitleHash(String titleHash);
     boolean existsByUrlHash(String urlHash);
 
+    @Query("SELECT COUNT(r) FROM RawIngestion r WHERE r.fetchedAt >= :start AND r.fetchedAt < :end")
+    long countFetchedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
     /**
      * Deletes raw ingestion records stuck in FAILED status older than the cutoff.
      * Used by PruningScheduler to clean up records that exhausted all retries.

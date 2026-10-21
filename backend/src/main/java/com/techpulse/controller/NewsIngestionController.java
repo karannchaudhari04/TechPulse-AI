@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @RestController
@@ -24,17 +26,20 @@ public class NewsIngestionController {
     private final NewsSourceRepository newsSourceRepository;
     private final com.techpulse.service.TrendService trendService;
     private final TechnologyEventRepository technologyEventRepository;
+    private final RawIngestionRepository rawIngestionRepository;
 
     public NewsIngestionController(NewsIngestionService newsIngestionService, 
                                    BenchmarkService benchmarkService,
                                    NewsSourceRepository newsSourceRepository,
                                    com.techpulse.service.TrendService trendService,
-                                   TechnologyEventRepository technologyEventRepository) {
+                                   TechnologyEventRepository technologyEventRepository,
+                                   RawIngestionRepository rawIngestionRepository) {
         this.newsIngestionService = newsIngestionService;
         this.benchmarkService = benchmarkService;
         this.newsSourceRepository = newsSourceRepository;
         this.trendService = trendService;
         this.technologyEventRepository = technologyEventRepository;
+        this.rawIngestionRepository = rawIngestionRepository;
     }
 
     @GetMapping("/health")
@@ -59,6 +64,20 @@ public class NewsIngestionController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(report);
         }
         return ResponseEntity.ok(report);
+    }
+
+    @GetMapping("/daily-counts")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> dailyFetchedCounts() {
+        ZoneId ingestionZone = ZoneId.systemDefault();
+        LocalDate today = LocalDate.now(ingestionZone);
+        LocalDate yesterday = today.minusDays(1);
+
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("today", rawIngestionRepository.countFetchedBetween(
+                today.atStartOfDay(), today.plusDays(1).atStartOfDay()));
+        counts.put("yesterday", rawIngestionRepository.countFetchedBetween(
+                yesterday.atStartOfDay(), today.atStartOfDay()));
+        return ResponseEntity.ok(ApiResponse.success(counts, "Daily fetched update counts."));
     }
 
     @GetMapping("/trends")

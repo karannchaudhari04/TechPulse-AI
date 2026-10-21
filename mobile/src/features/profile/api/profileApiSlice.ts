@@ -22,6 +22,11 @@ export interface SavePreferencesPayload {
   categories: string[];
 }
 
+export interface AdminDailyFetchedCounts {
+  today: number;
+  yesterday: number;
+}
+
 /**
  * Purpose: Profile, settings, and user preferences API client endpoints.
  */
@@ -33,6 +38,12 @@ export const profileApiSlice = apiSlice.injectEndpoints({
         method: 'GET',
       }),
       providesTags: ['User'],
+    }),
+    getAdminDailyFetchedCounts: builder.query<AdminDailyFetchedCounts, void>({
+      query: () => ({
+        url: '/admin/news/daily-counts',
+        method: 'GET',
+      }),
     }),
     updateProfile: builder.mutation<UserProfileResponse, UpdateProfilePayload>({
       query: (payload) => ({
@@ -62,6 +73,7 @@ export const profileApiSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetProfileQuery,
+  useGetAdminDailyFetchedCountsQuery,
   useLazyGetProfileQuery,
   useUpdateProfileMutation,
   useSavePreferencesMutation,

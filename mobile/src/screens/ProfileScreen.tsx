@@ -6,7 +6,7 @@ import { signOut } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from '../utils/firebase';
 import { userApi } from '../api/user';
-import { useGetProfileQuery } from '../features/profile/api/profileApiSlice';
+import { useGetAdminDailyFetchedCountsQuery, useGetProfileQuery } from '../features/profile/api/profileApiSlice';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppDispatch } from '../store';
@@ -112,19 +112,7 @@ export default function ProfileScreen({ navigation }: any) {
       webClientId: ENV.GOOGLE.WEB_CLIENT_ID,
       iosClientId: ENV.GOOGLE.IOS_CLIENT_ID,
     });
-
-    const getToken = async () => {
-      if (user) {
-        try {
-          const token = await user.getIdToken(true);
-          console.log("🔥 MY ADMIN TOKEN:", token);
-        } catch (e) {
-          console.error("Token error:", e);
-        }
-      }
-    };
-    getToken();
-  }, [user]);
+  }, []);
 
   const { data: profile, isLoading, refetch } = useGetProfileQuery(undefined, {
     skip: !user,
@@ -158,6 +146,8 @@ export default function ProfileScreen({ navigation }: any) {
   };
 
   const isAdmin = profile?.roles?.includes('ADMIN') || profile?.role === 'ADMIN';
+  const { data: dailyCounts, isLoading: isDailyCountsLoading, isError: isDailyCountsError } =
+    useGetAdminDailyFetchedCountsQuery(undefined, { skip: !isAdmin });
   const [isIngesting, setIsIngesting] = useState(false);
 
   const handleTriggerIngestion = async () => {
@@ -323,6 +313,30 @@ export default function ProfileScreen({ navigation }: any) {
             />
           ))}
         </View>
+
+        {isAdmin && (
+          <Animated.View entering={FadeInDown.delay(450)} style={styles.section}>
+            <Text style={styles.sectionTitle}>Daily Fetched Updates</Text>
+            <View style={[styles.dailyCountsCard, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
+              <View style={styles.dailyCountItem}>
+                <Text style={styles.dailyCountLabel}>Today</Text>
+                {isDailyCountsLoading ? <ActivityIndicator color="#A78BFA" /> : (
+                  <Text style={styles.dailyCountValue}>{isDailyCountsError ? '—' : dailyCounts?.today ?? 0}</Text>
+                )}
+                <Text style={styles.dailyCountCaption}>updates fetched</Text>
+              </View>
+              <View style={[styles.dailyCountDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.dailyCountItem}>
+                <Text style={styles.dailyCountLabel}>Yesterday</Text>
+                {isDailyCountsLoading ? <ActivityIndicator color="#A78BFA" /> : (
+                  <Text style={styles.dailyCountValue}>{isDailyCountsError ? '—' : dailyCounts?.yesterday ?? 0}</Text>
+                )}
+                <Text style={styles.dailyCountCaption}>updates fetched</Text>
+              </View>
+            </View>
+            {isDailyCountsError && <Text style={styles.dailyCountError}>Couldn’t load update totals. Reopen your profile to retry.</Text>}
+          </Animated.View>
+        )}
 
         {/* Expertise / Categories Horizontal Scroll */}
         <Animated.View entering={FadeInDown.delay(500)} style={styles.expertiseSection}>
@@ -564,6 +578,13 @@ const styles = StyleSheet.create({
   },
   expertiseTagText: { color: '#E2E8F0', fontSize: scale(13), fontWeight: '700' },
   section: { paddingHorizontal: scale(20), marginTop: scale(32) },
+  dailyCountsCard: { flexDirection: 'row', alignItems: 'center', borderRadius: scale(20), borderWidth: 1, paddingVertical: scale(20) },
+  dailyCountItem: { flex: 1, alignItems: 'center', gap: scale(5) },
+  dailyCountDivider: { width: 1, height: scale(56) },
+  dailyCountLabel: { color: '#CBD5E1', fontSize: scale(13), fontWeight: '700' },
+  dailyCountValue: { color: '#F8FAFC', fontSize: scale(28), fontWeight: '900' },
+  dailyCountCaption: { color: '#64748B', fontSize: scale(11), fontWeight: '600' },
+  dailyCountError: { color: '#FCA5A5', fontSize: scale(12), marginTop: scale(8) },
   sectionTitle: { fontSize: scale(11), fontWeight: '900', color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: scale(16) },
   adminActionCard: { borderRadius: scale(24), overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(124, 58, 237, 0.3)' },
   adminGradient: {
