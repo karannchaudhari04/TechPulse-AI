@@ -6,6 +6,7 @@ import com.techpulse.agent.model.SourceType;
 import com.techpulse.agent.registry.SourceRegistry;
 import com.techpulse.agent.util.JaroWinklerSimilarity;
 import com.techpulse.agent.util.UrlNormalizer;
+import com.techpulse.agent.util.UpdateEligibilityFilter;
 import com.techpulse.common.HashUtil;
 import com.techpulse.model.NewsSource;
 import com.techpulse.model.RawIngestion;
@@ -37,15 +38,18 @@ public class DiscoveryAgent {
     private final SourceRegistry sourceRegistry;
     private final RawIngestionRepository rawIngestionRepository;
     private final ExecutorService executorService;
+    private final int maxArticlesPerIngestion;
 
     public DiscoveryAgent(NewsSourceRepository newsSourceRepository,
                           SourceRegistry sourceRegistry,
                           RawIngestionRepository rawIngestionRepository,
-                          @Value("${app.discovery.thread-pool-size:10}") int threadPoolSize) {
+                          @Value("${app.discovery.thread-pool-size:10}") int threadPoolSize,
+                          @Value("${app.news.ingestion.max-articles:20}") int maxArticlesPerIngestion) {
         this.newsSourceRepository = newsSourceRepository;
         this.sourceRegistry = sourceRegistry;
         this.rawIngestionRepository = rawIngestionRepository;
         this.executorService = Executors.newFixedThreadPool(threadPoolSize);
+        this.maxArticlesPerIngestion = Math.max(1, maxArticlesPerIngestion);
     }
 
     @Transactional
@@ -92,8 +96,16 @@ public class DiscoveryAgent {
 
         List<RawIngestion> uniqueUpdates = new ArrayList<>();
         int duplicateCount = 0;
+        int rejectedCount = 0;
+        LocalDateTime eligibilityNow = LocalDateTime.now();
 
         for (RawUpdateDTO update : rawUpdates) {
+            if (!UpdateEligibilityFilter.isEligible(
+                    update.getTitle(), update.getRawContent(), update.getPublishedAt(), eligibilityNow)) {
+                rejectedCount++;
+                continue;
+            }
+
             String title = update.getTitle();
             String rawUrl = update.getSourceUrl();
 
@@ -195,14 +207,21 @@ public class DiscoveryAgent {
             log.info("[DiscoveryAgent] Unique article discovered: '{}' (Event ID: {})", cleanedTitle, entity.getEventId());
         }
 
+        List<RawIngestion> selectedUpdates = ArticleQualityRanker.selectTopArticles(uniqueUpdates, maxArticlesPerIngestion);
+        int rankedOutCount = uniqueUpdates.size() - selectedUpdates.size();
+        uniqueUpdates.clear();
+        uniqueUpdates.addAll(selectedUpdates);
+        log.info("[DiscoveryAgent] Quality ranking selected {} articles (limit={}); ranked out {} candidates.",
+                uniqueUpdates.size(), maxArticlesPerIngestion, rankedOutCount);
+
         if (!uniqueUpdates.isEmpty()) {
             rawIngestionRepository.saveAll(uniqueUpdates);
         }
 
         long durationMs = System.currentTimeMillis() - startMs;
-        log.info("[DISCOVERY] runId={} sources={} successful={} failed={} candidates={} unique={} duplicates={} saved={} durationMs={}",
+        log.info("[DISCOVERY] runId={} sources={} successful={} failed={} candidates={} rejectedByEligibility={} unique={} duplicates={} saved={} durationMs={}",
                 runId, totalSources, successfulSources.get(), failedSources.get(),
-                rawUpdates.size(), uniqueUpdates.size(), duplicateCount, uniqueUpdates.size(), durationMs);
+                rawUpdates.size(), rejectedCount, uniqueUpdates.size(), duplicateCount, uniqueUpdates.size(), durationMs);
 
         return uniqueUpdates;
     }

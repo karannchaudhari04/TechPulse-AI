@@ -74,9 +74,11 @@ app:
       per-user-per-minute: ${AI_RATE_LIMIT_PER_USER_PER_MINUTE:12}
       per-ip-per-minute: ${AI_RATE_LIMIT_PER_IP_PER_MINUTE:30}
   gemini:
-    model: ${GEMINI_MODEL:gemini-1.5-flash}
-  discovery:
-    thread-pool-size: 10
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+    fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.8-flash,gemini-3.6-flash}
   news:
     ingestion:
       enabled: true
+      max-articles: ${NEWS_MAX_ARTICLES_PER_INGESTION:20}
+  discovery:
+    thread-pool-size: 10

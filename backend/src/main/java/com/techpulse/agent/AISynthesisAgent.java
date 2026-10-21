@@ -38,7 +38,7 @@ public class AISynthesisAgent {
     private final RawIngestionRepository rawIngestionRepository;
     private final ObjectMapper objectMapper;
 
-    @Value("${app.gemini.model:gemini-1.5-flash}")
+    @Value("${app.gemini.model:gemini-3.5-flash-lite}")
     private String modelName;
 
     public AISynthesisAgent(AIClient aiClient,
@@ -126,7 +126,7 @@ public class AISynthesisAgent {
                 .lastUpdated(LocalDateTime.now())
                 .fetchedAt(rawUpdate.getFetchedAt() != null ? rawUpdate.getFetchedAt() : LocalDateTime.now())
                 .summaryStatus("READY")
-                .llmModel(modelName)
+                .llmModel(response.getModel() != null ? response.getModel() : modelName)
                 .promptTokens(response.getPromptTokens())
                 .completionTokens(response.getCompletionTokens())
                 .generationLatency((int) response.getLatency())

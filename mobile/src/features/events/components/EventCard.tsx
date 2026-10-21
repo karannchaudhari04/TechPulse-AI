@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Image as ExpoImage } from 'expo-image';
 import { useTheme } from '../../../theme';
 import { FeedItem } from '../../feed/api/feedApiSlice';
@@ -27,6 +28,7 @@ export default function EventCard({
   imageHeight,
 }: EventCardProps) {
   const { colors, typography, spacing, radius } = useTheme();
+  const navigation = useNavigation<any>();
   const [bookmarked, setBookmarked] = useState(item.bookmarked);
   const [bookmarkPending, setBookmarkPending] = useState(false);
 
@@ -50,12 +52,17 @@ export default function EventCard({
     }
   };
 
-  const fetchedDate = item.fetchedAt || item.publishedTime;
+  const fetchedDate = item.fetchedAt;
   const categoryUpdateImage = getCategoryUpdateImage(item.id, item.category);
+  const articleUrl = item.sourceUrl || '';
+  const hasArticleUrl = /^https?:\/\//i.test(articleUrl);
   const parsedDate = fetchedDate ? new Date(fetchedDate) : null;
   const fetchedDateLabel = parsedDate && !Number.isNaN(parsedDate.getTime())
     ? `${String(parsedDate.getDate()).padStart(2, '0')}-${parsedDate.toLocaleString('en', { month: 'short' }).toUpperCase()}`
     : '';
+  const handleReadArticle = () => {
+    if (hasArticleUrl) navigation.navigate('Article', { url: articleUrl, title: item.headline });
+  };
 
   return (
     <View style={[styles.container, fullScreen && styles.fullScreenContainer]}>
@@ -74,7 +81,7 @@ export default function EventCard({
               accessibilityLabel={`Image for ${item.category} update`}
             />
             <Text style={[styles.date, { fontFamily: typography.caption.fontFamily }]}>
-              {fetchedDateLabel}
+              {fetchedDateLabel ? `Fetched ${fetchedDateLabel}` : ''}
             </Text>
           </View>
 
@@ -89,21 +96,43 @@ export default function EventCard({
               {item.headline}
             </Text>
 
+            <View style={styles.sourceMetadata}>
+              <Icon name="globe" provider="feather" size={14} color={colors.textMuted} />
+              <Text
+                style={[styles.sourceMetadataText, { color: colors.textMuted, fontFamily: typography.caption.fontFamily }]}
+                numberOfLines={1}
+              >
+                {item.sourceName || 'Source'}
+              </Text>
+            </View>
+
             <Text
               style={[
                 styles.summary,
                 { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
               ]}
-              numberOfLines={fullScreen ? undefined : 3}
+              numberOfLines={fullScreen ? 6 : 3}
             >
               {item.summary}
             </Text>
-
+            <Tag label={item.category} type="primary" style={{ marginTop: fullScreen ? 'auto' : spacing.md }} />
           </View>
         </TouchableOpacity>
 
         <View style={[styles.bookmarkRow, { backgroundColor: colors.divider, borderTopColor: colors.border }]}>
-          <Tag label={item.category} type="primary" />
+          <TouchableOpacity
+            onPress={handleReadArticle}
+            style={styles.readArticleButton}
+            activeOpacity={0.75}
+            disabled={!hasArticleUrl}
+            accessibilityRole="link"
+            accessibilityLabel={hasArticleUrl ? 'Read full article inside the app' : 'Article link unavailable'}
+          >
+            <Icon name="book-open" provider="feather" size={16} color={hasArticleUrl ? colors.primary : colors.textMuted} />
+            <Text style={[styles.readArticleText, { color: hasArticleUrl ? colors.primary : colors.textMuted, fontFamily: typography.bodySmall.fontFamily }]}>
+              {hasArticleUrl ? 'Read full article' : 'Article unavailable'}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleBookmarkPress}
             style={[styles.bookmarkButton, { backgroundColor: colors.cardBackground, borderColor: colors.border }]}
@@ -156,7 +185,7 @@ const styles = StyleSheet.create({
     right: 10,
     color: '#FFFFFF',
     backgroundColor: 'rgba(0, 0, 0, 0.62)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.4,
     overflow: 'hidden',
@@ -181,6 +210,17 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  readArticleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    minHeight: 42,
+    paddingHorizontal: 4,
+  },
+  readArticleText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   image: {
     width: '100%',
     height: 160,
@@ -199,5 +239,15 @@ const styles = StyleSheet.create({
   summary: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  sourceMetadata: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  sourceMetadataText: {
+    flex: 1,
+    fontSize: 11,
   },
 });

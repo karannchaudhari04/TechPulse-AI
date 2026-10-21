@@ -59,7 +59,7 @@ logging:
 
 app:
   gemini:
-    model: gemini-flash-latest
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
   discovery:
     thread-pool-size: 2
 

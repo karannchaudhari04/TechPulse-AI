@@ -22,4 +22,4 @@ spring:
 
 app:
   gemini:
-    model: gemini-flash-latest
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}

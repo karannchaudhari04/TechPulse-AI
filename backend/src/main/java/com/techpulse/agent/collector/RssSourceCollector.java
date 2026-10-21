@@ -7,6 +7,7 @@ import com.rometools.rome.io.XmlReader;
 import com.techpulse.agent.PipelineContext;
 import com.techpulse.agent.dto.RawUpdateDTO;
 import com.techpulse.agent.model.SourceType;
+import com.techpulse.agent.util.UpdateEligibilityFilter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -72,20 +73,34 @@ public class RssSourceCollector implements SourceCollector {
         List<RawUpdateDTO> rawUpdates = new ArrayList<>();
         String language = feed.getLanguage() != null ? feed.getLanguage() : "en";
 
-        // Limit entries to 8 to match the original service design behavior
-        List<SyndEntry> entries = feed.getEntries().stream().limit(8).toList();
-        for (SyndEntry entry : entries) {
+        LocalDateTime now = LocalDateTime.now();
+        int rejectedCount = 0;
+        for (SyndEntry entry : feed.getEntries()) {
             try {
+                Date publishedDate = entry.getPublishedDate();
+                if (publishedDate == null) {
+                    rejectedCount++;
+                    continue;
+                }
+                LocalDateTime publishedAt = publishedDate.toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDateTime();
+                if (!UpdateEligibilityFilter.isEligible(entry.getTitle(), extractText(entry), publishedAt, now)) {
+                    rejectedCount++;
+                    continue;
+                }
+
                 RawUpdateDTO dto = mapToRawUpdate(entry, sourceName, language);
                 if (dto != null) {
                     rawUpdates.add(dto);
+                    if (rawUpdates.size() == 8) break;
                 }
             } catch (Exception e) {
                 log.warn("[RssCollector] [runId={}] Error mapping entry in feed '{}': {}", runId, sourceName, e.getMessage());
             }
         }
 
-        log.info("[RssCollector] [runId={}] Completed collection from source '{}'. Fetched {} entries.", runId, sourceName, rawUpdates.size());
+        log.info("[RssCollector] [runId={}] Completed collection from source '{}'. Accepted {} recent software-engineering entries; rejected {} entries outside the 24-hour/relevance rules.",
+                runId, sourceName, rawUpdates.size(), rejectedCount);
         return rawUpdates;
     }
 
@@ -112,9 +127,8 @@ public class RssSourceCollector implements SourceCollector {
         String rawContent = extractText(entry);
         if (rawContent.isBlank()) return null;
 
-        LocalDateTime publishedAt = entry.getPublishedDate() != null
-                ? entry.getPublishedDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
-                : LocalDateTime.now();
+        LocalDateTime publishedAt = entry.getPublishedDate().toInstant()
+                .atZone(ZoneId.systemDefault()).toLocalDateTime();
 
         String author = entry.getAuthor() != null && !entry.getAuthor().isBlank() ? entry.getAuthor() : null;
 
