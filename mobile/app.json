@@ -11,13 +11,13 @@
     "icon": "./assets/app_icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
-    "backgroundColor": "#0F172A",
+    "backgroundColor": "#000000",
     "primaryColor": "#7C3AED",
     "scheme": "techpulse",
     "splash": {
       "image": "./assets/app_icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -37,7 +37,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app_icon.png",
-        "backgroundColor": "#0F172A"
+          "backgroundColor": "#000000"
       },
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [

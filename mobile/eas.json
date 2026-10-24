@@ -11,8 +11,9 @@
         "gradleCommand": ":app:assembleDebug"
       }
     },
-    "small-apk": {
+    "production-apk": {
       "extends": "production",
+      "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
