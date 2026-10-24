@@ -98,6 +98,18 @@ export default function HomeScreen() {
     }
   };
 
+  const renderFeedItem = useCallback(({ item }: { item: FeedItem }) => (
+    <View style={[styles.feedPage, feedPageHeight > 0 ? { height: feedPageHeight } : null]}>
+      <EventCard
+        item={item}
+        onPress={() => navigation.navigate('EventDetail', { id: item.id })}
+        onBookmarkToggle={() => handleBookmarkToggle(item)}
+        fullScreen
+        imageHeight={feedPageHeight > 0 ? Math.round((feedPageHeight - 8) * 0.25) : 150}
+      />
+    </View>
+  ), [feedPageHeight, handleBookmarkToggle, navigation]);
+
   const handleCategorySelect = (category: string) => {
     if (category !== activeCategory) {
       setActiveCategory(category);
@@ -184,17 +196,7 @@ export default function HomeScreen() {
           <View style={styles.pagedFeed} onLayout={(event) => setFeedPageHeight(event.nativeEvent.layout.height)}>
             <FlatList
               data={newestFirstFeed}
-              renderItem={({ item }) => (
-                <View style={[styles.feedPage, feedPageHeight > 0 ? { height: feedPageHeight } : null]}>
-                  <EventCard
-                    item={item}
-                    onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-                    onBookmarkToggle={() => handleBookmarkToggle(item)}
-                    fullScreen
-                    imageHeight={feedPageHeight > 0 ? Math.round((feedPageHeight - 16) * 0.3) : 180}
-                  />
-                </View>
-              )}
+              renderItem={renderFeedItem}
               keyExtractor={(item) => item.id}
               ListFooterComponent={renderFooter}
               ListEmptyComponent={
@@ -219,9 +221,9 @@ export default function HomeScreen() {
               showsVerticalScrollIndicator={false}
               removeClippedSubviews
               initialNumToRender={2}
-              maxToRenderPerBatch={1}
-              updateCellsBatchingPeriod={40}
-              windowSize={3}
+              maxToRenderPerBatch={3}
+              updateCellsBatchingPeriod={16}
+              windowSize={5}
               getItemLayout={feedPageHeight > 0
                 ? (_data, index) => ({ length: feedPageHeight, offset: feedPageHeight * index, index })
                 : undefined}
@@ -247,8 +249,8 @@ const styles = StyleSheet.create({
   },
   feedPage: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   offlineBanner: {
     flexDirection: 'row',

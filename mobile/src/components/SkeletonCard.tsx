@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     height: SCREEN_HEIGHT * 0.20,
     width: '100%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
   },
   contentSection: {
     flex: 1,
@@ -104,14 +104,14 @@ const styles = StyleSheet.create({
     width: '90%',
     height: scale(22),
     borderRadius: scale(6),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     marginBottom: scale(8),
   },
   titleLine2: {
     width: '60%',
     height: scale(22),
     borderRadius: scale(6),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
   },
   bulletsContainer: {
     gap: scale(16),
@@ -125,20 +125,20 @@ const styles = StyleSheet.create({
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     marginTop: scale(6),
   },
   bulletLine1: {
     width: '95%',
     height: scale(14),
     borderRadius: scale(4),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
   },
   bulletLine2: {
     width: '80%',
     height: scale(14),
     borderRadius: scale(4),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
   },
   actionBarContainer: {
     position: 'absolute',
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     width: scale(56),
     height: scale(56),
     borderRadius: scale(28),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     zIndex: 15,
   },
 });

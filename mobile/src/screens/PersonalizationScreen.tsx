@@ -47,7 +47,7 @@ interface PersonalizationScreenProps {
 }
 
 export default function PersonalizationScreen({ onClose }: PersonalizationScreenProps) {
-  const { isAmoled, setAmoled, colors } = useTheme();
+  const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const user = auth.currentUser;
   const dispatch = useAppDispatch();
@@ -120,7 +120,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
             </Pressable>
           </View>
           <View style={styles.guestContainer}>
-            <Ionicons name="person-circle-outline" size={100} color="#334155" />
+            <Ionicons name="person-circle-outline" size={100} color="#242424" />
             <Text style={styles.guestTitle}>Guest Mode</Text>
             <Text style={styles.guestSubtitle}>Sign in to sync your progress and bookmarks across devices.</Text>
             <Pressable 
@@ -134,7 +134,7 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
               ]}
             >
               <LinearGradient
-                colors={['#6366F1', '#4F46E5']}
+                colors={['#8B5CF6', '#6D28D9']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.signInGradient}
@@ -192,38 +192,16 @@ export default function PersonalizationScreen({ onClose }: PersonalizationScreen
                   <Text style={styles.cardTitle}>Alerts</Text>
                   <Text style={styles.cardSubtitle}>Smart notifications enabled</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#475569" />
-              </Pressable>
-
-              {/* AMOLED Black Theme Card */}
-              <Pressable 
-                style={styles.settingCard} 
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-                  setAmoled(!isAmoled);
-                }}
-              >
-                <View style={styles.cardIconBox}>
-                  <Ionicons name={isAmoled ? "moon" : "sunny"} size={22} color="#6366F1" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>AMOLED Black Theme</Text>
-                  <Text style={styles.cardSubtitle}>{isAmoled ? "Pure black theme active" : "Standard theme active"}</Text>
-                </View>
-                <Ionicons 
-                  name={isAmoled ? "toggle" : "toggle-outline"} 
-                  size={32} 
-                  color={isAmoled ? "#6366F1" : "#475569"} 
-                />
+                <Ionicons name="chevron-forward" size={20} color="#777780" />
               </Pressable>
 
               {/* Behavior Engine Card */}
-              <View style={[styles.settingCard, { borderColor: '#818CF8', borderStyle: 'dashed' }]}>
+              <View style={[styles.settingCard, { borderColor: '#A78BFA', borderStyle: 'dashed' }]}>
                 <View style={[styles.cardIconBox, { backgroundColor: 'rgba(129, 140, 248, 0.1)' }]}>
-                  <MaterialCommunityIcons name="brain" size={24} color="#818CF8" />
+                  <MaterialCommunityIcons name="brain" size={24} color="#A78BFA" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardTitle, { color: '#818CF8' }]}>Dynamic Behavior Engine</Text>
+                  <Text style={[styles.cardTitle, { color: '#A78BFA' }]}>Dynamic Behavior Engine</Text>
                   <Text style={styles.cardSubtitle}>Your feed is dynamically personalized in real-time as you view, click, and bookmark articles. Stale interests auto-decay over time.</Text>
                 </View>
               </View>
@@ -293,9 +271,9 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   followingBtn: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
-    borderColor: '#334155'
+    borderColor: '#242424'
   },
   followBtnText: { color: '#000', fontSize: scale(14), fontWeight: '800' },
   followingBtnText: { color: '#FFF' },
@@ -307,7 +285,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: scale(50),
     borderRadius: scale(25),
-    shadowColor: '#6366F1',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,

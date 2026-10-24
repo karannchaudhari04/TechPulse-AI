@@ -29,7 +29,7 @@ const scale = (size: number) => (SCREEN_WIDTH / 375) * size;
 
 function StatCard({ item, index, onPress }: { item: any, index: number, onPress?: () => void }) {
   const scale = useSharedValue(1);
-  const { colors, isAmoled } = useTheme();
+  const { colors } = useTheme();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }]
@@ -48,7 +48,7 @@ function StatCard({ item, index, onPress }: { item: any, index: number, onPress?
       entering={FadeInDown.delay(200 + index * 100)} 
       style={[
         styles.statCard, 
-        { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border },
+        { backgroundColor: '#000000', borderColor: colors.border },
         animatedStyle
       ]}
     >
@@ -75,7 +75,7 @@ function StatCard({ item, index, onPress }: { item: any, index: number, onPress?
 export default function ProfileScreen({ navigation }: any) {
   const dispatch = useAppDispatch();
   const user = auth.currentUser;
-  const { colors, isAmoled } = useTheme();
+  const { colors } = useTheme();
 
   const badgeScale = useSharedValue(1);
   const badgeGlow = useSharedValue(0.4);
@@ -186,7 +186,7 @@ export default function ProfileScreen({ navigation }: any) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <View style={styles.guestContainer}>
-          <Ionicons name="person-circle-outline" size={100} color="#334155" />
+          <Ionicons name="person-circle-outline" size={100} color="#242424" />
           <Text style={styles.guestTitle}>Guest Mode</Text>
           <Text style={styles.guestSubtitle}>Sign in to sync your progress and bookmarks across devices.</Text>
           <Pressable 
@@ -197,7 +197,7 @@ export default function ProfileScreen({ navigation }: any) {
             ]}
           >
             <LinearGradient
-              colors={['#6366F1', '#4F46E5']}
+              colors={['#8B5CF6', '#6D28D9']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.signInGradient}
@@ -223,7 +223,7 @@ export default function ProfileScreen({ navigation }: any) {
         
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={[styles.iconBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
+          <Pressable onPress={() => navigation.goBack()} style={[styles.iconBtn, { backgroundColor: '#000000', borderColor: colors.border }]}>
             <Image 
               source={require('../../assets/back.png')} 
               style={{ width: 22, height: 22 }} 
@@ -231,7 +231,7 @@ export default function ProfileScreen({ navigation }: any) {
             />
           </Pressable>
           <Text style={styles.headerTitle}>Profile</Text>
-          <Pressable onPress={() => navigation.navigate('Personalization')} style={[styles.iconBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
+          <Pressable onPress={() => navigation.navigate('Personalization')} style={[styles.iconBtn, { backgroundColor: '#000000', borderColor: colors.border }]}>
             <Image 
               source={require('../../assets/setting.png')} 
               style={{ width: 22, height: 22 }} 
@@ -243,7 +243,7 @@ export default function ProfileScreen({ navigation }: any) {
         {/* Profile Info Card */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.profileCardWrapper}>
           <LinearGradient
-            colors={isAmoled ? ['#111111', '#000000'] : ['rgba(30, 41, 59, 0.95)', 'rgba(15, 23, 42, 0.95)']}
+            colors={['#111111', '#000000']}
             style={[styles.profileCard, { borderColor: colors.border }]}
           >
             {/* Background Tech Pattern */}
@@ -317,7 +317,7 @@ export default function ProfileScreen({ navigation }: any) {
         {isAdmin && (
           <Animated.View entering={FadeInDown.delay(450)} style={styles.section}>
             <Text style={styles.sectionTitle}>Daily Fetched Updates</Text>
-            <View style={[styles.dailyCountsCard, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border }]}>
+            <View style={[styles.dailyCountsCard, { backgroundColor: '#000000', borderColor: colors.border }]}>
               <View style={styles.dailyCountItem}>
                 <Text style={styles.dailyCountLabel}>Today</Text>
                 {isDailyCountsLoading ? <ActivityIndicator color="#A78BFA" /> : (
@@ -397,7 +397,7 @@ export default function ProfileScreen({ navigation }: any) {
               style={({ pressed }) => [styles.adminActionCard, { marginTop: scale(12) }, pressed && styles.pressed]}
             >
               <LinearGradient
-                colors={['#8B5CF6', '#6366F1']}
+                colors={['#8B5CF6', '#8B5CF6']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.adminGradient}
@@ -430,7 +430,7 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#0F172A' },
+  safeArea: { flex: 1, backgroundColor: '#000000' },
   scrollContent: { paddingBottom: scale(40) },
   header: {
     flexDirection: 'row',
@@ -443,11 +443,11 @@ const styles = StyleSheet.create({
     width: scale(40),
     height: scale(40),
     borderRadius: scale(12),
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#242424',
   },
   headerTitle: { fontSize: scale(20), fontWeight: '900', color: '#F1F5F9', letterSpacing: 0.5 },
   profileCardWrapper: { paddingHorizontal: scale(20), marginTop: scale(20) },
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     padding: scale(24),
     borderRadius: scale(24),
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#242424',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     width: scale(18),
     height: scale(18),
     borderRadius: scale(9),
-    backgroundColor: '#0F172A',
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(6),
     backgroundColor: '#10B981',
     borderWidth: 2,
-    borderColor: '#0F172A',
+    borderColor: '#000000',
   },
   levelContainer: { marginTop: scale(8), marginBottom: scale(12) },
   levelHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
@@ -544,10 +544,10 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0A0A0A',
     borderRadius: scale(24),
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#242424',
   },
   statPressable: {
     paddingVertical: scale(16),
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   dailyCountValue: { color: '#F8FAFC', fontSize: scale(28), fontWeight: '900' },
   dailyCountCaption: { color: '#64748B', fontSize: scale(11), fontWeight: '600' },
   dailyCountError: { color: '#FCA5A5', fontSize: scale(12), marginTop: scale(8) },
-  sectionTitle: { fontSize: scale(11), fontWeight: '900', color: '#475569', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: scale(16) },
+  sectionTitle: { fontSize: scale(11), fontWeight: '900', color: '#777780', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: scale(16) },
   adminActionCard: { borderRadius: scale(24), overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(124, 58, 237, 0.3)' },
   adminGradient: {
     flexDirection: 'row',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(248, 113, 113, 0.2)',
   },
   logoutText: { color: '#F87171', fontWeight: '800', fontSize: scale(15), marginLeft: scale(10) },
-  versionText: { marginTop: scale(20), fontSize: scale(11), color: '#475569', fontWeight: '700' },
+  versionText: { marginTop: scale(20), fontSize: scale(11), color: '#777780', fontWeight: '700' },
   guestContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: scale(40) },
   guestTitle: { fontSize: scale(24), fontWeight: '900', color: '#F1F5F9', marginTop: scale(20) },
   guestSubtitle: { fontSize: scale(14), color: '#64748B', textAlign: 'center', marginTop: scale(10), marginBottom: scale(30), lineHeight: scale(20) },
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: scale(50),
     borderRadius: scale(25),
-    shadowColor: '#6366F1',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,

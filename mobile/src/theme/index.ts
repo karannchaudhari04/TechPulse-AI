@@ -1,6 +1,6 @@
 export { ThemeProvider, useTheme } from './ThemeProvider';
 export type { ThemeContextProps } from './ThemeProvider';
-export { lightColors, darkColors, amoledColors } from './colors';
+export { amoledColors } from './colors';
 export type { ColorPalette } from './colors';
 export { typography, fontFamilies, fontWeights, fontSizes } from './typography';
 export { spacing, layout, isTablet } from './spacing';

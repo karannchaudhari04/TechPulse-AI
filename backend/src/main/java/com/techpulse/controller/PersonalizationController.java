@@ -589,17 +589,25 @@ public class PersonalizationController {
 
     private List<Map<String, Object>> mapToFeedItems(List<TechnologyEvent> events, Long userId) {
         if (events.isEmpty()) return Collections.emptyList();
+        List<String> eventIds = events.stream().map(TechnologyEvent::getId).toList();
+        Map<String, String> sourceNames = new HashMap<>();
+        for (RawIngestionRepository.EventSourceProjection source
+                : rawIngestionRepository.findSourceNamesByEventIdInOrderByFetchedAtDesc(eventIds)) {
+            if (source.getEventId() != null && source.getSourceName() != null && !source.getSourceName().isBlank()) {
+                sourceNames.putIfAbsent(source.getEventId(), source.getSourceName());
+            }
+        }
         Set<String> bookmarkedIds = Collections.emptySet();
         Set<String> completedIds = Collections.emptySet();
         if (userId != null) {
-            List<String> eventIds = events.stream().map(TechnologyEvent::getId).toList();
             bookmarkedIds = new HashSet<>(userSavedEventRepository.findEventIdsByUserIdAndEventIdIn(userId, eventIds));
             completedIds = new HashSet<>(userHistoryLogRepository.findCompletedEventIdsByUserIdAndEventIdIn(userId, eventIds));
         }
         Set<String> finalBookmarkedIds = bookmarkedIds;
         Set<String> finalCompletedIds = completedIds;
         return events.stream()
-                .map(event -> mapToFeedItem(event, finalBookmarkedIds.contains(event.getId()), finalCompletedIds.contains(event.getId())))
+                .map(event -> mapToFeedItem(event, finalBookmarkedIds.contains(event.getId()),
+                        finalCompletedIds.contains(event.getId()), sourceNames.get(event.getId())))
                 .collect(Collectors.toList());
     }
 
@@ -607,7 +615,7 @@ public class PersonalizationController {
         return mapToFeedItems(List.of(event), userId).get(0);
     }
 
-    private Map<String, Object> mapToFeedItem(TechnologyEvent event, boolean bookmarked, boolean read) {
+    private Map<String, Object> mapToFeedItem(TechnologyEvent event, boolean bookmarked, boolean read, String sourceName) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", event.getId());
         map.put("eventId", event.getId());
@@ -617,7 +625,7 @@ public class PersonalizationController {
         map.put("contentSummary", event.getSummary() != null ? event.getSummary() : "");
         map.put("publishedTime", event.getFirstSeen() != null ? event.getFirstSeen().toString() : "");
         map.put("fetchedAt", getFetchTime(event) != null ? getFetchTime(event).toString() : "");
-        map.put("sourceName", "TechCrunch"); // default source template matching RN cards
+        map.put("sourceName", sourceName != null ? sourceName : "Source");
 
         String sourceUrl = "";
         List<String> links = parseJsonList(event.getOfficialLinksJson());

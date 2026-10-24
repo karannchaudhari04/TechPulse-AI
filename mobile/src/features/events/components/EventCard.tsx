@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Image as ExpoImage } from 'expo-image';
 import { useTheme } from '../../../theme';
@@ -106,15 +106,40 @@ export default function EventCard({
               </Text>
             </View>
 
-            <Text
-              style={[
-                styles.summary,
-                { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
-              ]}
-              numberOfLines={fullScreen ? 6 : 3}
-            >
-              {item.summary}
-            </Text>
+            {fullScreen ? (
+              <ScrollView
+                style={styles.fullScreenSummaryScroll}
+                contentContainerStyle={styles.fullScreenSummaryContent}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
+                <Text
+                  style={[
+                    styles.summary,
+                    styles.justifiedSummary,
+                    {
+                      color: colors.textSecondary,
+                      fontFamily: typography.bodyMedium.fontFamily,
+                      marginTop: spacing.xs,
+                      textAlign: 'justify',
+                      width: '100%',
+                    }
+                  ]}
+                >
+                  {'\u00A0'}{item.summary}
+                </Text>
+              </ScrollView>
+            ) : (
+              <Text
+                style={[
+                  styles.summary,
+                  { color: colors.textSecondary, fontFamily: typography.bodyMedium.fontFamily, marginTop: spacing.xs }
+                ]}
+                numberOfLines={3}
+              >
+                {item.summary}
+              </Text>
+            )}
             <Tag label={item.category} type="primary" style={{ marginTop: fullScreen ? 'auto' : spacing.md }} />
           </View>
         </TouchableOpacity>
@@ -167,7 +192,7 @@ const styles = StyleSheet.create({
   },
   fullScreenCard: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   cardContent: {
@@ -232,6 +257,15 @@ const styles = StyleSheet.create({
   fullScreenBody: {
     flex: 1,
   },
+  fullScreenSummaryScroll: {
+    flex: 1,
+    flexShrink: 1,
+    marginBottom: 1,
+  },
+  fullScreenSummaryContent: {
+    flexGrow: 1,
+    width: '100%',
+  },
   headline: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -239,6 +273,10 @@ const styles = StyleSheet.create({
   summary: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  justifiedSummary: {
+    textAlign: 'justify',
+    width: '100%',
   },
   sourceMetadata: {
     flexDirection: 'row',

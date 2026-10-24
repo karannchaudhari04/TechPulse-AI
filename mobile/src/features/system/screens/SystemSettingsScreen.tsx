@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Text, Switch, TouchableOpacity, Alert } from 'react-native';
 import { useTheme } from '../../../theme';
 import { useNavigation } from '@react-navigation/native';
-import { useAppDispatch, useAppSelector } from '../../../store';
-import { setTheme, setAmoled } from '../../../store/slices/preferencesSlice';
 
 import { SafeAreaWrapper } from '../../../components/common/Layout';
 import Icon from '../../../components/common/Icon';
@@ -13,15 +11,12 @@ import { StorageManagerService, StorageStats } from '../storage/StorageManagerSe
 import { AnalyticsService } from '../analytics/AnalyticsService';
 
 /**
- * Purpose: Central settings dashboard aggregating theme preference switches,
- * storage breakdowns, offline sync states, and developer parameters.
+ * Purpose: Central settings dashboard aggregating storage, offline sync states,
+ * notifications, and developer parameters.
  */
 export default function SystemSettingsScreen() {
   const navigation = useNavigation<any>();
-  const dispatch = useAppDispatch();
   const { colors, typography, spacing } = useTheme();
-
-  const { theme, isAmoled } = useAppSelector(state => state.preferences);
 
   const [stats, setStats] = useState<StorageStats>({
     imageSizeMb: 12.4,
@@ -77,37 +72,6 @@ export default function SystemSettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-        {/* Appearance settings */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.primary, fontFamily: typography.caption.fontFamily }]}>
-            APPEARANCE & THEMES
-          </Text>
-          
-          <View style={[styles.row, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textPrimary, fontFamily: typography.bodyMedium.fontFamily }]}>
-              Dark Mode Theme
-            </Text>
-            <Switch
-              value={theme === 'dark'}
-              onValueChange={(val) => {
-                dispatch(setTheme(val ? 'dark' : 'light'));
-              }}
-            />
-          </View>
-
-          <View style={[styles.row, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.label, { color: colors.textPrimary, fontFamily: typography.bodyMedium.fontFamily }]}>
-              AMOLED Pure Black
-            </Text>
-            <Switch
-              value={isAmoled}
-              onValueChange={(val) => {
-                dispatch(setAmoled(val));
-              }}
-            />
-          </View>
-        </View>
-
         {/* Notifications preferences */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primary, fontFamily: typography.caption.fontFamily }]}>

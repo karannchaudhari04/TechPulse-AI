@@ -19,7 +19,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
   const params = route.params || {};
   const rawId = params.id;
   const id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
-  const { colors, isAmoled } = useTheme();
+  const { colors } = useTheme();
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -41,7 +41,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.errorText}>Invalid link or missing ID.</Text>
-        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border, borderWidth: isAmoled ? 1 : 0 }]}>
+        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: '#000000', borderColor: colors.border, borderWidth: 1 }]}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </Pressable>
       </View>
@@ -51,7 +51,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
   if (isLoading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color="#6366F1" />
+        <ActivityIndicator size="large" color="#8B5CF6" />
       </View>
     );
   }
@@ -60,7 +60,7 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
         <Text style={styles.errorText}>Bite not found or link expired.</Text>
-        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: isAmoled ? '#000000' : '#1E293B', borderColor: colors.border, borderWidth: isAmoled ? 1 : 0 }]}>
+        <Pressable onPress={handleBack} style={[styles.backBtn, { backgroundColor: '#000000', borderColor: colors.border, borderWidth: 1 }]}>
           <Text style={styles.backBtnText}>Go Back</Text>
         </Pressable>
       </View>
@@ -87,12 +87,12 @@ export default function BiteDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#020617' },
+  root: { flex: 1, backgroundColor: '#000000' },
   safeArea: { flex: 1 },
   header: { padding: scale(20) },
-  headerBack: { color: '#6366F1', fontSize: scale(16), fontWeight: '700' },
-  center: { flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', padding: scale(40) },
+  headerBack: { color: '#8B5CF6', fontSize: scale(16), fontWeight: '700' },
+  center: { flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center', padding: scale(40) },
   errorText: { color: '#94A3B8', fontSize: scale(18), textAlign: 'center', marginBottom: scale(20) },
-  backBtn: { backgroundColor: '#1E293B', paddingHorizontal: scale(20), paddingVertical: scale(10), borderRadius: scale(10) },
+  backBtn: { backgroundColor: '#0A0A0A', paddingHorizontal: scale(20), paddingVertical: scale(10), borderRadius: scale(10) },
   backBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: scale(14) }
 });

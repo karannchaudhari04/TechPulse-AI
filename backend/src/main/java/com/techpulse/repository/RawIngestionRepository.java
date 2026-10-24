@@ -53,6 +53,15 @@ public interface RawIngestionRepository extends JpaRepository<RawIngestion, Stri
 
     java.util.Optional<RawIngestion> findByUrlHash(String urlHash);
     java.util.Optional<RawIngestion> findFirstByEventIdOrderByFetchedAtDesc(String eventId);
+
+    interface EventSourceProjection {
+        String getEventId();
+        String getSourceName();
+    }
+
+    @Query("SELECT r.eventId AS eventId, r.sourceName AS sourceName FROM RawIngestion r WHERE r.eventId IN :eventIds ORDER BY r.fetchedAt DESC")
+    List<EventSourceProjection> findSourceNamesByEventIdInOrderByFetchedAtDesc(@Param("eventIds") List<String> eventIds);
+
     java.util.List<RawIngestion> findByTitleHash(String titleHash);
     boolean existsByUrlHash(String urlHash);
 

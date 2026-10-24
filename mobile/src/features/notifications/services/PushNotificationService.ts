@@ -38,7 +38,7 @@ class ExpoPushNotificationProvider implements NotificationProvider {
         name: 'TechPulse Intelligence Alerts',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#6366F1',
+        lightColor: '#8B5CF6',
       });
     }
 

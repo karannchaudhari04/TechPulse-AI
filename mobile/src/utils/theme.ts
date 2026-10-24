@@ -9,7 +9,6 @@ export function useTheme() {
 
   return {
     isAmoled: newTheme.isAmoled,
-    setAmoled: newTheme.setAmoledMode,
     colors: {
       background: newTheme.colors.background,
       cardBackground: newTheme.colors.cardBackground,
@@ -23,7 +22,7 @@ export function useTheme() {
 // Dummy adapter for legacy themeManager calls to prevent boot crashes
 export const themeManager = {
   init: async () => {},
-  getIsAmoled: () => false,
+  getIsAmoled: () => true,
   setAmoled: async () => {},
   subscribe: () => () => {},
 };

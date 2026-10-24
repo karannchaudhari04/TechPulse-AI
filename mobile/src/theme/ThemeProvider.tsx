@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { useColorScheme, StatusBar } from 'react-native';
-import { useAppDispatch, useAppSelector } from '../store';
-import { setTheme, setAmoled } from '../store/slices/preferencesSlice';
-import { lightColors, darkColors, amoledColors, ColorPalette } from './colors';
+import { StatusBar } from 'react-native';
+import { amoledColors, ColorPalette } from './colors';
 import { typography } from './typography';
 import { spacing } from './spacing';
 import { radius } from './radius';
@@ -20,49 +18,27 @@ export interface ThemeContextProps {
   elevation: typeof elevation;
   zIndex: typeof zIndex;
   animations: typeof animations;
-  themeMode: 'light' | 'dark' | 'system';
-  setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
-  setAmoledMode: (amoled: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const dispatch = useAppDispatch();
-  const themeMode = useAppSelector((state) => state.preferences.theme);
-  const isAmoledPreference = useAppSelector((state) => state.preferences.isAmoled);
-  const systemColorScheme = useColorScheme();
-
-  const isDark = useMemo(() => {
-    if (themeMode === 'system') {
-      return systemColorScheme === 'dark';
-    }
-    return themeMode === 'dark';
-  }, [themeMode, systemColorScheme]);
-
-  const activeColors = useMemo(() => {
-    if (isDark) {
-      return isAmoledPreference ? amoledColors : darkColors;
-    }
-    return lightColors;
-  }, [isDark, isAmoledPreference]);
+  const isDark = true;
+  const isAmoled = true;
 
   const themeValue: ThemeContextProps = useMemo(() => {
     return {
       isDark,
-      isAmoled: isDark && isAmoledPreference,
-      colors: activeColors,
+      isAmoled,
+      colors: amoledColors,
       typography,
       spacing,
       radius,
       elevation,
       zIndex,
       animations,
-      themeMode,
-      setThemeMode: (mode) => dispatch(setTheme(mode)),
-      setAmoledMode: (amoled) => dispatch(setAmoled(amoled)),
     };
-  }, [isDark, isAmoledPreference, activeColors, themeMode, dispatch]);
+  }, []);
 
   useEffect(() => {
     // Configure reactive status bar style

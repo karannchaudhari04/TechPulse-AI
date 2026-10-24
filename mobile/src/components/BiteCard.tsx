@@ -230,7 +230,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
         </View>
 
         {/* Action Bar */}
-        <View style={[styles.actionBar, { backgroundColor: isAmoled ? 'rgba(17, 17, 17, 0.85)' : 'rgba(30, 41, 59, 0.8)', borderColor: colors.border }]}>
+        <View style={[styles.actionBar, { backgroundColor: 'rgba(17, 17, 17, 0.85)', borderColor: colors.border }]}>
             <View style={styles.leftActions}>
                <Pressable onPress={handleToggleBookmark} style={styles.actionBtn}>
                   <Animated.View style={saveAnimatedStyle}>
@@ -240,7 +240,7 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
                       contentFit="contain"
                     />
                   </Animated.View>
-                  <Text style={[styles.actionText, localBookmarked && { color: '#6366F1' }]}>Save</Text>
+                  <Text style={[styles.actionText, localBookmarked && { color: '#8B5CF6' }]}>Save</Text>
                </Pressable>
             </View>
 
@@ -301,10 +301,10 @@ const BiteCard = React.memo(({ item, isBookmarked, onToggleBookmark, cardHeight,
 });
 
 const styles = StyleSheet.create({
-  root: { width: SCREEN_WIDTH, backgroundColor: '#020617', padding: scale(12) },
+  root: { width: SCREEN_WIDTH, backgroundColor: '#000000', padding: scale(12) },
   card: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#000000',
     borderRadius: scale(32),
     overflow: 'hidden',
   },
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   bulletText: { color: '#E2E8F0', fontSize: scale(15), lineHeight: scale(24), fontWeight: '500', flex: 1 },
   
   sourceLink: { marginTop: scale(10), marginBottom: scale(4) },
-  sourceText: { color: '#6366F1', fontSize: scale(14), fontWeight: '700', letterSpacing: 0.5 },
+  sourceText: { color: '#8B5CF6', fontSize: scale(14), fontWeight: '700', letterSpacing: 0.5 },
   
   actionBar: { 
     position: 'absolute',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   iconAsset: { width: scale(22), height: scale(22) },
 
   progressBar: { height: 2, width: '100%', backgroundColor: 'rgba(255,255,255,0.05)' },
-  progressFill: { height: '100%', backgroundColor: '#6366F1', shadowColor: '#6366F1', shadowRadius: 4, shadowOpacity: 0.5 },
+  progressFill: { height: '100%', backgroundColor: '#8B5CF6', shadowColor: '#8B5CF6', shadowRadius: 4, shadowOpacity: 0.5 },
   centerSourceBtnWrapper: {
     position: 'absolute',
     top: scale(-20),
@@ -370,10 +370,10 @@ const styles = StyleSheet.create({
     borderRadius: scale(28),
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#6366F1',
+    borderColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 6,

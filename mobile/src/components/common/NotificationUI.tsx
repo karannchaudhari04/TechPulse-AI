@@ -181,7 +181,7 @@ export function Toast({
       style={[
         styles.toast,
         {
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          backgroundColor: 'rgba(0, 0, 0, 0.9)',
           borderRadius: radius.full,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.xs,
