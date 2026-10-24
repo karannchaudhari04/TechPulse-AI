@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, RefreshControl, StyleSheet, ScrollView, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, RefreshControl, StyleSheet, ScrollView, FlatList, ActivityIndicator, TouchableOpacity, ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
@@ -61,8 +61,46 @@ export default function HomeScreen() {
   // 2. Fetch Dashboard Feed and Stats
   const { data: feedData, isFetching: isFeedFetching, refetch: refetchFeed } = useGetFeedQuery({
     cursor: cursor || undefined,
+    limit: 10,
     category: activeCategory === 'all' ? undefined : activeCategory,
   });
+
+  const paginationState = useRef({
+    loadedCount: 0,
+    hasNext: false,
+    nextCursor: null as string | null,
+    cursor: null as string | null,
+    isFetching: false,
+  });
+  paginationState.current = {
+    loadedCount: accumulatedFeed.length,
+    hasNext: Boolean(feedData?.hasNext),
+    nextCursor: feedData?.nextCursor ?? null,
+    cursor,
+    isFetching: isFeedFetching,
+  };
+
+  const prefetchedCursor = useRef<string | null>(null);
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const state = paginationState.current;
+    const furthestVisibleIndex = viewableItems.reduce(
+      (furthest, token) => token.isViewable && token.index !== null ? Math.max(furthest, token.index) : furthest,
+      -1,
+    );
+
+    if (
+      furthestVisibleIndex >= state.loadedCount - 4 &&
+      state.hasNext &&
+      !state.isFetching &&
+      state.nextCursor &&
+      state.nextCursor !== state.cursor &&
+      prefetchedCursor.current !== state.nextCursor
+    ) {
+      prefetchedCursor.current = state.nextCursor;
+      setCursor(state.nextCursor);
+    }
+  }).current;
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
   const [addBookmark] = useAddBookmarkMutation();
   const [removeBookmark] = useRemoveBookmarkMutation();
@@ -88,6 +126,7 @@ export default function HomeScreen() {
   }, [feedData, cursor, activeCategory]);
 
   const handleRefresh = async () => {
+    prefetchedCursor.current = null;
     setCursor(null);
     refetchFeed();
   };
@@ -112,6 +151,7 @@ export default function HomeScreen() {
 
   const handleCategorySelect = (category: string) => {
     if (category !== activeCategory) {
+      prefetchedCursor.current = null;
       setActiveCategory(category);
       setCursor(null);
       setAccumulatedFeed([]);
@@ -227,6 +267,8 @@ export default function HomeScreen() {
               getItemLayout={feedPageHeight > 0
                 ? (_data, index) => ({ length: feedPageHeight, offset: feedPageHeight * index, index })
                 : undefined}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.8}
             />

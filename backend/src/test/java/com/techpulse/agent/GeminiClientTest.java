@@ -11,7 +11,8 @@ public class GeminiClientTest {
 
     @Test
     public void testClientInstantiation() {
-        GeminiClient client = new GeminiClient("key", "http://test-url", "gemini-1.5-flash");
+        GeminiClient client = new GeminiClient(
+                "key", "http://test-url", "gemini-1.5-flash", "gemini-3.8-flash,gemini-3.6-flash");
         assertNotNull(client);
     }
 }

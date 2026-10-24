@@ -36,7 +36,7 @@ public class DiscoveryAgentTest {
         when(mockCollector.getSupportedType()).thenReturn(SourceType.RSS);
 
         sourceRegistry = new SourceRegistryImpl(List.of(mockCollector));
-        discoveryAgent = new DiscoveryAgent(newsSourceRepository, sourceRegistry, rawIngestionRepository, 2);
+        discoveryAgent = new DiscoveryAgent(newsSourceRepository, sourceRegistry, rawIngestionRepository, 2, 20);
     }
 
     @Test
