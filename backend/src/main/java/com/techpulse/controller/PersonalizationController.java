@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,8 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @RestController
@@ -41,9 +43,6 @@ public class PersonalizationController {
     private final PersonalizationAgent personalizationService;
     private final CacheManager cacheManager;
     private final ObjectMapper objectMapper;
-
-    // Single-flight locks to protect against cache stampede
-    private final ConcurrentHashMap<String, Object> feedLocks = new ConcurrentHashMap<>();
 
     public PersonalizationController(TechnologyEventRepository technologyEventRepository,
                                      RawIngestionRepository rawIngestionRepository,
@@ -71,6 +70,7 @@ public class PersonalizationController {
     }
 
     @GetMapping("/feed")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<CursorPageResponse<Map<String, Object>>>> getFeed(
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "10") int limit,
@@ -78,34 +78,16 @@ public class PersonalizationController {
             @RequestParam(required = false) String tech) {
 
         Long userId = getOptionalUserId();
-        List<TechnologyEvent> events = getCachedFeed(userId);
+        int pageSize = Math.max(1, Math.min(limit, 50));
+        FeedCursor feedCursor = decodeFeedCursor(cursor);
+        List<TechnologyEvent> candidates = getCachedFeedPage(category, tech, feedCursor, pageSize + 1);
+        boolean hasNext = candidates.size() > pageSize;
+        List<TechnologyEvent> pageContent = hasNext
+                ? candidates.subList(0, pageSize)
+                : candidates;
+        String nextCursor = pageContent.isEmpty() ? null : encodeFeedCursor(pageContent.get(pageContent.size() - 1));
 
-        // Filter by category and technology tags if requested
-        List<TechnologyEvent> filtered = events.stream()
-                .filter(e -> filterByCategory(e, category))
-                .filter(e -> filterByTech(e, tech))
-                .collect(Collectors.toList());
-
-        // Paginate using cursor (eventId)
-        int startIndex = 0;
-        if (cursor != null && !cursor.trim().isEmpty()) {
-            for (int i = 0; i < filtered.size(); i++) {
-                if (filtered.get(i).getId().equals(cursor.trim())) {
-                    startIndex = i + 1;
-                    break;
-                }
-            }
-        }
-
-        int endIndex = Math.min(startIndex + limit, filtered.size());
-        List<TechnologyEvent> pageContent = filtered.subList(startIndex, endIndex);
-
-        boolean hasNext = endIndex < filtered.size();
-        String nextCursor = pageContent.isEmpty() ? null : pageContent.get(pageContent.size() - 1).getId();
-
-        List<Map<String, Object>> mappedContent = pageContent.stream()
-                .map(event -> mapToFeedItem(event, userId))
-                .collect(Collectors.toList());
+        List<Map<String, Object>> mappedContent = mapToFeedItems(pageContent, userId);
 
         CursorPageResponse<Map<String, Object>> response = new CursorPageResponse<>(mappedContent, nextCursor, hasNext);
         return ResponseEntity.ok(ApiResponse.success(response, "Feed fetched successfully."));
@@ -114,15 +96,8 @@ public class PersonalizationController {
     @GetMapping("/feed/trending")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTrendingFeed() {
         Long userId = getOptionalUserId();
-        List<TechnologyEvent> events = technologyEventRepository.findAll();
-
-        // All update lists use fetch recency; importance and user activity do not affect order.
-        personalizationService.sortNewestFirst(events);
-
-        List<Map<String, Object>> response = events.stream()
-                .limit(20)
-                .map(event -> mapToFeedItem(event, userId))
-                .collect(Collectors.toList());
+        List<TechnologyEvent> events = technologyEventRepository.findTop20ByOrderByFetchedAtDescIdDesc();
+        List<Map<String, Object>> response = mapToFeedItems(events, userId);
 
         return ResponseEntity.ok(ApiResponse.success(response, "Trending feed fetched successfully."));
     }
@@ -130,15 +105,7 @@ public class PersonalizationController {
     @GetMapping("/trends")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getTrends() {
         Long userId = getOptionalUserId();
-        List<TechnologyEvent> events = technologyEventRepository.findAll();
-        
-        Map<String, Integer> topicCounts = new HashMap<>();
-        for (TechnologyEvent event : events) {
-            List<String> topics = parseJsonList(event.getEntitiesJson());
-            for (String t : topics) {
-                topicCounts.put(t, topicCounts.getOrDefault(t, 0) + 1);
-            }
-        }
+        Map<String, Integer> topicCounts = getCachedTopicCounts();
 
         // Check user preferences
         Set<String> preferredCategories = Collections.emptySet();
@@ -151,6 +118,10 @@ public class PersonalizationController {
             }
         }
 
+        Set<String> followedTopics = userId == null ? Collections.emptySet()
+                : userFollowRepository.findByUserIdAndEntityType(userId, "TOPIC").stream()
+                        .map(UserFollow::getEntityName)
+                        .collect(Collectors.toSet());
         final Set<String> finalPreferred = preferredCategories;
         List<Map<String, Object>> trendsList = topicCounts.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
@@ -164,8 +135,7 @@ public class PersonalizationController {
                     map.put("trendStatus", status);
                     
                     // Simple logic to set following state if it matches preferred onboarding categories or follows
-                    boolean following = finalPreferred.contains(entry.getKey()) ||
-                            userFollowRepository.findByUserIdAndEntityNameAndEntityType(userId, entry.getKey(), "TOPIC").isPresent();
+                    boolean following = finalPreferred.contains(entry.getKey()) || followedTopics.contains(entry.getKey());
                     map.put("following", following);
                     return map;
                 })
@@ -182,7 +152,6 @@ public class PersonalizationController {
         String val = request.get("value");
 
         personalizationService.recordInteraction(userId, eventId, type, val);
-        evictFeedCache(userId);
         return ResponseEntity.ok(ApiResponse.success(null, "Interaction recorded successfully."));
     }
 
@@ -193,9 +162,7 @@ public class PersonalizationController {
         List<String> eventIds = saved.stream().map(UserSavedEvent::getEventId).collect(Collectors.toList());
         List<TechnologyEvent> events = technologyEventRepository.findAllById(eventIds);
 
-        List<Map<String, Object>> mapped = events.stream()
-                .map(event -> mapToFeedItem(event, userId))
-                .collect(Collectors.toList());
+        List<Map<String, Object>> mapped = mapToFeedItems(events, userId);
 
         return ResponseEntity.ok(ApiResponse.success(mapped, "Bookmarks fetched successfully."));
     }
@@ -214,7 +181,6 @@ public class PersonalizationController {
                     .savedAt(LocalDateTime.now())
                     .build();
             userSavedEventRepository.save(savedEvent);
-            evictFeedCache(userId);
         }
 
         return ResponseEntity.ok(ApiResponse.success(null, "Event bookmarked successfully."));
@@ -226,7 +192,6 @@ public class PersonalizationController {
         Long userId = getRequiredUserId();
         UserSavedEventId id = new UserSavedEventId(userId, eventId);
         userSavedEventRepository.findById(id).ifPresent(userSavedEventRepository::delete);
-        evictFeedCache(userId);
         return ResponseEntity.ok(ApiResponse.success(null, "Event bookmark removed successfully."));
     }
 
@@ -327,15 +292,13 @@ public class PersonalizationController {
         TechnologyEvent target = eventOpt.get();
         List<String> targetTopics = parseJsonList(target.getEntitiesJson());
 
-        List<Map<String, Object>> related = technologyEventRepository.findAll().stream()
-                .filter(e -> !e.getId().equals(id))
-                .filter(e -> {
-                    List<String> topics = parseJsonList(e.getEntitiesJson());
-                    return topics.stream().anyMatch(targetTopics::contains);
-                })
-                .limit(5)
-                .map(e -> mapToFeedItem(e, userId))
-                .collect(Collectors.toList());
+        Map<String, TechnologyEvent> relatedCandidates = new LinkedHashMap<>();
+        targetTopics.stream().limit(5).forEach(topic ->
+                technologyEventRepository.findTop20ByIdNotAndEntitiesJsonContainingIgnoreCaseOrderByFetchedAtDescIdDesc(id, topic)
+                        .forEach(event -> relatedCandidates.putIfAbsent(event.getId(), event)));
+        List<TechnologyEvent> relatedEvents = personalizationService.sortNewestFirst(
+                new ArrayList<>(relatedCandidates.values())).stream().limit(5).toList();
+        List<Map<String, Object>> related = mapToFeedItems(relatedEvents, userId);
 
         return ResponseEntity.ok(ApiResponse.success(related, "Related events fetched successfully."));
     }
@@ -345,8 +308,10 @@ public class PersonalizationController {
         if (query == null || query.isBlank()) {
             return ResponseEntity.ok(ApiResponse.success(Collections.emptyList(), "Empty query."));
         }
-        String q = query.toLowerCase().trim();
-        List<TechnologyEvent> events = technologyEventRepository.findAll();
+        String q = query.toLowerCase().trim().replace("%", "").replace("_", "");
+        if (q.length() > 100) q = q.substring(0, 100);
+        if (q.isBlank()) return ResponseEntity.ok(ApiResponse.success(Collections.emptyList(), "Empty query."));
+        List<TechnologyEvent> events = technologyEventRepository.searchCandidates(q, PageRequest.of(0, 100));
         List<com.techpulse.agent.dto.SearchResultDTO> results = new ArrayList<>();
         
         for (TechnologyEvent event : events) {
@@ -403,9 +368,7 @@ public class PersonalizationController {
             List<String> eventIds = collEvents.stream().map(CollectionEvent::getEventId).collect(Collectors.toList());
             List<TechnologyEvent> events = technologyEventRepository.findAllById(eventIds);
             
-            map.put("events", events.stream()
-                    .map(event -> mapToFeedItem(event, userId))
-                    .collect(Collectors.toList()));
+            map.put("events", mapToFeedItems(events, userId));
             return map;
         }).collect(Collectors.toList());
 
@@ -529,92 +492,122 @@ public class PersonalizationController {
         return ResponseEntity.ok(ApiResponse.success(null, "Event removed from collection."));
     }
 
-    // ── Helper Caching and Filtering ────────────────────────────────────────────────
+    // ── Bounded shared feed-page caching and cursor helpers ──────────────────────────
 
     @SuppressWarnings("unchecked")
-    private List<TechnologyEvent> getCachedFeed(Long userId) {
-        String cacheKey = "chronological-v2:" + (userId == null ? "guest" : userId);
-        
-        try {
-            Cache cache = cacheManager.getCache("chronologicalFeed");
-            if (cache != null) {
-                Cache.ValueWrapper wrapper = cache.get(cacheKey);
-                if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
-                    if (rawList.isEmpty() || rawList.get(0) instanceof TechnologyEvent) {
-                        return (List<TechnologyEvent>) rawList;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[PersonalizationController] Cache read fallback: {}", e.getMessage());
-        }
-
-        // Single-flight synchronization to protect against cache stampede
-        Object lock = feedLocks.computeIfAbsent(cacheKey, k -> new Object());
-        synchronized (lock) {
+    private List<TechnologyEvent> getCachedFeedPage(String category, String tech, FeedCursor cursor, int limit) {
+        String categoryFilter = normalizeFilter(category);
+        String techFilter = normalizeFilter(tech);
+        String cursorKey = cursor == null ? "first" : cursor.fetchedAt() + ":" + cursor.eventId();
+        String cacheKey = "feed-v3:" + UUID.nameUUIDFromBytes(
+                (categoryFilter + "|" + techFilter + "|" + cursorKey + "|" + limit).getBytes(StandardCharsets.UTF_8));
+        Cache cache = cacheManager.getCache("chronologicalFeed");
+        if (cache != null) {
             try {
-                Cache cache = cacheManager.getCache("chronologicalFeed");
-                if (cache != null) {
-                    Cache.ValueWrapper wrapper = cache.get(cacheKey);
-                    if (wrapper != null && wrapper.get() instanceof List<?> rawList) {
-                        if (rawList.isEmpty() || rawList.get(0) instanceof TechnologyEvent) {
-                            return (List<TechnologyEvent>) rawList;
-                        }
-                    }
+                Cache.ValueWrapper cached = cache.get(cacheKey);
+                if (cached != null && cached.get() instanceof List<?> values
+                        && values.stream().allMatch(TechnologyEvent.class::isInstance)) {
+                    return (List<TechnologyEvent>) values;
                 }
             } catch (Exception e) {
-                // Ignore, fallback to DB
+                log.warn("[PersonalizationController] Feed page cache read failed; querying database: {}", e.getMessage());
             }
+        }
 
-            log.info("[PersonalizationController] Fetching newest-first feed for key: {}", cacheKey);
-            List<TechnologyEvent> candidates = technologyEventRepository.findTop500ByOrderByFetchedAtDesc();
-            List<TechnologyEvent> newestFirst = personalizationService.sortNewestFirst(candidates);
-
+        List<TechnologyEvent> page = technologyEventRepository.findFeedPage(
+                categoryFilter, techFilter,
+                cursor == null ? null : cursor.fetchedAt(),
+                cursor == null ? null : cursor.eventId(),
+                PageRequest.of(0, limit));
+        if (cache != null) {
             try {
-                Cache cache = cacheManager.getCache("chronologicalFeed");
-                if (cache != null) {
-                    cache.put(cacheKey, newestFirst);
+                cache.put(cacheKey, page);
+            } catch (Exception e) {
+                log.warn("[PersonalizationController] Feed page cache write failed: {}", e.getMessage());
+            }
+        }
+        return page;
+    }
+
+    private String normalizeFilter(String value) {
+        if (value == null || value.isBlank() || "all".equalsIgnoreCase(value.trim())) return null;
+        String normalized = value.trim().toLowerCase(Locale.ROOT).replace("%", "").replace("_", "");
+        return normalized.isEmpty() ? null : normalized.substring(0, Math.min(100, normalized.length()));
+    }
+
+    private FeedCursor decodeFeedCursor(String token) {
+        if (token == null || token.isBlank()) return null;
+        try {
+            String decoded = new String(Base64.getUrlDecoder().decode(token), StandardCharsets.UTF_8);
+            String[] parts = decoded.split("\\n", 2);
+            if (parts.length == 2) return new FeedCursor(LocalDateTime.parse(parts[0]), parts[1]);
+        } catch (IllegalArgumentException | DateTimeParseException ignored) {
+            // Backward compatibility: older clients send the event ID as the cursor.
+        }
+        return technologyEventRepository.findById(token.trim())
+                .map(event -> new FeedCursor(getFetchTime(event), event.getId()))
+                .orElse(null);
+    }
+
+    private String encodeFeedCursor(TechnologyEvent event) {
+        LocalDateTime fetchedAt = getFetchTime(event);
+        if (fetchedAt == null) return event.getId();
+        String value = fetchedAt + "\n" + event.getId();
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Map<String, Integer> getCachedTopicCounts() {
+        Cache cache = cacheManager.getCache("trends");
+        if (cache != null) {
+            try {
+                Cache.ValueWrapper value = cache.get("topic-counts-v1");
+                if (value != null && value.get() instanceof Map<?, ?> cached) {
+                    Map<String, Integer> counts = new HashMap<>();
+                    cached.forEach((key, count) -> {
+                        if (key instanceof String name && count instanceof Number number) counts.put(name, number.intValue());
+                    });
+                    return counts;
                 }
             } catch (Exception e) {
-                log.warn("[PersonalizationController] Cache write warning: {}", e.getMessage());
+                log.warn("[PersonalizationController] Trend cache read failed: {}", e.getMessage());
             }
-            return newestFirst;
         }
-    }
 
-    private void evictFeedCache(Long userId) {
-        try {
-            Cache cache = cacheManager.getCache("chronologicalFeed");
-            if (cache != null) {
-                if (userId != null) {
-                    cache.evict("chronological-v2:" + userId);
-                }
-                cache.evict("chronological-v2:guest");
+        Map<String, Integer> counts = new HashMap<>();
+        for (TechnologyEvent event : technologyEventRepository.findAll()) {
+            for (String topic : parseJsonList(event.getEntitiesJson())) counts.merge(topic, 1, Integer::sum);
+        }
+        if (cache != null) {
+            try {
+                cache.put("topic-counts-v1", counts);
+            } catch (Exception e) {
+                log.warn("[PersonalizationController] Trend cache write failed: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("[PersonalizationController] Cache eviction warning: {}", e.getMessage());
         }
+        return counts;
     }
 
-    private boolean filterByCategory(TechnologyEvent event, String category) {
-        if (category == null || category.trim().isEmpty() || "all".equalsIgnoreCase(category.trim())) {
-            return true;
+    private List<Map<String, Object>> mapToFeedItems(List<TechnologyEvent> events, Long userId) {
+        if (events.isEmpty()) return Collections.emptyList();
+        Set<String> bookmarkedIds = Collections.emptySet();
+        Set<String> completedIds = Collections.emptySet();
+        if (userId != null) {
+            List<String> eventIds = events.stream().map(TechnologyEvent::getId).toList();
+            bookmarkedIds = new HashSet<>(userSavedEventRepository.findEventIdsByUserIdAndEventIdIn(userId, eventIds));
+            completedIds = new HashSet<>(userHistoryLogRepository.findCompletedEventIdsByUserIdAndEventIdIn(userId, eventIds));
         }
-        String trimmed = category.trim().toLowerCase();
-        List<String> list = parseJsonList(event.getCategoriesJson());
-        return list.stream().anyMatch(c -> c.trim().equalsIgnoreCase(trimmed) || c.toLowerCase().contains(trimmed) || trimmed.contains(c.toLowerCase()));
-    }
-
-    private boolean filterByTech(TechnologyEvent event, String tech) {
-        if (tech == null || tech.trim().isEmpty() || "all".equalsIgnoreCase(tech.trim())) {
-            return true;
-        }
-        String trimmed = tech.trim().toLowerCase();
-        List<String> list = parseJsonList(event.getEntitiesJson());
-        return list.stream().anyMatch(t -> t.trim().equalsIgnoreCase(trimmed) || t.toLowerCase().contains(trimmed) || trimmed.contains(t.toLowerCase()));
+        Set<String> finalBookmarkedIds = bookmarkedIds;
+        Set<String> finalCompletedIds = completedIds;
+        return events.stream()
+                .map(event -> mapToFeedItem(event, finalBookmarkedIds.contains(event.getId()), finalCompletedIds.contains(event.getId())))
+                .collect(Collectors.toList());
     }
 
     private Map<String, Object> mapToFeedItem(TechnologyEvent event, Long userId) {
+        return mapToFeedItems(List.of(event), userId).get(0);
+    }
+
+    private Map<String, Object> mapToFeedItem(TechnologyEvent event, boolean bookmarked, boolean read) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", event.getId());
         map.put("eventId", event.getId());
@@ -650,15 +643,6 @@ public class PersonalizationController {
         map.put("releaseStatus", event.getLifecycleStatus());
         map.put("trendStatus", "RISING");
 
-        boolean bookmarked = false;
-        boolean read = false;
-
-        if (userId != null) {
-            bookmarked = userSavedEventRepository.existsById(new UserSavedEventId(userId, event.getId()));
-            Optional<UserHistoryLog> history = userHistoryLogRepository.findByUserIdAndEventId(userId, event.getId());
-            read = history.isPresent() && history.get().getCompletionPercentage() != null && history.get().getCompletionPercentage() >= 100;
-        }
-
         map.put("bookmarked", bookmarked);
         map.put("read", read);
         return map;
@@ -669,6 +653,8 @@ public class PersonalizationController {
         if (event.getLastUpdated() != null) return event.getLastUpdated();
         return event.getFirstSeen();
     }
+
+    private record FeedCursor(LocalDateTime fetchedAt, String eventId) {}
 
     private List<String> parseJsonList(String json) {
         if (json == null || json.isBlank()) {

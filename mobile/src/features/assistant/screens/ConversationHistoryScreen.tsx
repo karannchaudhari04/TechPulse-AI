@@ -9,6 +9,7 @@ import Card from '../../../components/common/Card';
 import { 
   useGetHistoryQuery
 } from '../api/assistantApiSlice';
+import { setActiveConversationId } from '../store/conversationSlice';
 
 /**
  * Purpose: Conversations History selection and deletion screen.

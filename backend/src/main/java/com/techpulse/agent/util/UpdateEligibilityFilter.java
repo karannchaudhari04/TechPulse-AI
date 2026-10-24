@@ -10,8 +10,10 @@ import java.util.regex.Pattern;
 public final class UpdateEligibilityFilter {
 
     private static final Pattern SOFTWARE_ENGINEERING_SIGNAL = Pattern.compile(
-            "\\b(software engineering|software development|software engineer|developer tools?|developer platform|developers?|programming|coding|codebase|source code|open source|github|gitlab|pull request|code review|repository|repositories|compiler|ide|api|sdk|framework|library|libraries|package manager|dependency|dependencies|debugging|unit tests?|integration tests?|test automation|test harness|ci/cd|devops|kubernetes|docker|terraform|microservices?|serverless|cloud native|system design|software architecture|backend|back-end|frontend|front-end|full stack|database|sql|java|javascript|typescript|python|kotlin|rust|golang|react native|reactjs|react|angular|vuejs|nodejs|spring boot|django|\.net|flutter|android developers?|ios developers?|linux kernel|secure coding|appsec|cve|software vulnerability|agentic ai|coding agents?)\\b",
+            "\\b(software engineering|software development|software engineer|developer tools?|developer platform|developers?|programming|coding|codebase|source code|open source|github|gitlab|pull request|code review|repository|repositories|compiler|ide|api|sdk|framework|library|libraries|package manager|dependency|dependencies|debugging|unit tests?|integration tests?|test automation|test harness|ci/cd|devops|kubernetes|docker|terraform|microservices?|serverless|cloud native|system design|software architecture|backend|back-end|frontend|front-end|full stack|database|sql|java|javascript|typescript|python|kotlin|rust|golang|react native|reactjs|react|angular|vuejs|nodejs|spring boot|django|flutter|android developers?|ios developers?|linux kernel|secure coding|appsec|cve|software vulnerability|agentic ai|coding agents?)\\b",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+    private static final Pattern DOT_NET_SIGNAL = Pattern.compile("\\.net\\b", Pattern.CASE_INSENSITIVE);
 
     private UpdateEligibilityFilter() {}
 
@@ -26,6 +28,7 @@ public final class UpdateEligibilityFilter {
         }
 
         String searchableText = ((title == null ? "" : title) + " " + (content == null ? "" : content)).trim();
-        return !searchableText.isEmpty() && SOFTWARE_ENGINEERING_SIGNAL.matcher(searchableText).find();
+        return !searchableText.isEmpty() && (SOFTWARE_ENGINEERING_SIGNAL.matcher(searchableText).find()
+                || DOT_NET_SIGNAL.matcher(searchableText).find());
     }
 }
