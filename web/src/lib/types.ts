@@ -17,7 +17,6 @@ export type Pulse = {
   technicalImpact?: string;
   developerImpact?: string;
   enterpriseImpact?: string;
-  imageUrl?: string;
   bookmarked?: boolean;
 };
 

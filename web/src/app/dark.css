@@ -195,4 +195,265 @@ a{color:inherit}
 .assistant-welcome>p,.chat-content p{font-size:12px}
 .empty-state p{font-size:12px;line-height:1.7}
 
+/* Larger, calmer reading typography. */
+body{font-size:16px}
+.nav-link{font-size:14px;height:48px}
+.preferences-link{font-size:13px;padding-top:12px;padding-bottom:12px}
+.profile-copy strong{font-size:13px}
+.profile-copy small{font-size:11px}
+.top-search input{font-size:13px}
+.welcome-row h1{font-size:clamp(31px,3.2vw,40px);letter-spacing:-1.4px}
+.welcome-sub,.page-heading>p:last-child{font-size:15px;line-height:1.7}
+.feed-toolbar>span{font-size:12px}
+.manage-topics,.more-topics{font-size:12px}
+.topic-chip{height:34px;padding:0 14px;font-size:12px}
+.card-meta{font-size:12px;gap:9px}
+.category-pill{font-size:10px;padding:5px 8px}
+.card-title{font-size:18px;line-height:1.45;letter-spacing:-.25px;margin-top:11px;margin-bottom:8px}
+.card-summary{font-size:14px;line-height:1.75;max-width:800px}
+.pulse-card{padding-top:21px;padding-bottom:20px}
+.tech-tag{font-size:11px}
+.load-more{font-size:13px}
+.guest-hint{font-size:12px}
+.page-heading h1{font-size:clamp(31px,3.2vw,39px)}
+.section-heading h2{font-size:20px}
+.section-heading p{font-size:13px}
+.results-label{font-size:14px}
+.empty-state h3{font-size:19px}
+.empty-state p{font-size:14px;line-height:1.75}
+.button{height:42px;padding-left:16px;padding-right:16px;font-size:13px}
+.detail-header h1{font-size:clamp(30px,3.2vw,40px);line-height:1.3}
+.detail-byline{font-size:12px;gap:16px}
+.detail-save{font-size:12px}
+.summary-label{font-size:10px}
+.summary-box{padding:21px 23px}
+.summary-box p{font-size:17px;line-height:1.8}
+.article-body section h2{font-size:21px;margin-bottom:10px}
+.article-body section p{font-size:15px;line-height:1.9}
+.source-link{font-size:13px}
+.topic-card-name{font-size:14px}
+.topic-card-action{font-size:11px}
+.topic-signin p{font-size:12px;line-height:1.65}
+.settings-account h2{font-size:19px}
+.settings-account p{font-size:13px;line-height:1.7}
+.settings-benefit{font-size:13px}
+.assistant-heading h1{font-size:clamp(31px,3.2vw,39px)}
+.assistant-heading>div>p:last-child{font-size:14px;line-height:1.7}
+.assistant-welcome h2{font-size:23px}
+.assistant-welcome>p{font-size:14px;line-height:1.75}
+.prompt-starters button{font-size:13px;min-height:48px}
+.assistant-composer textarea{font-size:15px;line-height:1.7}
+.composer-footer{font-size:11px}
+.chat-name{font-size:11px}
+.chat-content p{font-size:14px;line-height:1.8}
+.assistant-retention{font-size:11px}
+.auth-description{font-size:14px;line-height:1.75}
+.auth-modal h2{font-size:28px}
+.auth-form label{font-size:12px}
+.auth-form input{height:44px;font-size:14px}
+.auth-switch{font-size:12px}
+.form-error{font-size:12px;line-height:1.6}
+.config-hint{font-size:11px;line-height:1.65}
+.google-button{height:46px;font-size:13px}
+.auth-privacy{font-size:11px}
+.topic-save-row{font-size:12px}
+.site-footer{font-size:11px}
+.search-suggestions .topic-chip{font-size:12px}
+
+@media(max-width:680px){
+  body{font-size:15px}
+  .welcome-row h1{font-size:30px}
+  .welcome-sub,.page-heading>p:last-child{font-size:13px}
+  .card-meta{font-size:10.5px;gap:7px}
+  .category-pill{font-size:9px}
+  .card-title{font-size:16px;line-height:1.5}
+  .card-summary{font-size:13px;line-height:1.75}
+  .pulse-card{padding-top:18px;padding-bottom:18px}
+  .page-heading h1,.detail-header h1,.assistant-heading h1{font-size:29px}
+  .summary-box{padding:17px}
+  .summary-box p{font-size:15px;line-height:1.75}
+  .article-body section h2{font-size:18px}
+  .article-body section p{font-size:14px;line-height:1.8}
+  .assistant-welcome h2{font-size:21px}
+  .assistant-welcome>p{font-size:13px}
+  .chat-content p{font-size:13px}
+}
+
 @media(max-width:680px){.sidebar{background:#131b16}.scrim{background:rgba(0,0,0,.62)}.top-search:focus-within{background:#171f19;border-color:#35463a}}
+
+/* Pure black surfaces throughout the interface. */
+html,body,.app-frame,.main-area{background:#000;color:#e7eee8;scrollbar-color:#444 #000}
+.sidebar,.topbar,.top-search,.top-search:focus-within,.sidebar-note,.settings-card,
+.aside-card,.topic-card,.topic-chip,.sort-button,.pulse-card,.assistant-composer,
+.prompt-starters button,.chat-message.user .chat-content,.auth-modal,.modal-close,
+.auth-form input,.config-hint,.sync-callout,.topic-signin,.aside-note,
+.empty-icon,.assistant-emblem,.prompt-starters button span,.avatar,.top-avatar,
+.settings-avatar,.nav-link:hover,.nav-active,.topic-followed,.button-secondary,
+.google-button,.intro-banner{background:#000}
+.topbar{background:#000;border-color:#242424}
+.sidebar{border-color:#242424}
+.top-search,.settings-card,.aside-card,.topic-card,.topic-chip,.sort-button,
+.assistant-composer,.prompt-starters button,.auth-modal,.google-button,
+.auth-form input{border-color:#292929}
+.nav-link:hover{color:#c5e8ce}
+.nav-active{color:#b2dfbd;box-shadow:inset 3px 0 #75b887}
+.topic-chip:hover,.chip-selected{background:#000;border-color:#6aa47a;color:#c1e8ca}
+.topic-followed{background:#000;border-color:#6aa47a}
+.topic-card:hover{background:#000;border-color:#606060}
+.category-pill,.topic-symbol,.symbol-1,.symbol-2,.symbol-3,.symbol-4,.sync-icon{background:#000}
+.category-pill{border:1px solid #303a32}
+.topic-symbol{border:1px solid #303a32}
+.symbol-1,.symbol-2,.symbol-3,.symbol-4{color:#b6d9be;border-color:#303a32}
+.save-button:hover,.save-button.is-saved{background:#000;color:#b7e2c3;border-color:#44624b}
+.button-secondary{background:#000;border-color:#3a3a3a;color:#d0d8d1}
+.button-secondary:hover,.google-button:hover{background:#000;border-color:#6a6a6a}
+.google-button{background:#000;color:#ededed}
+.google-button:hover{background:#000}
+.summary-box{background:#000;border-color:#77a985}
+.assistant-emblem,.prompt-starters button span,.note-icon,.empty-icon{background:#000;border:1px solid #304235}
+.chat-content{background:#000;border:1px solid #2b392e}
+.chat-message.user .chat-content{background:#000;border-color:#333}
+.modal-backdrop{background:rgba(0,0,0,.9)}
+.modal-close,.config-hint,.aside-note,.sync-callout,.topic-signin{background:#000;border:1px solid #292929}
+.skeleton-line{background:linear-gradient(90deg,#080808 25%,#141414 50%,#080808 75%);background-size:200% 100%}
+.intro-banner{border:1px solid #292929}
+.scrim{background:rgba(0,0,0,.82)}
+@media(max-width:680px){.sidebar,.top-search:focus-within{background:#000}.scrim{background:rgba(0,0,0,.82)}}
+
+/* X-inspired dark palette: black canvas, charcoal surfaces, cool gray text, blue actions. */
+:root{--ink:#e7e9ea;--muted:#71767b;--green:#1d9bf0;--green-2:#1a8cd8;--sage:#16181c;--line:#2f3336;--paper:#000;--warm:#16181c;--orange:#ff7a00}
+html,body,.app-frame,.main-area{background:#000;color:#e7e9ea}
+body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+:root{--serif:"Helvetica Neue",Helvetica,Arial,sans-serif}
+.sidebar,.topbar{background:#000;border-color:#2f3336}
+.brand{color:#e7e9ea}
+.brand-ai{color:#8ecdf8}
+.brand-mark,.auth-mark{background:#1d9bf0;color:#fff}
+.sidebar-label,.eyebrow,.banner-kicker,.summary-label,.aside-label{color:#71767b}
+.nav-link{color:#e7e9ea}
+.nav-link:hover{background:rgba(231,233,234,.08);color:#e7e9ea}
+.nav-active{background:transparent;color:#e7e9ea;box-shadow:inset 3px 0 #1d9bf0;font-weight:700}
+.preferences-link{color:#aeb4b8}
+.preferences-link:hover{background:rgba(231,233,234,.08);color:#e7e9ea}
+.sidebar-note{background:#16181c;border-color:#2f3336}
+.profile-row{border-color:#2f3336;color:#71767b}
+.profile-copy strong{color:#e7e9ea}
+.profile-copy small{color:#71767b}
+.avatar,.top-avatar,.settings-avatar,.avatar-guest{background:#16181c;border:1px solid #2f3336;color:#e7e9ea}
+.topbar-context,.date-stamp,.welcome-sub,.page-heading>p:last-child,.section-heading p{color:#71767b}
+.top-search{background:#202327;border-color:#202327;color:#71767b}
+.top-search input{color:#e7e9ea}
+.top-search input::placeholder,.top-search kbd{color:#71767b}
+.top-search kbd{border-color:#3b3f43}
+.top-avatar{background:#000;color:#e7e9ea}
+.heading-dot{color:#1d9bf0}
+.muted-heading{color:#aeb4b8}
+.section-heading h2,.welcome-row h1,.page-heading h1,.detail-header h1,.assistant-heading h1{color:#e7e9ea}
+.banner-copy p{color:#aeb4b8}
+.banner-kicker{color:#71767b}
+.banner-mark>span{color:#1d9bf0;background:#16181c}
+.banner-arrow{color:#e7e9ea;border-color:#2f3336}
+.banner-arrow:hover{background:rgba(231,233,234,.08)}
+.sort-button,.topic-chip,.settings-card,.aside-card,.assistant-composer,.prompt-starters button,.google-button{background:#16181c;border-color:#2f3336;color:#e7e9ea}
+.topic-chip{color:#aeb4b8}
+.topic-chip:hover,.chip-selected{background:rgba(29,155,240,.12);border-color:transparent;color:#1d9bf0}
+.feed-toolbar>span{color:#71767b}
+.manage-topics,.more-topics,.read-link,.load-more,.source-link,.back-to-feed,.settings-footer-note a{color:#1d9bf0}
+.manage-topics:hover,.more-topics:hover,.read-link:hover,.source-link:hover{color:#8ecdf8}
+.pulse-card{background:transparent;border-color:#2f3336}
+.card-meta{color:#71767b}
+.category-pill{background:#16181c;border:1px solid transparent;color:#aeb4b8}
+.meta-separator{color:#53606a}
+.card-title{color:#e7e9ea}
+.card-title:hover,.pulse-card:hover .card-title{color:#e7e9ea;text-decoration:underline}
+.card-summary{color:#aeb4b8}
+.card-footer{color:#71767b}
+.tech-tag{color:#aeb4b8;border-color:#2f3336}
+.save-button{color:#71767b}
+.save-button{border-radius:50%}
+.save-button:hover,.save-button.is-saved{background:rgba(29,155,240,.12);border-color:transparent;color:#1d9bf0}
+.sync-callout,.topic-signin{background:#16181c;border-color:#2f3336}
+.sync-icon{background:#16181c;color:#1d9bf0}
+.sync-callout p,.topic-signin p{color:#aeb4b8}
+.sync-callout strong,.topic-signin strong{color:#e7e9ea}
+.sync-callout>a,.topic-signin a,.guest-hint a{color:#1d9bf0}
+.guest-hint{color:#71767b;border-color:#2f3336}
+.site-footer{border-color:#2f3336;color:#71767b}
+.site-footer span:last-child{color:#71767b}
+.empty-icon,.assistant-emblem,.prompt-starters button span,.note-icon{background:#16181c;border-color:#2f3336;color:#1d9bf0}
+.empty-state h3{color:#e7e9ea}
+.empty-state p{color:#71767b}
+.button-primary{background:#1d9bf0;color:white}
+.button-primary{border-radius:9999px}
+.button-primary:hover{background:#1a8cd8}
+.button-secondary{background:#16181c;border-color:#2f3336;color:#e7e9ea}
+.button-secondary:hover{background:#202327;border-color:#53606a}
+.results-label{color:#71767b}
+.results-label strong{color:#e7e9ea}
+.skeleton-line{background:linear-gradient(90deg,#16181c 25%,#202327 50%,#16181c 75%);background-size:200% 100%}
+.back-link,.detail-byline{color:#71767b}
+.detail-header{border-color:#2f3336}
+.detail-save{color:#aeb4b8}
+.detail-save.is-saved{color:#1d9bf0}
+.summary-box{background:#16181c;border-color:#1d9bf0}
+.summary-label{color:#71767b}
+.summary-box p{color:#e7e9ea}
+.article-body section h2{color:#e7e9ea}
+.article-body section p{color:#aeb4b8}
+.aside-row>span,.settings-account p,.settings-benefit,.settings-footer-note,.inline-message{color:#71767b}
+.aside-row>strong,.settings-account h2{color:#e7e9ea}
+.aside-action{border-color:#2f3336;color:#1d9bf0}
+.aside-note{background:#16181c}
+.aside-note span{color:#71767b}
+.aside-note p{color:#aeb4b8}
+.detail-error{color:#aeb4b8}
+.topic-card{background:#16181c;border-color:#2f3336}
+.topic-card:hover{background:#202327;border-color:#53606a}
+.topic-followed{background:rgba(29,155,240,.12);border-color:#1d9bf0}
+.topic-card-name{color:#e7e9ea}
+.topic-card-action{color:#71767b}
+.topic-followed .topic-card-action{color:#1d9bf0}
+.topic-symbol,.symbol-1,.symbol-2,.symbol-3,.symbol-4{background:#202327;border-color:transparent;color:#1d9bf0}
+.topic-save-row{border-color:#2f3336;color:#71767b}
+.settings-account p{color:#aeb4b8}
+.settings-benefit{color:#aeb4b8}
+.settings-benefit span{color:#71767b}
+.settings-footer-note{color:#71767b}
+.modal-backdrop{background:rgba(0,0,0,.8)}
+.auth-modal{background:#16181c;border-color:#2f3336;box-shadow:0 24px 90px rgba(0,0,0,.65)}
+.modal-close{background:#202327;color:#aeb4b8}
+.auth-modal h2{color:#e7e9ea}
+.auth-description,.auth-switch,.auth-privacy{color:#71767b}
+.auth-switch button{color:#1d9bf0}
+.google-button{background:#16181c;color:#e7e9ea;border-color:#53606a}
+.google-button:hover{background:#202327;border-color:#71767b}
+.auth-form label{color:#aeb4b8}
+.auth-form input{background:#000;border-color:#2f3336;color:#e7e9ea}
+.auth-form input::placeholder{color:#71767b}
+.auth-form input:focus{border-color:#1d9bf0;box-shadow:0 0 0 3px rgba(29,155,240,.2)}
+.config-hint{background:#202327;color:#aeb4b8}
+.config-hint code{color:#e7e9ea}
+.form-error{color:#f4212e}
+.assistant-status{color:#1d9bf0}
+.assistant-status i{background:#00ba7c;box-shadow:0 0 0 3px rgba(0,186,124,.17)}
+.assistant-welcome h2{color:#e7e9ea}
+.assistant-welcome>p{color:#71767b}
+.prompt-starters button{color:#e7e9ea}
+.prompt-starters button:hover{background:#202327;border-color:#53606a}
+.assistant-composer{background:#16181c;border-color:#2f3336;box-shadow:none}
+.assistant-composer textarea{color:#e7e9ea}
+.assistant-composer textarea{font-family:inherit}
+.assistant-composer textarea::placeholder{color:#71767b}
+.composer-footer,.assistant-retention{color:#71767b}
+.send-button{background:#1d9bf0;color:#fff}
+.send-button:hover{background:#1a8cd8}
+.chat-avatar{background:#16181c;color:#1d9bf0}
+.chat-message.user .chat-avatar{background:#202327;color:#e7e9ea}
+.chat-content,.chat-message.user .chat-content{background:#16181c;border-color:#2f3336}
+.chat-name{color:#1d9bf0}
+.chat-message.user .chat-name{color:#71767b}
+.chat-content p{color:#e7e9ea}
+.typing-dots i{background:#1d9bf0}
+.assistant-error{color:#f4212e}
+.google-button{background:#16181c}
+@media(max-width:680px){.sidebar,.top-search:focus-within{background:#000}.scrim{background:rgba(0,0,0,.8)}}

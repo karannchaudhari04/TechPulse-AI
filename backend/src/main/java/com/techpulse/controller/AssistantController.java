@@ -1,7 +1,7 @@
 package com.techpulse.controller;
 
 import com.techpulse.dto.ApiResponse;
-import com.techpulse.agent.AIClient;
+import com.techpulse.agent.AssistantGeminiClient;
 import com.techpulse.agent.dto.AIRequest;
 import com.techpulse.agent.dto.AIResponse;
 import com.techpulse.dto.AssistantChatRequest;
@@ -17,10 +17,10 @@ import java.time.Instant;
 @RequestMapping("/api/v1/assistant")
 public class AssistantController {
 
-    private final AIClient aiClient;
+    private final AssistantGeminiClient aiClient;
     private final ObjectMapper objectMapper;
 
-    public AssistantController(AIClient aiClient, ObjectMapper objectMapper) {
+    public AssistantController(AssistantGeminiClient aiClient, ObjectMapper objectMapper) {
         this.aiClient = aiClient;
         this.objectMapper = objectMapper;
     }

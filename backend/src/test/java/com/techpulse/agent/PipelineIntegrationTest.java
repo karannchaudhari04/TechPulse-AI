@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
     "spring.data.redis.repositories.enabled=false",
     "spring.cache.type=none",
     "GEMINI_API_KEY=mock-key-for-synthesis-testing",
+    "GEMINI_EXPLAIN_API_KEY=mock-key-for-synthesis-testing",
     "JWT_SECRET=mock-jwt-secret-key-of-at-least-256-bits-length-to-be-secure-for-testing"
 })
 @ActiveProfiles("test")

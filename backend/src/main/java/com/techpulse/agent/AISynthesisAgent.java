@@ -171,10 +171,20 @@ public class AISynthesisAgent {
                 Extract versionString (e.g., "19.0.0" or null if not applicable) and lifecycleStatus (e.g., "RELEASED", "BETA", "GA", or null).
                 For impacts (technicalImpact, developerImpact, enterpriseImpact), write 1-2 concise, high-value sentences explaining what developers and businesses need to know.
                 Write migrationNotes, breakingChanges, and securityNotes if mentioned, otherwise write "Not confirmed."
+
+                HEADLINE RULES (give the title special attention):
+                - Write a clear, specific headline that makes the actual news interesting to a technology reader.
+                - Lead with the named product, technology, organization, or change, then explain the concrete announcement or consequence.
+                - Prefer strong, accurate verbs such as "adds", "opens", "cuts", "patches", "ships", or "deprecates" when supported by the source.
+                - Aim for 8-14 words and keep it under 100 characters; use sentence case.
+                - Preserve important product names and version numbers from the source.
+                - Do not merely copy the raw title or use generic wording like "Latest Update", "Major News", or "Big Changes".
+                - No clickbait, unsupported claims, questions, emojis, or exclamation marks. Never make the change sound bigger than the source supports.
+                - Example style: "Kubernetes adds safer pod resizing for live production workloads".
                 
                 Return STRICT JSON matching the following schema. Wrap output in a JSON object only. Do not add markdown or backticks.
                 {
-                  "title": "string (non-clickbait, technically meaningful headline)",
+                  "title": "string (specific, engaging, accurate headline following the headline rules)",
                   "summary": "string (a bulleted or clear summary explaining what happened, what changed, and why it matters)",
                   "category": "string (must match one of the listed categories exactly)",
                   "topics": ["string"],

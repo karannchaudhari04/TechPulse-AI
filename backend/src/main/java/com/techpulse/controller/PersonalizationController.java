@@ -282,7 +282,6 @@ public class PersonalizationController {
                     eventDetails.put("migrationNotes", event.getMigrationNotes());
                     eventDetails.put("breakingChanges", event.getBreakingChanges());
                     eventDetails.put("securityNotes", event.getSecurityNotes());
-                    eventDetails.put("imageUrl", event.getImageUrl());
                     return ResponseEntity.ok(ApiResponse.success(eventDetails, "Event found."));
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Event not found.")));

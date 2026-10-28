@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Sparkles } from "lucide-react";
 import { useState } from "react";
 import type { Pulse } from "@/lib/types";
 import { api } from "@/lib/api";
