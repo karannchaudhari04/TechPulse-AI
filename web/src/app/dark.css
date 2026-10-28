@@ -163,6 +163,28 @@ a{color:inherit}
 .typing-dots i{background:#9accaa}
 .assistant-error{color:#ff9d91}
 
+.preferences-link{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;border-radius:8px;color:#a6b5aa;font-size:12px}
+.preferences-link:hover{background:#1b2920;color:#c2e5cc}
+.feed-toolbar{display:flex;align-items:center;justify-content:space-between;margin:0 0 9px}
+.feed-toolbar>span{color:#89988e;font-size:10px}
+.manage-topics,.more-topics{display:inline-flex;align-items:center;gap:6px;color:#a9cfb2;font-size:11px;font-weight:600;white-space:nowrap}
+.manage-topics:hover,.more-topics:hover{color:#d1eed7}
+.topic-chips{padding-bottom:12px}
+.guest-hint{display:flex;justify-content:center;align-items:center;gap:6px;margin:20px 0 0;padding-top:14px;border-top:1px solid #29372e;color:#a2b0a6;font-size:11px}
+.guest-hint a{display:inline-flex;align-items:center;gap:4px;color:#afdcbc;font-weight:600}
+.signout-button{margin-top:16px;padding:8px 0;border:0;background:none;color:#a9b6ac;font-size:11px;cursor:pointer}
+.signout-button:hover{color:#f19a8d}
+.card-footer{margin-top:7px}
+.pulse-card{padding-top:17px;padding-bottom:16px}
+.welcome-row{margin-bottom:26px}
+.welcome-row h1{font-size:clamp(27px,2.8vw,34px)}
+.date-stamp{white-space:nowrap}
+.site-footer span:last-child{color:#87968c}
+.top-avatar{display:none}
+.detail-grid{grid-template-columns:minmax(0,720px)}
+.article-body{max-width:720px}
+@media(max-width:680px){.top-avatar{display:grid}}
+
 /* Keep reading text comfortably legible at a glance. */
 .card-meta{font-size:11px}
 .card-summary{font-size:12.5px;line-height:1.72}

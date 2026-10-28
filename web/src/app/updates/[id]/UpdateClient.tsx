@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Bookmark, CalendarDays, Clock3, ExternalLink } from "lucide-react";
+import { ArrowLeft, Bookmark, CalendarDays, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { Pulse } from "@/lib/types";
@@ -21,7 +21,7 @@ export default function UpdateClient({ id, initialItem }: { id: string; initialI
     <div className="detail-header">
       <div className="card-meta"><span className="category-pill">{item.category || item.categoryName || "Technology"}</span><span className="meta-separator">·</span><span>{item.sourceName || item.technology || "TechPulse"}</span></div>
       <h1>{title}</h1>
-      <div className="detail-byline"><span><CalendarDays size={14} />{formatDate(item.publishedTime || item.fetchedAt || "")}</span><span><Clock3 size={14} /> 3 min read</span><button className={`detail-save ${saved ? "is-saved" : ""}`} onClick={toggleBookmark}><Bookmark size={15} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save for later"}</button></div>
+      <div className="detail-byline"><span><CalendarDays size={14} />{formatDate(item.publishedTime || item.fetchedAt || "")}</span><button className={`detail-save ${saved ? "is-saved" : ""}`} onClick={toggleBookmark}><Bookmark size={15} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save"}</button></div>
     </div>
     <div className="detail-grid">
       <div className="article-body">
@@ -32,11 +32,6 @@ export default function UpdateClient({ id, initialItem }: { id: string; initialI
         {!item.developerImpact && !item.technicalImpact && !item.enterpriseImpact && <section><h2>Keep exploring</h2><p>TechPulse brings the essential context into one place, so you can decide what deserves a closer look.</p></section>}
         {(item.articleUrl || item.sourceUrl) && <a className="source-link" href={item.articleUrl || item.sourceUrl} target="_blank" rel="noreferrer">Read the original source <ExternalLink size={14} /></a>}
       </div>
-      <aside className="detail-aside">
-        <div className="aside-card"><span className="aside-label">UPDATE DETAILS</span><div className="aside-row"><span>Topic</span><strong>{item.category || item.categoryName || "Technology"}</strong></div>{item.technology && <div className="aside-row"><span>Technology</span><strong>{item.technology}</strong></div>}<div className="aside-row"><span>Source</span><strong>{item.sourceName || "TechPulse"}</strong></div><button className="aside-action" onClick={toggleBookmark}><Bookmark size={15} /> {saved ? "Remove from reading list" : "Save this update"} <ArrowUpRight size={14} /></button></div>
-        <div className="aside-note"><span>READ WITH CONTEXT</span><p>Summarized by TechPulse AI. Follow the source link for the original announcement.</p></div>
-        <Link className="back-to-feed" href="/">More updates <ArrowUpRight size={14} /></Link>
-      </aside>
     </div>
   </article>;
 }
