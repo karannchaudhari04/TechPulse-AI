@@ -12,6 +12,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 
@@ -19,6 +20,9 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    @Value("${app.web-origin:https://techpulse.onrender.com}")
+    private String webAppOrigin;
 
     private final FirebaseJwtAuthenticationFilter firebaseJwtAuthenticationFilter;
     private final CorrelationIdFilter correlationIdFilter;
@@ -94,12 +98,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
-            "https://techpulse.onrender.com",
+            webAppOrigin,
             "http://localhost:*",
             "http://192.168.1.*"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control", "X-User-Timezone", "X-Correlation-ID"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L); // Cache preflight for 1 hour
         

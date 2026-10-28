@@ -71,3 +71,13 @@ cd mobile
 npm install
 npx expo start
 ```
+
+### 3. Run Web App
+```bash
+cd web
+# Copy .env.example to .env.local and configure the API URL and Firebase Web app values
+npm install
+npm run dev
+```
+
+The web app uses the same Spring Boot API and Firebase project as mobile, so accounts, preferences, and bookmarks are shared. See [web/README.md](web/README.md) for setup and deployment details.

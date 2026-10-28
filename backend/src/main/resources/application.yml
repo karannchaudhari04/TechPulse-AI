@@ -69,6 +69,7 @@ management:
       enabled: false
 
 app:
+  web-origin: ${WEB_APP_ORIGIN:https://techpulse.onrender.com}
   rate-limit:
     ai:
       per-user-per-minute: ${AI_RATE_LIMIT_PER_USER_PER_MINUTE:12}

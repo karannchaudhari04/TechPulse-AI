@@ -276,6 +276,13 @@ public class PersonalizationController {
                     eventDetails.put("articleUrl", articleUrl);
                     eventDetails.put("sourceUrl", articleUrl);
                     eventDetails.put("originalSourceUrl", articleUrl);
+                    eventDetails.put("technicalImpact", event.getTechnicalImpact());
+                    eventDetails.put("developerImpact", event.getDeveloperImpact());
+                    eventDetails.put("enterpriseImpact", event.getEnterpriseImpact());
+                    eventDetails.put("migrationNotes", event.getMigrationNotes());
+                    eventDetails.put("breakingChanges", event.getBreakingChanges());
+                    eventDetails.put("securityNotes", event.getSecurityNotes());
+                    eventDetails.put("imageUrl", event.getImageUrl());
                     return ResponseEntity.ok(ApiResponse.success(eventDetails, "Event found."));
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Event not found.")));

@@ -1,0 +1,40 @@
+.assistant-wrap{min-height:calc(100vh - 130px);display:flex;flex-direction:column}
+.assistant-heading{display:flex;align-items:center;justify-content:space-between}
+.assistant-heading h1{font:600 34px var(--serif);letter-spacing:-1.5px;margin:0}
+.assistant-heading>div>p:last-child{font-size:11px;color:#87948b;margin:8px 0 0}
+.assistant-status{display:flex;align-items:center;gap:6px;color:#73917d;font-size:8px;letter-spacing:1px;font-weight:700}
+.assistant-status i{width:6px;height:6px;border-radius:50%;background:#71a17d;box-shadow:0 0 0 3px #e8f1e9}
+.assistant-chat{width:min(100%,700px);margin:35px auto 0;flex:1;display:flex;flex-direction:column;gap:20px}
+.assistant-welcome{margin:auto 0;display:flex;flex-direction:column;align-items:center;text-align:center;padding:25px 0}
+.assistant-emblem{width:52px;height:52px;border-radius:17px;display:grid;place-items:center;background:#e9f2eb;color:var(--green);margin-bottom:17px}
+.assistant-welcome h2{font:600 20px var(--serif);letter-spacing:-.5px;margin:0}
+.assistant-welcome>p{font-size:11px;line-height:1.6;color:#8a968e;max-width:350px;margin:8px 0 22px}
+.prompt-starters{width:min(100%,450px);display:grid;gap:8px}
+.prompt-starters button{min-height:42px;padding:9px 12px;display:flex;align-items:center;gap:10px;text-align:left;color:#64756a;background:white;border:1px solid var(--line);border-radius:8px;font-size:10px;cursor:pointer;transition:all .15s}
+.prompt-starters button:hover{border-color:#b7cabb;background:#fbfdfb}
+.prompt-starters button span{width:26px;height:26px;flex:none;display:grid;place-items:center;color:#64836d;background:#edf4ef;border-radius:7px}
+.assistant-composer{width:min(100%,700px);margin:18px auto 0;padding:11px 12px 9px;background:white;border:1px solid #dfe8e0;border-radius:11px;box-shadow:0 7px 22px rgba(28,66,43,.045)}
+.assistant-composer textarea{width:100%;resize:vertical;min-height:42px;max-height:150px;padding:4px 3px;border:0;outline:none;background:transparent;color:#34433a;font:12px/1.6 'DM Sans',sans-serif}
+.assistant-composer textarea::placeholder{color:#a0aaa3}
+.composer-footer{display:flex;align-items:center;justify-content:space-between;color:#a0aaa3;font-size:9px}
+.send-button{width:29px;height:29px;display:grid;place-items:center;color:white;background:var(--green);border:0;border-radius:8px;cursor:pointer}
+.send-button:disabled{opacity:.4;cursor:default}
+.assistant-retention{text-align:center;font-size:9px;color:#a2aca5;margin:8px 0 0}
+.chat-message{display:flex;align-items:flex-start;gap:10px}
+.chat-avatar{width:28px;height:28px;flex:none;display:grid;place-items:center;border-radius:9px;background:#eaf2ec;color:var(--green);font-size:11px;font-weight:700}
+.chat-message.user .chat-avatar{background:#f1f2ed;color:#68776c}
+.chat-content{min-width:0;max-width:calc(100% - 40px);padding:10px 13px;border-radius:0 9px 9px;background:#f3f7f3}
+.chat-message.user .chat-content{background:white;border:1px solid var(--line);border-radius:0 9px 9px}
+.chat-name{font-size:9px;font-weight:700;color:#668070}
+.chat-message.user .chat-name{color:#859189}
+.chat-content p{font-size:11px;line-height:1.7;color:#45554a;white-space:pre-wrap;margin:5px 0 0}
+.typing-dots{display:flex;gap:4px;margin-top:9px}
+.typing-dots i{width:5px;height:5px;border-radius:50%;background:#7f9b85;animation:dot-pulse .9s infinite alternate}
+.typing-dots i:nth-child(2){animation-delay:.2s}.typing-dots i:nth-child(3){animation-delay:.4s}
+@keyframes dot-pulse{to{opacity:.25;transform:translateY(-2px)}}
+.assistant-error{color:#b85448;font-size:10px;text-align:center}
+.google-button{width:100%;height:43px;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #dfe5e0;border-radius:8px;background:#fff;color:#3f4b43;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
+.google-button:hover{background:#fafcf9;border-color:#cbd7cd}
+.google-button:disabled{opacity:.65;cursor:wait}
+.auth-privacy{margin:13px 0 0;text-align:center;color:#9aa49d;font-size:9px}
+@media(max-width:680px){.assistant-wrap{min-height:calc(100vh - 100px)}.assistant-heading h1{font-size:28px}.assistant-status{font-size:7px}.assistant-chat{margin-top:24px}}
