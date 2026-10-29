@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, Bot, Globe, Sparkles, X, RefreshCw, AlertCircle } from "lucide-react";
+import { Bookmark, Bot, Check, ExternalLink, Share2, Sparkles, X, RefreshCw, AlertCircle } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { Pulse } from "@/lib/types";
 import { api } from "@/lib/api";
@@ -23,6 +23,7 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
   const { user, token, openAuth } = useSession();
   const [saved, setSaved] = useState(Boolean(pulse.bookmarked));
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
 
@@ -35,8 +36,9 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
   const title = pulse.headline || pulse.title || "Technology update";
   const categoryName = pulse.category || pulse.categoryName || "Tech";
   const targetUrl = pulse.originalSourceUrl || pulse.sourceUrl || pulse.articleUrl || "";
+  const sourceName = pulse.sourceName || pulse.technology || "TechPulse";
 
-  // Domain & Favicon extraction
+  // Domain & Favicon
   const domain = useMemo(() => {
     try {
       if (!targetUrl) return "";
@@ -48,14 +50,15 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
   }, [targetUrl]);
 
   const faviconUrl = domain ? `https://www.google.com/s2/favicons?sz=128&domain=${domain}` : "";
+  const handleTag = `@${(sourceName || domain || "techpulse").toLowerCase().replace(/[^a-z0-9_]/g, "")}`;
 
-  // Dynamic Image URL
+  // Image fallback
   const heroImage = useMemo(() => {
     if (imgError) return categoryFallbackImages[categoryName] || defaultFallbackImage;
     return pulse.thumbnailUrl || categoryFallbackImages[categoryName] || defaultFallbackImage;
   }, [pulse.thumbnailUrl, categoryName, imgError]);
 
-  // Bullet-point parsed summary
+  // Bullet summary
   const summaryPoints = useMemo(() => {
     const raw = pulse.contentSummary || pulse.summary || "A new development worth keeping an eye on.";
     let points = raw.includes("•")
@@ -86,6 +89,18 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const shareUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/updates/${encodeURIComponent(pulse.id || pulse.eventId || "")}`
+      : targetUrl;
+    navigator.clipboard?.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
   }
 
   async function handleExplain(e: React.MouseEvent) {
@@ -120,126 +135,162 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
   }
 
   const detailPath = `/updates/${encodeURIComponent(pulse.id || pulse.eventId || "")}`;
+  const dateFormatted = formatDate(pulse.publishedTime || pulse.fetchedAt || "");
 
   return (
     <>
-      <article className={`bite-card ${compact ? "bite-card-compact" : ""}`}>
-        {/* Top Hero Section with Badges */}
-        <div className="bite-hero">
-          <img
-            src={heroImage}
-            alt={title}
-            className="bite-hero-img"
-            loading="lazy"
-            onError={() => setImgError(true)}
-          />
-          <div className="bite-hero-overlay" />
-
-          {/* Floating Badges */}
-          <div className="bite-badge-row">
-            <span className="bite-category-badge">{categoryName}</span>
-            <div className="bite-top-pick-badge">
-              <Sparkles size={12} className="bite-sparkle-icon" />
-              <span>Top Pick</span>
-            </div>
+      <article className="x-post-article">
+        {/* Left Column: Author/Source Avatar */}
+        <div className="x-post-avatar-col">
+          <div className="x-post-avatar">
+            {faviconUrl && !faviconError ? (
+              <img
+                src={faviconUrl}
+                alt={sourceName}
+                className="x-avatar-img"
+                onError={() => setFaviconError(true)}
+              />
+            ) : (
+              <span className="x-avatar-initial">
+                {sourceName.slice(0, 1).toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Card Content Section */}
-        <div className="bite-content">
-          <Link href={detailPath} className="bite-title">
+        {/* Right Column: Tweet Content & Actions */}
+        <div className="x-post-main">
+          {/* Header Line: Name · Verified · Handle · Time · Category */}
+          <div className="x-post-header">
+            <div className="x-post-user-info">
+              <strong className="x-post-name">{sourceName}</strong>
+              <svg className="x-verified-badge" viewBox="0 0 22 22" aria-label="Verified Source">
+                <path
+                  fill="#1d9bf0"
+                  d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.68.132-.636.075-1.298-.164-1.902.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.136 2.136 5.405-5.404 1.293 1.302-6.7 6.696z"
+                />
+              </svg>
+              <span className="x-post-handle">{handleTag}</span>
+              <span className="x-post-dot">·</span>
+              <span className="x-post-time">{dateFormatted}</span>
+            </div>
+          </div>
+
+          {/* Post Text & Bullets */}
+          <Link href={detailPath} className="x-post-title">
             {title}
           </Link>
 
-          {/* Structured Bullet Points */}
-          <ul className="bite-summary-list">
+          <ul className="x-post-bullets">
             {summaryPoints.map((point, idx) => (
-              <li key={idx} className="bite-bullet-row">
-                <span className="bite-bullet-dot">•</span>
-                <span className="bite-bullet-text">
-                  {point.replace(/^[•\-\*]\s*/, "")}
-                </span>
+              <li key={idx} className="x-post-bullet-item">
+                <span className="x-bullet-icon">•</span>
+                <span>{point.replace(/^[•\-\*]\s*/, "")}</span>
               </li>
             ))}
           </ul>
-        </div>
 
-        {/* Bottom Floating Action Bar */}
-        <div className="bite-action-bar">
-          {/* Left Action: Save / Bookmark */}
-          <button
-            type="button"
-            className={`bite-action-btn ${saved ? "is-bookmarked" : ""}`}
-            onClick={toggleSave}
-            disabled={busy}
-            title={saved ? "Remove from bookmarks" : "Save bookmark"}
-          >
-            <Bookmark
-              size={18}
-              fill={saved ? "#8B5CF6" : "none"}
-              color={saved ? "#8B5CF6" : "currentColor"}
-            />
-            <span className="bite-action-label">{saved ? "Saved" : "Save"}</span>
-          </button>
+          {/* Embedded X Link Card Preview */}
+          {targetUrl && (
+            <a
+              href={targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="x-link-card"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="x-link-card-media">
+                <img
+                  src={heroImage}
+                  alt={title}
+                  className="x-link-card-img"
+                  loading="lazy"
+                  onError={() => setImgError(true)}
+                />
+                <div className="x-link-card-domain-badge">{domain || "Original Article"}</div>
+              </div>
+              <div className="x-link-card-content">
+                <span className="x-link-card-domain">{domain}</span>
+                <strong className="x-link-card-title">{title}</strong>
+                <p className="x-link-card-desc">
+                  {summaryPoints[0]?.slice(0, 110) || "Read the full coverage and release announcements on the source site."}…
+                </p>
+              </div>
+            </a>
+          )}
 
-          {/* Central Source Action with live Domain Favicon */}
-          <div className="bite-center-source-wrapper">
-            {targetUrl ? (
-              <a
-                href={targetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bite-center-source-btn"
-                title={`Open source: ${domain || "Original Article"}`}
-                onClick={e => e.stopPropagation()}
-              >
-                {faviconUrl && !faviconError ? (
-                  <img
-                    src={faviconUrl}
-                    alt={domain || "Source"}
-                    className="bite-source-logo"
-                    onError={() => setFaviconError(true)}
-                  />
-                ) : (
-                  <Globe size={18} color="#8B5CF6" />
-                )}
-              </a>
-            ) : (
-              <Link href={detailPath} className="bite-center-source-btn" title="View details">
-                <Globe size={18} color="#8B5CF6" />
-              </Link>
-            )}
-            <span className="bite-center-source-text">
-              {domain ? (domain.length > 12 ? `${domain.slice(0, 10)}…` : domain) : "Source"}
-            </span>
+          {/* X Post Action Bar */}
+          <div className="x-post-actions">
+            {/* 💬 Explain Button */}
+            <button
+              type="button"
+              className="x-action-btn x-action-explain"
+              onClick={handleExplain}
+              title="Explain simply with AI"
+            >
+              <span className="x-action-icon-circle">
+                <Bot size={18} />
+              </span>
+              <span className="x-action-count">Explain</span>
+            </button>
+
+            {/* 🔄 Source Link Button */}
+            <a
+              href={targetUrl || detailPath}
+              target={targetUrl ? "_blank" : undefined}
+              rel="noopener noreferrer"
+              className="x-action-btn x-action-source"
+              title={`Read on ${domain || "Source"}`}
+              onClick={e => e.stopPropagation()}
+            >
+              <span className="x-action-icon-circle">
+                <ExternalLink size={18} />
+              </span>
+              <span className="x-action-count">Source</span>
+            </a>
+
+            {/* 🔖 Bookmark Button */}
+            <button
+              type="button"
+              className={`x-action-btn x-action-save ${saved ? "is-saved" : ""}`}
+              onClick={toggleSave}
+              disabled={busy}
+              title={saved ? "Remove Bookmark" : "Bookmark"}
+            >
+              <span className="x-action-icon-circle">
+                <Bookmark
+                  size={18}
+                  fill={saved ? "#1d9bf0" : "none"}
+                  color={saved ? "#1d9bf0" : "currentColor"}
+                />
+              </span>
+              <span className="x-action-count">{saved ? "Saved" : "Save"}</span>
+            </button>
+
+            {/* 📤 Share Button */}
+            <button
+              type="button"
+              className={`x-action-btn x-action-share ${copied ? "is-copied" : ""}`}
+              onClick={handleShare}
+              title="Copy link to clipboard"
+            >
+              <span className="x-action-icon-circle">
+                {copied ? <Check size={18} color="#00ba7c" /> : <Share2 size={18} />}
+              </span>
+              <span className="x-action-count">{copied ? "Copied!" : "Share"}</span>
+            </button>
           </div>
-
-          {/* Right Action: Explain AI */}
-          <button
-            type="button"
-            className="bite-action-btn bite-explain-btn"
-            onClick={handleExplain}
-            title="Explain simply with AI"
-          >
-            <Bot size={19} color="#8B5CF6" />
-            <span className="bite-action-label">Explain</span>
-          </button>
-        </div>
-
-        {/* Purple Bottom Accent Line */}
-        <div className="bite-progress-bar">
-          <div className="bite-progress-fill" />
         </div>
       </article>
 
-      {/* AI Explain Modal */}
+      {/* AI Explain Modal Sheet */}
       {explainOpen && (
         <div className="bite-modal-backdrop" onClick={() => setExplainOpen(false)}>
           <div className="bite-modal-sheet" onClick={e => e.stopPropagation()}>
             <div className="bite-modal-handle" />
 
             <div className="bite-modal-header">
-              <span className="bite-modal-kicker">AI Deep Dive</span>
+              <span className="bite-modal-kicker">TechPulse AI Insight</span>
               <button
                 type="button"
                 className="bite-modal-close"
@@ -255,7 +306,7 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
             <div className="bite-modal-body">
               {explainLoading ? (
                 <div className="bite-modal-loading">
-                  <RefreshCw size={28} className="animate-spin text-indigo-400" />
+                  <RefreshCw size={28} className="animate-spin text-[#1d9bf0]" />
                   <p>Simplifying for you with Gemini AI...</p>
                 </div>
               ) : explainError ? (
@@ -285,8 +336,8 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
                   </div>
 
                   <div className="bite-modal-footer-callout">
-                    <Sparkles size={14} color="#8B5CF6" />
-                    <span>Insight generated by Gemini AI tailored for software engineers.</span>
+                    <Sparkles size={14} color="#1d9bf0" />
+                    <span>Structured AI intelligence generated for developers.</span>
                   </div>
                 </div>
               )}
@@ -308,17 +359,19 @@ export function PulseCard({ pulse, compact = false }: { pulse: Pulse; compact?: 
 
 export function LoadingCards() {
   return (
-    <div className="pulse-list">
+    <div className="x-timeline-feed">
       {[1, 2, 3, 4].map(i => (
-        <div className="bite-card bite-card-skeleton" key={i}>
-          <div className="bite-skeleton-hero" />
-          <div className="bite-skeleton-content">
-            <div className="skeleton-line skeleton-title" style={{ width: "80%", height: "22px", marginBottom: "14px" }} />
-            <div className="skeleton-line" style={{ width: "95%", height: "14px", marginBottom: "8px" }} />
-            <div className="skeleton-line" style={{ width: "90%", height: "14px", marginBottom: "8px" }} />
-            <div className="skeleton-line" style={{ width: "70%", height: "14px" }} />
+        <div className="x-post-article x-skeleton-post" key={i}>
+          <div className="x-post-avatar-col">
+            <div className="x-skeleton-circle" />
           </div>
-          <div className="bite-skeleton-bar" />
+          <div className="x-post-main">
+            <div className="skeleton-line" style={{ width: "40%", height: "16px", marginBottom: "12px" }} />
+            <div className="skeleton-line" style={{ width: "90%", height: "20px", marginBottom: "12px" }} />
+            <div className="skeleton-line" style={{ width: "98%", height: "14px", marginBottom: "8px" }} />
+            <div className="skeleton-line" style={{ width: "75%", height: "14px", marginBottom: "16px" }} />
+            <div className="x-skeleton-card" />
+          </div>
         </div>
       ))}
     </div>
@@ -364,9 +417,13 @@ export function EmptyState({
 export function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
-  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (days < 1) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d`;
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
 }

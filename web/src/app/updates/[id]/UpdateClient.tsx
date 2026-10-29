@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import type { Pulse } from "@/lib/types";
 import { LoadingCards, formatDate } from "@/components/PulseCard";
 import { useSession } from "@/components/AppShell";
+import { getCategoryTheme } from "@/lib/categoryTheme";
 
 export default function UpdateClient({ id, initialItem }: { id: string; initialItem: Pulse | null }) {
   const { token, user } = useSession(); const [item, setItem] = useState<Pulse | null>(initialItem); const [loading, setLoading] = useState(!initialItem); const [error, setError] = useState(""); const [saved, setSaved] = useState(Boolean(initialItem?.bookmarked));
@@ -16,10 +17,29 @@ export default function UpdateClient({ id, initialItem }: { id: string; initialI
   if (loading) return <div className="content-wrap"><LoadingCards /></div>;
   if (!item) return <div className="content-wrap"><div className="detail-error"><p>{error || "This update couldn’t be found."}</p><Link href="/">Back to your feed</Link></div></div>;
   const title = item.headline || item.title || "Technology update";
+  const catName = item.category || item.categoryName || "Technology";
+  const catTheme = getCategoryTheme(catName);
   return <article className="content-wrap detail-wrap">
     <Link href="/" className="back-link"><ArrowLeft size={15} /> Back to your briefing</Link>
     <div className="detail-header">
-      <div className="card-meta"><span className="category-pill">{item.category || item.categoryName || "Technology"}</span><span className="meta-separator">·</span><span>{item.sourceName || item.technology || "TechPulse"}</span></div>
+      <div className="card-meta">
+        <span
+          className="category-pill"
+          style={{
+            backgroundColor: catTheme.bg,
+            borderColor: catTheme.border,
+            color: catTheme.text,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+        >
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: catTheme.dot }} />
+          {catName}
+        </span>
+        <span className="meta-separator">·</span>
+        <span>{item.sourceName || item.technology || "TechPulse"}</span>
+      </div>
       <h1>{title}</h1>
       <div className="detail-byline"><span><CalendarDays size={14} />{formatDate(item.publishedTime || item.fetchedAt || "")}</span><button className={`detail-save ${saved ? "is-saved" : ""}`} onClick={toggleBookmark}><Bookmark size={15} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save"}</button></div>
     </div>
