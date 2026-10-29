@@ -51,7 +51,7 @@ public class NewsIngestionService {
         );
     }
 
-    @Scheduled(cron = "0 0 */4 * * *")
+    @Scheduled(cron = "0 0 */8 * * *")
     @SchedulerLock(
         name = "NewsIngestion_scheduledIngest", 
         lockAtMostFor = "15m", 
