@@ -12,7 +12,11 @@ COPY requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 
 COPY --chown=techpulse:techpulse . .
-RUN mkdir -p /app/celerybeat && chown techpulse:techpulse /app/celerybeat
+# The container runs as the unprivileged techpulse user, so every directory the
+# app writes to at runtime must exist and be owned by that user before USER.
+# celerybeat holds the beat schedule; staticfiles is collectstatic's STATIC_ROOT.
+RUN mkdir -p /app/celerybeat /app/staticfiles \
+    && chown techpulse:techpulse /app/celerybeat /app/staticfiles
 
 USER techpulse
 EXPOSE 8080
