@@ -1,10 +1,10 @@
-# TechBite Project State & Progress Report
-**Date:** April 28, 2026
+# TechPulse AI Project State & Progress Report
+**Date:** November 14, 2026
 
 ## 🚀 1. Project Overview
-**TechBite** is a full-stack, AI-powered tech news platform designed to mimic the high-performance UX of modern social media apps (like Instagram Reels). The project is divided into a **React Native (Expo)** mobile frontend and a **Spring Boot** backend. 
+**TechPulse AI** is a full-stack, AI-powered tech news platform designed to deliver a high-performance mobile reading experience. The project is divided into a **React Native (Expo)** client and a **Django 6** backend.
 
-Currently, the project is in a highly stable **Beta/Staging** state. The core MVP requirements have been fulfilled, and the app operates perfectly in a wireless local network environment.
+The backend migration from the legacy Java implementation is complete. The Django API preserves the existing client contracts, TiDB schema, authentication model, and deployment URL while replacing the runtime, ORM, scheduling, and ingestion pipeline.
 
 ---
 
@@ -17,68 +17,59 @@ The mobile app focuses on delivering a zero-latency, highly immersive user exper
 - **Data Fetching:** `@tanstack/react-query`
 - **Performance lists:** `@shopify/flash-list`
 - **Authentication:** Firebase Auth (`firebase` v11.0.2), Google Sign-In (`@react-native-google-signin/google-signin`)
-- **Styling:** React Native `StyleSheet` (migrated from NativeWind for navigation stability)
-- **Media:** `expo-image` (for aggressive caching and cross-device reliability)
+- **Styling:** React Native `StyleSheet`
+- **Media:** `expo-image` for caching and cross-device reliability
 
 ### 2.2 Key Features Implemented
-- ✅ **Wireless "Reels" Experience:** Implemented vertical pagination using `FlashList` with calculated `snapToInterval` and a `0.8` deceleration rate for "buttery smooth" viscous swiping.
-- ✅ **Absolute Isolation:** Calculated device screen height dynamically minus the header height to ensure single-news-item focus per swipe. No overlap.
-- ✅ **Guest vs. Member Flows:**
-  - Guest mode allows full reading capabilities.
-  - "SIGN IN" button elegantly replaces the Profile Avatar when unauthenticated.
-- ✅ **Profile & Logout Mechanism:**
-  - `ProfileScreen.tsx` displays User details and Premium vs. Guest Badges.
-  - Secure Firebase logout that intelligently redirects to the `HomeScreen` while resetting the Navigator state to prevent 'RESET' payload crashes.
-- ✅ **UI Components:**
-  - `BiteCard.tsx` has been heavily refined. Removed AI explain button, added "READ FULL STORY", and relocated the bookmark button for better thumb-reachability.
-- ✅ **Error Handling & UX States:** Includes interactive Retry buttons when the Spring Boot server is unreachable, and "Empty State" rocket screens when caught up.
+- ✅ **Wireless "Reels" Experience:** Vertical pagination using `FlashList` with calculated `snapToInterval`.
+- ✅ **Absolute Isolation:** Screen-height-aware cards keep one news item in focus per swipe.
+- ✅ **Guest vs. Member Flows:** Guests can read; authenticated users see profile, bookmarks, history, and preferences.
+- ✅ **Profile & Logout:** Firebase logout resets navigation state cleanly.
+- ✅ **Error and Empty States:** Retry actions when the backend is unreachable and empty-state screens when the feed is exhausted.
 
 ---
 
-## ⚙️ 3. Backend Status (Spring Boot 3.2.4)
-The backend serves as the centralized logic hub, database manager, and AI proxy.
+## ⚙️ 3. Backend Status (Django 6)
+
+The backend is the centralized API, database manager, ingestion engine, and AI proxy.
 
 ### 3.1 Technologies in Use
-- **Core:** Java 17, Spring Boot (Web, Data JPA, Security)
-- **Database:** MySQL via `mysql-connector-j`
-- **Authentication:** Firebase Admin SDK (v9.3.0) and JWT
-- **AI Engine:** Spring AI Open-AI (Connected to Gemini 1.5 Flash via Open-AI compatible endpoints)
+- **Core:** Python 3.12+, Django 6, Django REST Framework
+- **API compatibility:** camelCase JSON rendering, `{ success, message, data, timestamp, traceId }` envelope, legacy datetime formatting
+- **Database:** TiDB via MySQL/MariaDB backend, writer/replica routing
+- **Cache and scheduling:** Redis, Celery, django-celery-beat
+- **Authentication:** Firebase Admin SDK, `Authorization: Bearer <Firebase ID token>`
+- **AI engine:** Gemini via the OpenAI-compatible chat-completions endpoint
+- **Deployment:** Gunicorn, Docker, Render Blueprint
 
 ### 3.2 Key Features Implemented
-- ✅ **Database Schema (`Bite.java`, `Category.java`, `User.java`):**
-  - Fully mapped JPA entities. `Bite` includes optimized indexes (`idx_category_status_published`) for instant feed queries.
-- ✅ **Automated Seeding (`data.sql`):**
-  - On startup, the database auto-populates 11 high-quality technical news items with dynamic timestamps (`NOW() + INTERVAL`) to ensure proper sorting on fresh installs.
-- ✅ **API Controllers (`BiteController.java`):**
-  - `/api/v1/bites`: Paginated global feed endpoint.
-  - `/api/v1/bites/foryou`: Personalized feed logic (currently defaults safely to global feed for guests or missing preferences).
-  - `/api/v1/bites/explain`: Passes the `biteId` to the AI service.
-- ✅ **AI Service (`BiteServiceImpl.java`):**
-  - Configured to fetch actual database text (Title + Content Summary) and pass it to the `ChatClient`.
-  - Extensive `System.out.println` logging to debug AI token generation and API key validity in real-time.
+- ✅ **Schema-compatible models:** Django models map to the existing TiDB tables through `Meta.db_table` and legacy column names.
+- ✅ **Feature-complete API:** accounts, feed, trends, search, events, library, notifications, assistant, intelligence, and admin ingestion endpoints.
+- ✅ **Async ingestion pipeline:** RSS collection, 24-hour relevance filtering, HTML cleanup, URL normalization, exact and near-duplicate detection, quality ranking, Gemini synthesis, and pruning.
+- ✅ **Scheduled jobs:** ingestion every 8 hours, pruning at midnight, and a daily Expo push digest at 09:00.
+- ✅ **Contract tests:** 18 pytest tests cover the API envelope, camelCase fields, auth/admin rules, paging, assistant, notifications, library, and admin endpoints.
 
 ---
 
 ## 🔒 4. Security & Networking
-- **Google Auth:** Configured properly using Expo Dev Client (which allows Native Modules like `RNGoogleSignin` to operate outside of standard Expo Go).
-- **JWT Filters:** Backend securely intercepts and verifies Firebase tokens.
-- **Wireless Networking:** Successfully configured the mobile build to point to the laptop's private LAN IP (`192.168.1.37:8081`). The firewall configuration permits two-way traffic for wireless debugging.
+- **Google Auth:** Firebase ID tokens are verified server-side with Firebase Admin SDK.
+- **Authorization:** Middleware enforces public, authenticated, and ADMIN path rules; admin endpoints require the `ADMIN` role.
+- **Rate limiting:** Per-user and per-IP limits, with stricter limits for AI endpoints.
+- **CORS:** Restricted to the configured web origin, localhost, and `192.168.1.*` origins.
+- **Secrets:** Firebase service-account JSON, Gemini keys, database credentials, and `.env` files stay outside version control.
+- **Production settings:** Secure cookies, HTTPS proxy handling, CSRF, and clickjacking middleware are enabled.
 
 ---
 
 ## 🗺️ 5. Outstanding Technical Debt & Next Steps
-While the app is highly functional, the following areas require attention before a Production Launch:
-
-1. **"For You" Algorithm Completion:**
-   - **Current State:** The endpoint exists but falls back to the generic feed if user preferences aren't found.
-   - **Action Item:** Tie the `InterestsSelectionScreen` selections directly into the `UserRepository` to filter `Bite` entities by `CategoryId`.
-2. **Cloud Deployment:**
-   - **Current State:** Spring Boot and MySQL are running locally on port `8080` and `3306`.
-   - **Action Item:** Package the Spring Boot app into a Docker container and deploy it to a platform like AWS, Heroku, or Render. Migrate local MySQL data to a managed cloud database.
-3. **Environment Variable Security:**
-   - Ensure the `.env` file containing the Gemini API key and Firebase credentials is NOT pushed to a public repository.
-4. **App Store Packaging:**
-   - **Action Item:** Convert the current Dev Client build into an official production APK/AAB (Android) using EAS Build (`eas build -p android --profile production`).
+1. **Deduplication scale:** partition `raw_ingestion` by `fetched_at` and reduce the quadratic near-duplicate comparison.
+2. **Schema verification:** add a drift check before relying on `migrate --fake-initial` in a new environment.
+3. **Worker deployment:** Render free instances cannot run Celery background workers; deploy worker/beat on a paid instance or external scheduler.
+4. **AI monitoring:** track Gemini latency, quota cooldowns, fallback usage, and synthesis failures.
+5. **Ingestion tests:** add unit tests for URL normalization, eligibility, Jaro-Winkler, ranking, and synthesis failure handling.
+6. **Placeholder intelligence data:** back graph, technology, company, release, timeline, and compare responses with persisted data.
+7. **App store packaging:** produce production Android artifacts with EAS Build when ready.
 
 ---
-**Verdict:** **EXCELLENT PROGRESS.** The transition from a web-app concept to a high-fidelity mobile application is complete. The system architecture is robust enough to handle scaling.
+
+**Verdict:** The Django backend is deployed and contract-compatible with the existing clients. The next phase is operational hardening: schema verification, ingestion testing, worker deployment, and real load measurement.

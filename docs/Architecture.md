@@ -1,47 +1,122 @@
 # Technical Architecture Document
 
-This document details the software architecture, design principles, and deployment topology of **TechPulse AI**.
+This document describes the Django implementation of **TechPulse AI**, including its application boundaries, request lifecycle, asynchronous ingestion pipeline, and deployment topology.
 
 ---
 
 ## 1. System Architecture
 
-The following diagram illustrates the high-level system components and their relationships:
-
 ```mermaid
 graph TB
-    Client[Web/Mobile Clients] -->|REST API| Gateway[Spring Boot Controller Gateway]
-    Gateway -->|Orchestration| Orchestrator[PipelineOrchestrator]
-    
-    subgraph Ingestion Pipeline
-        Orchestrator -->|Aggregates Feeds| Discovery[DiscoveryAgent]
-        Discovery -->|Registry| Registry[SourceRegistry]
-        Registry -->|Fetches| Collectors[RSS Source Collectors]
-        
-        Orchestrator -->|Parses & Cleans| Cleaner[ContentCleaningAgent]
-        Orchestrator -->|Rule Engine| Classifier[ClassificationAgent]
-        Orchestrator -->|Title Similarity| Deduplicator[DuplicateDetectionAgent]
-        Orchestrator -->|Credibility Heuristics| Credibility[CredibilityJudgeAgent]
-        Orchestrator -->|Importance Ranking| Importance[ImportanceRankingAgent]
+    Client[Web / Mobile clients] -->|REST + Firebase ID token| API[Django REST Framework API]
+
+    subgraph Web tier
+        API --> Auth[Firebase authentication]
+        API --> Policy[Security policy + rate limits]
+        API --> Services[Domain services]
+        API --> Renderer[Envelope renderer / exception handler]
     end
-    
-    Orchestrator -->|Persists Raw Updates| DB[(TiDB / MySQL Cloud Cluster)]
-    Gateway -->|Caches| Cache[(Redis Cache Cluster)]
+
+    Services --> DBW[(TiDB writer)]
+    Services -. reads .-> DBR[(TiDB replica)]
+    Services --> Cache[(Redis cache)]
+
+    Beat[Celery beat] --> Worker[Celery worker]
+    Worker --> Discovery[RSS discovery + deduplication]
+    Discovery --> DBW
+    Discovery --> Gemini[Gemini OpenAI-compatible API]
+    Worker --> Prune[Raw-ingestion pruning]
+    Worker --> Push[Expo push digest]
+    Push --> Client
+
+    Discovery --> Feeds[Active RSS feeds]
 ```
+
+The API remains stateless. Shared state lives in TiDB and Redis; scheduled work is executed by Celery workers and scheduled by Celery beat.
 
 ---
 
-## 2. SOLID Design Principles Analysis
+## 2. Django Application Layout
 
-The architecture of the TechPulse AI ingestion pipeline is strictly designed around SOLID software design principles:
+| App | Responsibility | Main models |
+|---|---|---|
+| `config` | Settings, URL routing, WSGI/ASGI, Celery configuration, TiDB URL parsing and replica routing. | - |
+| `core` | API envelope, camelCase rendering, exception handling, Firebase authentication, correlation IDs, rate limits, health/deep-link endpoints, Gemini client. | - |
+| `accounts` | User synchronisation, onboarding preferences, profile, login audit, push tokens. | `UserAccount`, `Category`, `UserPreference`, `UserProfile`, `UserInterest`, `UserFollow`, `LoginAudit` |
+| `catalog` | Feed, trending feed, trends, search, event detail, related events, categories. | `TechnologyEvent`, `EventTimeline` |
+| `library` | Bookmarks, reading history, collections, interaction tracking, library statistics. | `UserSavedEvent`, `UserCollection`, `CollectionEvent`, `InteractionLog`, `UserHistoryLog`, `RecommendationHistory`, `SearchHistory` |
+| `assistant` | Stateless AI chat, feedback, regenerate/history compatibility responses. | - |
+| `intelligence` | Public knowledge-graph/technology/company/release/timeline/compare reads and authenticated Gemini briefs. | - |
+| `notifications` | Notification list, read state, preferences, and the Expo daily digest. | `NotificationRule`, `NotificationEvent` |
+| `ingestion` | RSS collection, eligibility filtering, deduplication, quality ranking, Gemini synthesis, pruning, admin endpoints. | `RawIngestion`, `NewsSource` |
 
-1. **Single Responsibility Principle (SRP)**:
-   - Each agent has exactly one task: `DiscoveryAgent` fetches data, `ContentCleaningAgent` sanitizes HTML and URLs, `ClassificationAgent` categorizes content, and `DuplicateDetectionAgent` deduplicates.
-2. **Open/Closed Principle (OCP)**:
-   - Adding a new category requires updating `application.yml` classification rules, and adding a new source type requires adding a collector implementation and registering it in the registry—without modifying any existing agent code.
-3. **Liskov Substitution Principle (LSP)**:
-   - Collectors implement the `SourceCollector` interface, and agents implement `Agent<I, O>`. Any implementation can be substituted cleanly without breaking the orchestration flow.
-4. **Interface Segregation Principle (ISP)**:
-   - Small, single-purpose interfaces are used (e.g., `Agent`, `SourceCollector`, `SourceRegistry`) instead of bloated, monolithic interfaces. The shared `ScoreAssessment` abstraction ensures unified scoring structures for credibility and importance.
-5. **Dependency Inversion Principle (DIP)**:
-   - High-level orchestrators and controllers depend on interfaces (`Agent`, `SourceRegistry`), not on concrete collector classes. Spring Boot dependency injection manages life cycles.
+The Django models map directly to the existing TiDB tables through `Meta.db_table`. No client-facing schema rewrite is required.
+
+---
+
+## 3. Request Lifecycle
+
+1. `CorrelationIdMiddleware` accepts `X-Correlation-ID` or generates a UUID and echoes it on the response.
+2. CORS and Django security middleware process the request.
+3. `FirebaseAuthenticationMiddleware` verifies the `Authorization: Bearer <Firebase ID token>` header once and caches the result on the request.
+4. `RateLimitMiddleware` applies per-user/per-IP limits. AI endpoints use the configured AI limits and fail closed if Redis-based throttling is unavailable.
+5. `SecurityPolicyMiddleware` mirrors the public, authenticated, and ADMIN path rules. Admin prefixes require an authenticated user with the `ADMIN` role.
+6. DRF parses request bodies through `CamelCaseJSONParser`, which accepts camelCase keys and normalizes them to snake_case; existing clients may also send snake_case keys. Responses render through `ApiResponseJSONRenderer`.
+7. Every response is wrapped as:
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {},
+  "timestamp": 0,
+  "traceId": "..."
+}
+```
+
+`core.exceptions.api_exception_handler` applies the same envelope to authentication, permission, validation, and unexpected errors. The health and health-report endpoints intentionally bypass the envelope where the legacy contract requires raw JSON.
+
+---
+
+## 4. Asynchronous Processing
+
+Celery runs three scheduled jobs:
+
+| Schedule | Task | Purpose |
+|---|---|---|
+| Every 8 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
+| Daily at 00:00 | `ingestion.tasks.prune_raw_ingestions` | Delete stale processed/duplicate rows and leftover unprocessed rows. |
+| Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` | Send a random CS digest to registered Expo push tokens. |
+
+Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`, which enqueues `ingest_all_feeds` asynchronously. See [Pipeline.md](Pipeline.md) for the full data flow.
+
+---
+
+## 5. Data, Caching, and Scaling
+
+- **Writer/replica routing**: `config.db.ReplicaRouter` sends reads to the `replica` database when `DATABASE_REPLICA_URL` is configured and all writes to `default`.
+- **Feed pagination**: keyset pagination ordered by `fetched_at DESC, id DESC`; cursors are base64url-encoded `"<fetchedAt>\n<eventId>"` values with legacy event-ID fallback.
+- **Caching**: `django-redis` caches feed pages, topic counts, trends, and the global event count. Cache failures fall back to database reads.
+- **Rate limiting**: Redis counters when available; per-process in-memory buckets otherwise.
+- **Ingestion concurrency**: `DISCOVERY_THREAD_POOL_SIZE` controls parallel RSS collection; `NEWS_MAX_ARTICLES_PER_INGESTION` caps synthesis per run.
+- **Database indexes**: feed and deduplication queries rely on the existing `raw_ingestion` and `technology_event` indexes documented in [Database.md](Database.md).
+
+---
+
+## 6. Security Model
+
+- Firebase ID tokens are verified with the Firebase Admin SDK. In tests only, `Bearer test:<uid>` is accepted when `ALLOW_TEST_AUTH` is enabled.
+- Admin routes require the `ADMIN` database role; regular authenticated users receive `403`.
+- Public routes cover the feed, trends, search, categories, event detail/related, and read-only intelligence endpoints. Assistant and brief generation require authentication.
+- AI endpoints are rate-limited per user and per IP.
+- CORS allows `WEB_APP_ORIGIN`, localhost origins, and `192.168.1.*` origins with the required headers.
+- CSRF and clickjacking middleware are enabled; HTTPS proxy headers and secure cookies are configured for production.
+
+---
+
+## 7. Design Characteristics
+
+- **Thin views, explicit services**: views handle HTTP validation and response envelopes; business logic lives in app-level service modules.
+- **Contract-first compatibility**: camelCase JSON, envelope shape, datetime formatting, and feed cursor behaviour match the existing web/mobile clients.
+- **Failure isolation**: per-source RSS failures, per-article synthesis failures, and cache/Redis failures do not stop the rest of a run.
+- **Operational simplicity**: web, worker, and beat processes share one image and configuration; migrations and static collection are controlled by entrypoint flags.

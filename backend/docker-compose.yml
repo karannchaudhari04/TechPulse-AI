@@ -1,41 +1,71 @@
+x-backend-environment: &backend-environment
+  PORT: 8080
+  RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+  COLLECT_STATIC: ${COLLECT_STATIC:-true}
+  DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-insecure-secret-change-me}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+  DATABASE_WRITER_URL: ${DATABASE_WRITER_URL:-}
+  DATABASE_WRITER_USER: ${DATABASE_WRITER_USER:-}
+  DATABASE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD:-}
+  DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
+  DATABASE_REPLICA_USER: ${DATABASE_REPLICA_USER:-}
+  DATABASE_REPLICA_PASSWORD: ${DATABASE_REPLICA_PASSWORD:-}
+  REDIS_URL: ${REDIS_URL:-}
+  SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+  SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+  WEB_APP_ORIGIN: ${WEB_APP_ORIGIN:-http://localhost:3000}
+  FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+  FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_EXPLAIN_API_KEY: ${GEMINI_EXPLAIN_API_KEY:-}
+
 services:
   backend:
     build: .
     restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
     environment:
-      SPRING_DATASOURCE_WRITER_URL: ${DATABASE_WRITER_URL}
-      SPRING_DATASOURCE_WRITER_USERNAME: ${DATABASE_WRITER_USER}
-      SPRING_DATASOURCE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD}
-      SPRING_DATASOURCE_REPLICA_URL: ${DATABASE_REPLICA_URL}
-      SPRING_DATASOURCE_REPLICA_USERNAME: ${DATABASE_REPLICA_USER}
-      SPRING_DATASOURCE_REPLICA_PASSWORD: ${DATABASE_REPLICA_PASSWORD}
-      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_EXPLAIN_API_KEY: ${GEMINI_EXPLAIN_API_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      SQL_INIT_MODE: ${SQL_INIT_MODE:-never}
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-    command: ["java", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]
+      <<: *backend-environment
     depends_on:
       - redis
 
-  redis:
-    image: redis:alpine
-    container_name: techpulse-redis
-    restart: always
-    ports:
-      - "6379:6379"
-
-  nginx:
-    image: nginx:alpine
-    container_name: techpulse-nginx
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    ports:
-      - "8080:80"
+  worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-2}
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
     depends_on:
-      - backend
+      redis:
+        condition: service_started
+      backend:
+        condition: service_healthy
+
+  beat:
+    build: .
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info --schedule=/app/celerybeat/celerybeat-schedule
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
+    volumes:
+      - celerybeat_data:/app/celerybeat
+    depends_on:
+      redis:
+        condition: service_started
+      backend:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+volumes:
+  celerybeat_data:

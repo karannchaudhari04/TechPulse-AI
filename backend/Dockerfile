@@ -1,45 +1,24 @@
-# ── Stage 1: Build ──────────────────────────────────────────────────────────
-# Uses linux/amd64 explicitly — works on both Oracle AMD (E2.1.Micro)
-# and ARM (Ampere A1). Docker buildx handles cross-compilation.
-FROM --platform=$BUILDPLATFORM eclipse-temurin:17-jdk-alpine AS builder
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-# Copy Maven wrapper and pom first for layer caching
-# (dependencies re-downloaded only when pom.xml changes)
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
+RUN addgroup --system techpulse && adduser --system --ingroup techpulse techpulse
 
-# Copy source and build the JAR
-COPY src ./src
-RUN ./mvnw package -DskipTests -q
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip && pip install -r requirements.txt
 
-# ── Stage 2: Run ─────────────────────────────────────────────────────────────
-# JRE-only image — ~180MB vs ~400MB with JDK
-FROM eclipse-temurin:17-jre-alpine
-WORKDIR /app
+COPY --chown=techpulse:techpulse . .
+RUN mkdir -p /app/celerybeat && chown techpulse:techpulse /app/celerybeat
 
-# Create a non-root user for security
-RUN addgroup -S techpulse && adduser -S techpulse -G techpulse
 USER techpulse
-
-# Copy the built JAR from stage 1
-COPY --from=builder /app/target/*.jar app.jar
-
-# Health check — Oracle Cloud load balancer uses this
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
-
 EXPOSE 8080
 
-# Tuned for Render Free Tier (512MB RAM) — Lean Profile with adequate Metaspace:
-# -Xmx180m                  = max heap 180MB
-# -Xms64m                   = initial heap 64MB
-# -XX:MaxMetaspaceSize=192m = allow Spring Boot 3 + Hibernate 6 + Firebase Admin SDK to load classes
-# -XX:ReservedCodeCacheSize=32m = cap JIT code cache
-# -XX:+UseSerialGC          = lightweight single-thread GC with minimal memory metadata
-# -Xss256k                  = reduce thread stack size to 256KB to save memory per thread
-# -XX:+ExitOnOutOfMemoryError
-ENTRYPOINT ["/bin/sh", "-c", "unset JAVA_TOOL_OPTIONS; exec java -Xmx180m -Xms64m -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=32m -XX:+UseSerialGC -Xss256k -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8080/actuator/health', timeout=3)"
 
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers ${WEB_CONCURRENCY:-2} --timeout 120"]

@@ -1,73 +1,207 @@
-# Agent Algorithmic Details
+# Pipeline and Service Algorithms
 
-This document details the functional algorithms and operations executed inside every pipeline agent in **TechPulse AI**.
-
----
-
-## 1. Content Cleaning Agent
-
-### HTML Tag Removal
-HTML tags are stripped safely by parsing the raw document text using JSoup's `.body().wholeText()` to prevent stripping structural line breaks.
-
-### URL Normalizer Logic
-The URL normalizer cleans URLs using the following steps:
-1. Strips fragments (anything starting with `#`).
-2. Standardizes protocol and hostname to lowercase (e.g. `HTTPS://Foo.Com` -> `https://foo.com`).
-3. Collapses double slashes (`//`) into single ones.
-4. Strips trailing slashes from path names.
-5. Scrubs tracking query parameters (`utm_*`, `fbclid`, `gclid`).
+This document describes the algorithms used by the Django ingestion pipeline, feed services, and AI clients.
 
 ---
 
-## 2. Classification Agent
+## 1. RSS Collection
 
-### Configurable Keyword Engine
-Keyword patterns are mapped to `CategoryType` enums inside [application.yml](file:///d:/TechBite/backend/src/main/resources/application.yml). The classification agent dynamically loops over configured key patterns to check for occurrences inside the text.
+`ingestion.agents.rss.collect` fetches a configured feed with `requests` and parses it with `feedparser`.
 
-### Confidence Score Calculation
-The agent calculates a normalized confidence score based on the frequency of keyword hits. Hits inside the title are given a higher weight (2.0x) compared to hit occurrences inside the text description (1.0x). The score is normalized using the total word count of the update:
+- **Retries**: up to 3 attempts with a 1-second delay between attempts.
+- **Timeouts**: 10 seconds to connect and 10 seconds to read.
+- **User agent**: `TechPulse-News-Bot/1.0`.
+- **Entry cap**: stops after 8 accepted entries from a single feed.
+- **Required fields**: publication time, non-empty title, non-empty cleaned content, and a link.
+- **Isolation**: a failure for one source is logged by the discovery thread; other sources continue.
 
-$$\text{Score} = \min\left(1.0, \frac{2.0 \times \text{TitleHits} + \text{ContentHits}}{\max(1, \text{WordCount} / 50)}\right)$$
-
----
-
-## 3. Duplicate Detection Agent
-
-### Deduplication Priority
-The deduplication agent checks two primary criteria to identify duplicate updates:
-1. **Exact URL match**: If the canonical URL matches an existing database entry or an item inside the current batch, it is marked as a duplicate with a match score of `1.0` and reason `EXACT_URL`.
-2. **Jaro-Winkler Proximity**: If the Jaro-Winkler similarity score of the two titles is $\ge 0.85$ and the publication times are within 48 hours, it is marked as a duplicate with a match score equal to the Jaro-Winkler metric and reason `TITLE_SIMILARITY`.
-
-### Event-Oriented Grouping
-Duplicate updates reuse the event ID (UUID) of the original candidate update, allowing multiple updates from different tech sites to group under a single, unified Event ID.
+A feed that fails all retries raises an error from that collector, which the discovery phase catches per source.
 
 ---
 
-## 4. Credibility Judge Agent
+## 2. Eligibility Filter
 
-### Source Reliability Baseline
-Evaluates the baseline trust score of hostnames configured in configuration. Defaults to `0.70` for unknown blogs or sites.
+`ingestion.agents.text.is_eligible` accepts an entry only when:
 
-### Bonuses and Penalties
-- **Official Announcement**: Adds `+0.15` for official vendor domains.
-- **Agreement**: Adds `+0.05` per independent organization, capped at `+0.20`.
-- **Clickbait Heuristics**: Applies penalties for ALL CAPS titles (`-0.15`), multiple exclamation marks (`-0.10`), short descriptions (`-0.10`), or configured clickbait keywords (`-0.20`).
+1. A publication time exists.
+2. The publication time is within the last 24 hours and not in the future.
+3. The title/content contains a software-engineering signal or a `.NET` signal.
+
+The software-engineering pattern covers developer tools, programming languages, open source, APIs, frameworks, cloud/DevOps, databases, security, CVEs, and related topics. This rejects general business news and promotional content before it reaches deduplication.
 
 ---
 
-## 5. Importance Ranking Agent
+## 3. HTML Cleaning
 
-### Scoring Formula
-$$\text{Score} = \max\left(0.0, \min\left(1.0, W_{cat} + B_{fresh} + B_{official} + B_{org} + B_{release} + B_{security} + B_{breaking}\right)\right)$$
+`ingestion.agents.common.clean_html` uses BeautifulSoup with the `html.parser` backend:
 
-### Algorithmic Heuristics
-1. **Category Weight ($W_{cat}$)**: Mapped from matching categories configured in YAML. Defaults to `0.50`.
-2. **Freshness ($B_{fresh}$)**: Calculated via encapsulated `FreshnessScorer`. Adds `+0.25` for updates $\le 1$ hour, `+0.15` for updates $\le 24$ hours, and `+0.05` for updates $\le 7$ days.
-3. **Official Release Bonus ($B_{official}$)**: Adds `+0.15` if the event is officially announced.
-4. **Organization Diversity Bonus ($B_{org}$)**: Scales dynamically based on organization count:
-   - 2 Organizations: `+0.10`
-   - 3 Organizations: `+0.15`
-   - 4+ Organizations: `+0.20`
-5. **Major Release Detection ($B_{release}$)**: Regex pattern detects semantic versioning structures (`v?1.2.3`) and keywords (`GA|Stable|Released|Launch|LTS|Preview|RC|Beta`). Adds `+0.10`.
-6. **Security Vulnerability ($B_{security}$)**: Regex pattern matches CVE structures and keywords (`RCE|Zero-Day|Vulnerability|Patch|Critical|Exploit|Authentication Bypass|Privilege Escalation`). Adds `+0.15`.
-7. **Breaking Change ($B_{breaking}$)**: Regex pattern matches deprecations or migrations (`Breaking|Deprecated|Migration|Removed|API Change`). Adds `+0.10`.
+1. Extract text with newline separators.
+2. Unescape HTML entities.
+3. Normalize line endings.
+4. Collapse runs of 3+ newlines to two.
+5. Collapse horizontal whitespace.
+6. Trim the result.
+
+This preserves readable paragraph structure while removing markup.
+
+---
+
+## 4. URL Normalization
+
+`ingestion.agents.urls.normalize`:
+
+1. Lowercases the scheme and hostname.
+2. Collapses repeated slashes in the path.
+3. Removes a trailing slash when the path is longer than `/`.
+4. Removes `utm_*`, `fbclid`, and `gclid` query parameters.
+5. Drops URL fragments.
+6. Keeps a non-default port (ports 80 and 443 are omitted).
+7. Rebuilds the URL with `urlunsplit`.
+
+Malformed URLs are returned unchanged.
+
+---
+
+## 5. Title Normalization and Similarity
+
+`normalize_title` lowercases the title, removes non-alphanumeric characters, and collapses whitespace.
+
+`has_token_overlap` removes common stop words and checks whether two titles share at least:
+
+- two tokens; or
+- one token when the existing candidate title has at most three tokens or both titles have the same number of tokens.
+
+`jaro_winkler` implements the Jaro-Winkler metric, including a matching window, transposition counting, and a prefix bonus for up to four leading characters. The final score is rounded to two decimal places.
+
+---
+
+## 6. Deduplication
+
+Deduplication runs in this order:
+
+1. **Batch exact match**: compare the candidate's URL hash or normalized-title hash against candidates already accepted in the current run.
+2. **Database URL hash**: query `RawIngestion` by `url_hash`.
+3. **Database title hash**: query `RawIngestion` by `title_hash`.
+4. **Near-duplicate search**: load `RawIngestion` rows from the last 7 days and compare each candidate with entries whose publication times are within 48 hours. Only entries passing `has_token_overlap` are scored with Jaro-Winkler.
+5. **Threshold**: a Jaro-Winkler score of at least `0.85` is a duplicate.
+
+Duplicates are discarded and counted in the run log. Accepted candidates receive a new UUID `event_id`, which becomes the `TechnologyEvent` primary key after synthesis.
+
+The current near-duplicate scan is the most expensive part of discovery: it is quadratic in the number of candidates relative to the 7-day comparison set.
+
+---
+
+## 7. Editorial Quality Ranking
+
+After deduplication, `select_top_articles` ranks candidates using a base score and additive factors:
+
+| Signal | Score |
+|---|---|
+| Base score | `+20` |
+| Trusted technology domain | `+30` |
+| Contains technical detail | `+10` |
+| Additional technical-detail hits | `+3` each, capped at `+18` |
+| Strong update signal (release, launch, CVE, deprecation, patch, etc.) | `+15` |
+| Content length ≥ 250 characters | `+5` |
+| Promotional/low-signal wording | `-30` |
+| Recent publication | up to `+12`, decreasing by 1 per 2 hours |
+
+The trusted-domain list includes vendor engineering blogs, GitHub, cloud providers, major technology publications, and security vendors. Ranking uses stable sorts: URL ascending, then publication time descending, then editorial score descending, so the score is the primary key and the earlier sorts act as tie-breakers. Selection also enforces a maximum of 4 articles per source and stops at `NEWS_MAX_ARTICLES_PER_INGESTION`.
+
+---
+
+## 8. Gemini Synthesis
+
+`ingestion.agents.synthesis.synthesize_and_save` builds a strict JSON prompt and calls the shared Gemini client with:
+
+- `temperature=0.2`
+- `max_tokens=2048`
+- a system prompt requiring JSON only
+- a user prompt containing the raw title and up to 3,500 characters of content
+
+The prompt requires exactly one category from:
+
+- Problem Solving
+- Development
+- AI & Machine Learning
+- Cloud & DevOps
+- System Design & Backend
+- Cybersecurity
+- Data Science & Analytics
+- Product & UI/UX
+- Open Source & GitHub
+- Career & Placements
+- Emerging Tech
+
+It requests a headline, summary, 3–5 topics, credibility/importance scores, version and lifecycle fields, technical/developer/enterprise impacts, migration notes, breaking changes, security notes, and official links.
+
+Response handling:
+
+- Markdown code fences are stripped before JSON parsing.
+- Non-object JSON is rejected.
+- Unknown categories become `Emerging Tech`.
+- Empty generated titles fall back to the raw title.
+- Missing official links fall back to the raw article URL.
+- Missing credibility/importance scores default to `80.0` and `70.0`.
+- A Gemini or JSON failure deletes the raw row and raises an error for the task loop to continue.
+
+On success, the event is written with `summary_status="READY"` and the raw row becomes `PROCESSED`.
+
+---
+
+## 9. Gemini Fallback and Cooldowns
+
+`core.ai.generate` calls the Gemini OpenAI-compatible `chat/completions` endpoint.
+
+- The primary model is `GEMINI_MODEL`; additional models come from `GEMINI_FALLBACK_MODELS`.
+- A model is skipped while its per-API-key/per-model cooldown is active.
+- `404`, `429`, and `5xx` responses advance to the next model; other HTTP errors are raised immediately.
+- Transport errors advance to the next model.
+- On `429`, the cooldown is based on `Retry-After`, or ends at the next Pacific-time day boundary for per-day quota errors.
+- If every model is exhausted, a `RuntimeError` is raised with the last error.
+
+`core.ai.extract_message` unwraps JSON responses containing `content`, `response`, or `text`; otherwise it returns the raw content.
+
+---
+
+## 10. Personalization and Library Signals
+
+`library.services.record_interaction` stores every interaction and applies these weights to the event's categories and topics:
+
+| Interaction | Weight |
+|---|---|
+| `SHARE` | `+6` |
+| `BOOKMARK` | `+5` |
+| `READ_COMPLETE` | `+4` |
+| `LIKE` | `+3` |
+| `CLICK` / `VIEW` | `+1` |
+| `SKIP` | `-2` |
+| `DISMISS` | `-3` |
+
+Interest weights are clamped to `[-10, 20]`. History is updated for `VIEW`, `CLICK`, and `READ_COMPLETE`; a value above 100 is treated as reading duration in seconds, while a value from 0–100 is treated as completion percentage. A `READ_COMPLETE` interaction sets completion to 100%.
+
+The feed itself is chronological and supports category/technology filters. Bookmark and read state are added when mapping each event to the client payload.
+
+---
+
+## 11. Trends
+
+`build_trends` counts topic occurrences across `TechnologyEvent.entities_json`, orders the top 15, and labels each topic:
+
+- `EXPLODING` at 10+ events (the value currently emitted by the API)
+- `RISING` at 5–9 events
+- `STABLE` below 5
+
+Authenticated users also see whether a topic matches a followed topic or one of their preferred categories. Topic counts are cached for 5 minutes.
+
+The admin trend report in `ingestion.services.calculate_trends` uses a separate 7/14/21-day window, growth and velocity calculations, credibility/importance weighting, and labels from `Dormant` through `Exploding`.
+
+---
+
+## 12. Assistant and Intelligence Services
+
+- **Assistant chat** validates a prompt (maximum 4,000 characters), up to 20 history messages, and a combined context limit of 12,000 characters. It calls Gemini with the assistant API key (falling back to the main key), unwraps the JSON `content` field, and returns a non-persisted conversation payload.
+- **Regenerate** returns `409` because conversations are not persisted.
+- **History** returns `{"persisted": false, "conversations": []}`.
+- **Intelligence brief** validates `topic` (maximum 200 characters) and `format` (`summary`, `technical`, `migration`, `security`, `markdown`, or `pdf`), then calls Gemini for a short engineering brief.
+- **Public intelligence reads** (graph, technology, company, release, timeline, compare) intentionally return stable placeholder data so clients have a consistent contract until those views are backed by real data.

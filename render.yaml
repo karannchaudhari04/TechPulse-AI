@@ -1,4 +1,4 @@
-# render.yaml — Render Blueprint
+# render.yaml — Django API on Render
 # Render reads this file automatically from your GitHub repo
 # Docs: https://render.com/docs/blueprint-spec
 
@@ -13,19 +13,53 @@ services:
     envVars:
       - key: PORT
         value: 8080
-      - key: DDL_AUTO
-        value: update
-      - key: SQL_INIT_MODE
-        value: never
-      - key: SHOW_SQL
+      - key: DJANGO_DEBUG
         value: "false"
-      - key: DATABASE_URL
-        sync: false            # You fill this in Render dashboard
-      - key: DATABASE_USER
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: techpulse.onrender.com
+      - key: WEB_APP_ORIGIN
+        value: https://techpulse.onrender.com
+      - key: DATABASE_WRITER_URL
         sync: false
-      - key: DATABASE_PASSWORD
+      - key: DATABASE_WRITER_USER
+        sync: false
+      - key: DATABASE_WRITER_PASSWORD
+        sync: false
+      - key: DATABASE_REPLICA_URL
+        sync: false
+      - key: DATABASE_REPLICA_USER
+        sync: false
+      - key: DATABASE_REPLICA_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: FIREBASE_CREDENTIALS_PATH
         sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_EXPLAIN_API_KEY
         sync: false
+
+  # Scheduled ingestion (every 8h), midnight pruning, and the 09:00 digest are
+  # driven by Celery beat. Render background workers require a paid instance
+  # type, so this service is intentionally left disabled for the free plan.
+  # Uncomment it (and mirror the web service's env vars) to enable schedules.
+  #
+  # - type: worker
+  #   name: techpulse-worker
+  #   runtime: docker
+  #   dockerfilePath: ./backend/Dockerfile
+  #   dockerContext: ./backend
+  #   dockerCommand: celery -A config worker --beat --loglevel=info
+  #   plan: starter
+  #   envVars:
+  #     - key: RUN_MIGRATIONS
+  #       value: "false"
+  #     - key: COLLECT_STATIC
+  #       value: "false"
+  #     # Add DATABASE_*, REDIS_URL, FIREBASE_*, and GEMINI_* entries here,
+  #     # using the same values as the techpulse web service.

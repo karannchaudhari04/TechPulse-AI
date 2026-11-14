@@ -1,68 +1,72 @@
-# ============================================================
-# docker-compose.prod.yml — ORACLE CLOUD PRODUCTION
-# Usage on Oracle VM:
-#   docker compose -f docker-compose.prod.yml up -d
-# ============================================================
+x-backend-environment: &backend-environment
+  PORT: 8080
+  RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+  COLLECT_STATIC: ${COLLECT_STATIC:-true}
+  DJANGO_DEBUG: "false"
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+  DATABASE_WRITER_URL: ${DATABASE_WRITER_URL:?Set DATABASE_WRITER_URL}
+  DATABASE_WRITER_USER: ${DATABASE_WRITER_USER:?Set DATABASE_WRITER_USER}
+  DATABASE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD:?Set DATABASE_WRITER_PASSWORD}
+  DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
+  DATABASE_REPLICA_USER: ${DATABASE_REPLICA_USER:-}
+  DATABASE_REPLICA_PASSWORD: ${DATABASE_REPLICA_PASSWORD:-}
+  REDIS_URL: ${REDIS_URL:-}
+  SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+  SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+  WEB_APP_ORIGIN: ${WEB_APP_ORIGIN:?Set WEB_APP_ORIGIN}
+  FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+  FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_EXPLAIN_API_KEY: ${GEMINI_EXPLAIN_API_KEY:-}
 
 services:
-
   backend:
-    image: ${DOCKER_IMAGE:-techpulse-backend:latest}
-    restart: always
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
     environment:
-      DATABASE_WRITER_URL: ${DATABASE_WRITER_URL:?DATABASE_WRITER_URL must be set}
-      DATABASE_WRITER_USER: ${DATABASE_WRITER_USER:?DATABASE_WRITER_USER must be set}
-      DATABASE_WRITER_PASSWORD: ${DATABASE_WRITER_PASSWORD:?DATABASE_WRITER_PASSWORD must be set}
-      DATABASE_REPLICA_URL: ${DATABASE_REPLICA_URL:-}
-      DATABASE_REPLICA_USER: ${DATABASE_REPLICA_USER:-}
-      DATABASE_REPLICA_PASSWORD: ${DATABASE_REPLICA_PASSWORD:-}
-      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY must be set}
-      GEMINI_EXPLAIN_API_KEY: ${GEMINI_EXPLAIN_API_KEY:?GEMINI_EXPLAIN_API_KEY must be set}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
-      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:?FIREBASE_SERVICE_ACCOUNT_JSON must be set}
-      SPRING_PROFILES_ACTIVE: prod
-      TOMCAT_MAX_THREADS: ${TOMCAT_MAX_THREADS:-80}
-      TOMCAT_MIN_SPARE_THREADS: ${TOMCAT_MIN_SPARE_THREADS:-8}
-      TOMCAT_MAX_CONNECTIONS: ${TOMCAT_MAX_CONNECTIONS:-2048}
-      TOMCAT_ACCEPT_COUNT: ${TOMCAT_ACCEPT_COUNT:-500}
-      DB_WRITER_POOL_SIZE: ${DB_WRITER_POOL_SIZE:-10}
-      DB_REPLICA_POOL_SIZE: ${DB_REPLICA_POOL_SIZE:-10}
-    expose:
-      - "8080"
-    # Limits prevent OOM kill on 1GB VM
-    deploy:
-      replicas: ${BACKEND_REPLICAS:-1}
-      resources:
-        limits:
-          memory: 500M
-        reservations:
-          memory: 200M
+      <<: *backend-environment
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
+    depends_on:
+      redis:
+        condition: service_started
+      backend:
+        condition: service_healthy
+
+  beat:
+    build: .
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info --schedule=/app/celerybeat/celerybeat-schedule
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "false"
+      COLLECT_STATIC: "false"
+    volumes:
+      - celerybeat_data:/app/celerybeat
+    depends_on:
+      redis:
+        condition: service_started
+      backend:
+        condition: service_healthy
 
   redis:
     image: redis:7-alpine
-    container_name: techpulse-redis-prod
-    restart: always
-    # Ports usually not exposed in prod for Redis unless needed
-    # expose:
-    #   - "6379"
-
-  # HTTP reverse proxy. Terminate TLS at an upstream load balancer or configure Nginx TLS separately.
-  nginx:
-    image: nginx:alpine
-    container_name: techpulse-nginx-prod
-    restart: always
-    ulimits:
-      nofile:
-        soft: 8192
-        hard: 8192
-    depends_on:
-      - backend
-    ports:
-      - "80:80"
+    restart: unless-stopped
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    profiles:
-      - with-nginx   # Only starts when: docker compose --profile with-nginx up
+      - redis_data:/data
+
+volumes:
+  redis_data:
+  celerybeat_data:

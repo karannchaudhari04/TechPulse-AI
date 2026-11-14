@@ -1,15 +1,11 @@
-# ── Java/Maven ────────────────────────────────────────────────
+# ── Build artifacts ───────────────────────────────────────────
 target/
-*.class
-*.jar
-!mobile/android/gradle/wrapper/gradle-wrapper.jar
-*.war
 
 # ── Secrets (NEVER commit these) ──────────────────────────────
 .env
 .env.production
-backend/src/main/resources/firebase-adminsdk.json
-backend/src/main/resources/google-services.json
+**/firebase-adminsdk.json
+**/google-services.json
 *.p12
 *.jks
 

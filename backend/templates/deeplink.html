@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:description" content="{{ summary }}" />
+    <meta property="og:image" content="{{ thumbnail }}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="TechPulse AI" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ title }}" />
+    <meta name="twitter:description" content="{{ summary }}" />
+    <meta name="twitter:image" content="{{ thumbnail }}" />
+    <style>
+        body { font-family: system-ui, sans-serif; background: #030712; color: #F9FAFB; padding: 40px 20px; }
+        .card { max-width: 640px; margin: 0 auto; background: rgba(17,24,39,0.7); border-radius: 16px; padding: 24px; }
+        .badge { color: #10B981; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+        h1 { font-size: 28px; margin: 12px 0; }
+        p { color: #9CA3AF; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">{{ category }}</div>
+        <h1>{{ title }}</h1>
+        <p>{{ summary }}</p>
+    </div>
+</body>
+</html>
