@@ -47,3 +47,24 @@ class ReplicaRouter:
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         return db == "default"
+
+
+def enable_tidb_schema_compatibility() -> None:
+    """Keep Django schema changes compatible with TiDB.
+
+    Django 6.0 adds a foreign-key field to MySQL in a single statement:
+
+        ALTER TABLE t ADD COLUMN fk_id bigint NULL,
+            ADD CONSTRAINT ... FOREIGN KEY (fk_id) REFERENCES other (id)
+
+    TiDB validates the constraint against the pre-statement schema, so it
+    rejects this with::
+
+        (1072, "Key column 'fk_id' doesn't exist in table")
+
+    Removing the inline form makes Django emit the ADD COLUMN first and the
+    ADD CONSTRAINT afterwards, which TiDB accepts.
+    """
+    from django.db.backends.mysql.schema import DatabaseSchemaEditor
+
+    DatabaseSchemaEditor.sql_create_column_inline_fk = None

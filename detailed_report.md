@@ -37,7 +37,7 @@ The backend is the centralized API, database manager, ingestion engine, and AI p
 - **Core:** Python 3.12+, Django 6, Django REST Framework
 - **API compatibility:** camelCase JSON rendering, `{ success, message, data, timestamp, traceId }` envelope, legacy datetime formatting
 - **Database:** TiDB via MySQL/MariaDB backend, writer/replica routing
-- **Cache and scheduling:** Redis, Celery, django-celery-beat
+- **Cache and scheduling:** Redis, Celery Beat (static schedule in `config/celery.py`)
 - **Authentication:** Firebase Admin SDK, `Authorization: Bearer <Firebase ID token>`
 - **AI engine:** Gemini via the OpenAI-compatible chat-completions endpoint
 - **Deployment:** Gunicorn, Docker, Render Blueprint
@@ -47,7 +47,7 @@ The backend is the centralized API, database manager, ingestion engine, and AI p
 - ✅ **Feature-complete API:** accounts, feed, trends, search, events, library, notifications, assistant, intelligence, and admin ingestion endpoints.
 - ✅ **Async ingestion pipeline:** RSS collection, 24-hour relevance filtering, HTML cleanup, URL normalization, exact and near-duplicate detection, quality ranking, Gemini synthesis, and pruning.
 - ✅ **Scheduled jobs:** ingestion every 8 hours, pruning at midnight, and a daily Expo push digest at 09:00.
-- ✅ **Contract tests:** 18 pytest tests cover the API envelope, camelCase fields, auth/admin rules, paging, assistant, notifications, library, and admin endpoints.
+- ✅ **Contract tests:** 19 pytest tests (18 contract tests plus a TiDB schema-compatibility check) cover the API envelope, camelCase fields, auth/admin rules, paging, assistant, notifications, library, and admin endpoints.
 
 ---
 

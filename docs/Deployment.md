@@ -12,8 +12,9 @@ Configuration is read from environment variables and, for local development, `ba
 |---|---|---|
 | `PORT` | `8080` | Gunicorn listen port. `/actuator/health` remains on this port. |
 | `DJANGO_DEBUG` | `true` | Set to `false` in production. Enables secure cookies when false. |
-| `DJANGO_SECRET_KEY` | dev secret | Django secret key. Use a long random value in production. |
+| `DJANGO_SECRET_KEY` | dev secret | Django secret key. Use a long random value in production. `JWT_SECRET` is still accepted as a fallback name. |
 | `ALLOWED_HOSTS` | `*` | Comma-separated host names accepted by Django. |
+| `TZ` | `UTC` | Django time zone. The API still renders legacy local-datetime strings. |
 | `WEB_APP_ORIGIN` | `https://techpulse.onrender.com` | Additional allowed CORS origin. Localhost and `192.168.1.*` origins are always allowed. |
 | `DATABASE_WRITER_URL` | - | TiDB writer URL. `mysql://` and legacy `jdbc:mysql://` URLs are accepted. |
 | `DATABASE_WRITER_USER` | - | TiDB writer username. |
@@ -22,7 +23,7 @@ Configuration is read from environment variables and, for local development, `ba
 | `DATABASE_REPLICA_USER` | writer user | TiDB replica username. |
 | `DATABASE_REPLICA_PASSWORD` | writer password | TiDB replica password. |
 | `REDIS_URL` | derived from `REDIS_HOST`/`REDIS_PORT` | Redis connection URL used for cache, Celery broker, and result backend. |
-| `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | Used to build `REDIS_URL` when it is not set. |
+| `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | Used to build `REDIS_URL` when it is not set. The Java-era `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` names are still honoured as fallbacks. |
 | `CELERY_BROKER_URL` | `REDIS_URL` | Optional Celery broker override. |
 | `CELERY_RESULT_BACKEND` | `REDIS_URL` | Optional Celery result backend override. |
 | `CELERY_WORKER_CONCURRENCY` | `2` | Worker concurrency in Docker Compose. |
@@ -30,6 +31,7 @@ Configuration is read from environment variables and, for local development, `ba
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | - | Inline Firebase service-account JSON (preferred on Render). |
 | `GEMINI_API_KEY` | - | Gemini API key used by ingestion and intelligence briefs. |
 | `GEMINI_EXPLAIN_API_KEY` | `GEMINI_API_KEY` | Gemini key used by the assistant; falls back to the main key. |
+| `GEMINI_BASE_URL` | Gemini OpenAI-compatible endpoint | Optional override for the Gemini API base URL. |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary Gemini model. |
 | `GEMINI_FALLBACK_MODELS` | `gemini-3.8-flash,gemini-3.6-flash` | Comma-separated fallback model chain. |
 | `NEWS_INGESTION_ENABLED` | `true` | Enables scheduled ingestion. |
@@ -40,8 +42,13 @@ Configuration is read from environment variables and, for local development, `ba
 | `ANDROID_SHA256_FINGERPRINT` | bundled default | SHA-256 fingerprint served by `/.well-known/assetlinks.json`. |
 | `RUN_MIGRATIONS` | `true` | Runs `migrate --fake-initial` in the web entrypoint. Disable for workers. |
 | `COLLECT_STATIC` | `true` | Runs `collectstatic` in the web entrypoint. Disable for workers. |
+| `ALLOW_TEST_AUTH` | `false` | Accepts `Authorization: Bearer test:<uid>` for local contract testing only. |
 
-Existing TiDB tables are reused through `Meta.db_table` and legacy column names. The first deploy uses `python manage.py migrate --fake-initial` so existing tables are marked as applied without being recreated. `django_celery_beat` tables are created on the same run.
+The names above are a superset of the old Java backend's `.env`. `JWT_SECRET`, `SPRING_DATA_REDIS_HOST`, and `SPRING_DATA_REDIS_PORT` are still accepted as aliases, but `jwt.expiration`, `SPRING_PROFILES_ACTIVE`, and the Tomcat/pool tuning keys have no Django equivalent and can be dropped. `backend/.env` is git-ignored; start new environments from `backend/.env.example`.
+
+Existing TiDB tables are reused through `Meta.db_table` and legacy column names. The first deploy uses `python manage.py migrate --fake-initial` so existing tables are marked as applied without being recreated. Django framework tables (`auth`, `admin`, `sessions`) are created on the same run. Celery Beat uses the file-based `PersistentScheduler`; the schedule itself is declared in `config/celery.py`, so no database-backed schedule tables are required.
+
+Django 6.0 adds a foreign-key column and its constraint in one `ALTER TABLE` statement on MySQL. TiDB rejects that with `(1072, "Key column '..._id' doesn't exist in table")`, so `config.db.enable_tidb_schema_compatibility()` switches Django to the deferred constraint form. The patch is applied from `CoreConfig.ready()`, so every `manage.py` command gets it automatically.
 
 ---
 

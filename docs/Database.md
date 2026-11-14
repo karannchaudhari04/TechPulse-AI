@@ -11,7 +11,8 @@ The Django port reuses the existing TiDB tables rather than introducing a new sc
 - Every model declares `Meta.db_table` with the legacy table name.
 - Column names match the legacy schema, including snake_case names such as `firebase_uid`, `categories_json`, and `raw_content`.
 - The first production deployment runs `python manage.py migrate --fake-initial` so existing tables are marked as applied without being recreated.
-- New framework tables, including `django_celery_beat` tables, are created normally on that migration run.
+- New framework tables (`auth`, `admin`, `sessions`) are created normally on that migration run.
+- Django 6.0's MySQL backend normally adds a foreign-key column and its constraint in one `ALTER TABLE` statement. TiDB validates the constraint against the pre-statement schema and fails with `Key column '<name>_id' doesn't exist in table`. `config.db.enable_tidb_schema_compatibility()` (called from `CoreConfig.ready()`) disables the inline form so Django emits `ADD COLUMN` and the deferred `ADD CONSTRAINT` separately, which TiDB accepts.
 
 Before deploying against a new database, compare the Django models with the live schema rather than assuming `--fake-initial` is safe.
 
