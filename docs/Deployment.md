@@ -46,6 +46,8 @@ Configuration is read from environment variables and, for local development, `ba
 
 The names above are a superset of the old Java backend's `.env`. `JWT_SECRET`, `SPRING_DATA_REDIS_HOST`, and `SPRING_DATA_REDIS_PORT` are still accepted as aliases, but `jwt.expiration`, `SPRING_PROFILES_ACTIVE`, and the Tomcat/pool tuning keys have no Django equivalent and can be dropped. `backend/.env` is git-ignored; start new environments from `backend/.env.example`.
 
+**Django version pin:** `requirements.txt` keeps `Django>=6.0,<6.1`. Django 6.1 raised the minimum MySQL version to 8.4, while TiDB reports its compatibility version as 8.0.11 (TiDB's normal MySQL-compatible banner), so Django 6.1 refuses the connection with `MySQL 8.4 or later is required (found 8.0.11)`. Do not widen the pin until TiDB reports 8.4 or later.
+
 Existing TiDB tables are reused through `Meta.db_table` and legacy column names. The first deploy uses `python manage.py migrate --fake-initial` so existing tables are marked as applied without being recreated. Django framework tables (`auth`, `admin`, `sessions`) are created on the same run. Celery Beat uses the file-based `PersistentScheduler`; the schedule itself is declared in `config/celery.py`, so no database-backed schedule tables are required.
 
 Django 6.0 adds a foreign-key column and its constraint in one `ALTER TABLE` statement on MySQL. TiDB rejects that with `(1072, "Key column '..._id' doesn't exist in table")`, so `config.db.enable_tidb_schema_compatibility()` switches Django to the deferred constraint form. The patch is applied from `CoreConfig.ready()`, so every `manage.py` command gets it automatically.
