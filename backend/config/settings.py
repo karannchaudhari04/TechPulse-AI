@@ -139,7 +139,14 @@ if (
         CACHES["default"] = {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
-            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient", "IGNORE_EXCEPTIONS": True},
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+                # Without explicit timeouts an unreachable Redis makes health
+                # checks and cache reads block until the TCP stack gives up.
+                "SOCKET_CONNECT_TIMEOUT": 2,
+                "SOCKET_TIMEOUT": 2,
+            },
             "KEY_PREFIX": "techpulse",
         }
     except Exception:
@@ -153,7 +160,7 @@ CELERY_TASK_ALWAYS_EAGER = RUNNING_TESTS or os.getenv("CELERY_TASK_ALWAYS_EAGER"
 }
 CELERY_TASK_EAGER_PROPAGATES = True
 
-web_origin = os.getenv("WEB_APP_ORIGIN", "https://techpulse.onrender.com")
+web_origin = os.getenv("WEB_APP_ORIGIN", "https://techbite.onrender.com")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",

@@ -33,8 +33,11 @@ services:
         sync: false
       - key: DATABASE_REPLICA_PASSWORD
         sync: false
+      # Render Redis (same-region internal URL, no password). Celery uses it as
+      # broker/result backend and Django as the cache, so keep it in sync with
+      # the Redis instance in the Render dashboard.
       - key: REDIS_URL
-        sync: false
+        value: redis://red-d7tl3a1kh4rs73aruutg:6379
       - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
       - key: FIREBASE_CREDENTIALS_PATH
@@ -64,7 +67,7 @@ services:
   # uncomment it and mirror the web service's env vars.
   #
   # - type: worker
-  #   name: techpulse-worker
+  #   name: techbite-worker
   #   runtime: docker
   #   dockerfilePath: ./backend/Dockerfile
   #   dockerContext: ./backend
@@ -76,7 +79,7 @@ services:
   #     - key: COLLECT_STATIC
   #       value: "false"
   #     # Add DATABASE_*, REDIS_URL, FIREBASE_*, and GEMINI_* entries here,
-  #     # using the same values as the techpulse web service.
+  #     # using the same values as the techbite web service.
   #
   # Optional extra safety net for a paid plan: a Render cron job runs the same
   # pipeline synchronously without Celery. Cron jobs bill per second with a

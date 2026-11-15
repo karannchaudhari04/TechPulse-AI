@@ -63,7 +63,9 @@ The pipeline entry point is `ingestion.tasks.ingest_all_feeds`. It can be starte
 | `python manage.py ingest_news` | Database + Gemini only | Render cron job, one-off run, local backfill |
 | `POST /api/v1/admin/news/ingest` | Admin Firebase token | Manual run or external scheduler |
 
-The admin endpoint publishes a Celery message when a broker exists; when it does not (the free-plan case) it runs the pipeline inline and returns `{"saved": N, "candidates": M}`. `?sync=true` forces the inline path.
+The admin endpoint runs the pipeline in a daemon thread by default and returns immediately, because `REDIS_URL` makes `.delay()` succeed even when no worker is consuming the queue. `?sync=true` blocks for the result (`{"saved": N, "candidates": M}`); `?async=true` enqueues a Celery task and returns `{"taskId": ..., "mode": "celery"}`. The ingestion lock prevents overlapping background, scheduled, and manual runs.
+
+Every run writes a summary to the `ingestion:lastRun` cache key (`at`, `startedAt`, `durationSeconds`, `saved`, `candidates`, or `error`/`skipped`), which the admin health endpoint reports under `components.pipeline`.
 
 Retry cadence is outcome-aware: the scheduler retries 15 minutes after a run raises, 1 hour after a run that saved nothing, and 4 hours after a productive run. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
 

@@ -14,6 +14,27 @@ from ingestion.models import RawIngestion
 
 logger = logging.getLogger(__name__)
 
+# Summary of the most recent ingestion run, read by the admin health endpoint.
+# It lives in the cache because the web process has no shared memory across
+# Gunicorn workers and the database has no run-log table.
+LAST_RUN_CACHE_KEY = "ingestion:lastRun"
+LAST_RUN_CACHE_TTL = 7 * 24 * 3600
+
+
+def record_last_run(started_at: datetime, result: dict) -> None:
+    finished_at = datetime.now()
+    payload = {
+        "at": finished_at.isoformat(timespec="seconds"),
+        "startedAt": started_at.isoformat(timespec="seconds"),
+        "durationSeconds": round((finished_at - started_at).total_seconds(), 1),
+        **result,
+    }
+    try:
+        cache.set(LAST_RUN_CACHE_KEY, payload, timeout=LAST_RUN_CACHE_TTL)
+    except Exception:
+        # Diagnostics must never break ingestion.
+        pass
+
 
 def _acquire_lock(key: str, timeout: int) -> bool:
     """Best-effort lock that fails open when the cache backend is unusable.
@@ -57,10 +78,13 @@ def scheduled_ingest():
 
 @shared_task(name="ingestion.tasks.ingest_all_feeds")
 def ingest_all_feeds():
+    started_at = datetime.now()
     running_key = "lock:NewsIngestion.running"
     if not _acquire_lock(running_key, timeout=60 * 60):
         logger.warning("[NewsIngestion] Ingestion already in progress. Skipping.")
-        return {"skipped": True}
+        result = {"skipped": True}
+        record_last_run(started_at, result)
+        return result
 
     try:
         try:
@@ -127,7 +151,12 @@ def ingest_all_feeds():
             saved_count,
             len(unique_candidates),
         )
-        return {"saved": saved_count, "candidates": len(unique_candidates)}
+        result = {"saved": saved_count, "candidates": len(unique_candidates)}
+        record_last_run(started_at, result)
+        return result
+    except Exception as exc:
+        record_last_run(started_at, {"error": str(exc)})
+        raise
     finally:
         _release_lock(running_key)
 

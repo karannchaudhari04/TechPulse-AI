@@ -388,9 +388,11 @@ def test_admin_health_is_raw_and_role_checked(monkeypatch):
     assert benchmark["data"]["processedCount"] == 10
     assert benchmark["data"]["processingRatePerSec"] == 40.0
 
-    monkeypatch.setattr("ingestion.views.ingest_all_feeds.delay", lambda: None)
+    triggered = []
+    monkeypatch.setattr("ingestion.views._start_background_run", lambda: triggered.append(True))
     ingest = envelope(admin.post("/api/v1/admin/news/ingest"))
     assert ingest["message"] == "News Ingestion process triggered in the background."
+    assert triggered == [True]
 
 
 def test_library_bookmarks_history_and_collections():

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import threading
 from datetime import date, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
+from django.core.cache import cache
 from django.test import Client, RequestFactory
 
 from accounts.models import UserAccount
 from core import scheduler
 from core.views import actuator_health
-from ingestion import tasks
+from ingestion import tasks, views
 from ingestion.agents.text import is_eligible
 
 pytestmark = pytest.mark.django_db
@@ -55,25 +58,61 @@ class _NoRows:
         return 0, {}
 
 
-def test_trigger_ingest_runs_inline_when_the_broker_is_missing(monkeypatch):
-    """Free-plan hosts have no broker or worker, so the trigger must still run."""
+def test_trigger_ingest_runs_in_the_background_by_default(monkeypatch):
+    """Redis makes .delay() succeed even with no worker, so run it in-process."""
+    done = threading.Event()
 
-    class BrokenTask:
-        def delay(self):
-            raise ConnectionError("broker unavailable")
+    def fake_run():
+        done.set()
+        return {"saved": 1, "candidates": 2}
 
-        def __call__(self):
-            return {"saved": 1, "candidates": 2}
-
-    monkeypatch.setattr("ingestion.views.ingest_all_feeds", BrokenTask())
+    monkeypatch.setattr("ingestion.views.ingest_all_feeds", fake_run)
 
     response = admin_client().post("/api/v1/admin/news/ingest")
     payload = response.json()
 
     assert response.status_code == 200
     assert payload["success"] is True
-    assert payload["data"] == {"saved": 1, "candidates": 2}
-    assert "synchronously" in payload["message"]
+    assert payload["data"] is None
+    assert "background" in payload["message"]
+    # The thread outlives the request; wait for it instead of sleeping.
+    assert done.wait(5)
+
+
+def test_trigger_ingest_async_enqueues_for_a_worker(monkeypatch):
+    calls = []
+
+    class FakeTask:
+        def delay(self):
+            calls.append(True)
+            return SimpleNamespace(id="task-1")
+
+        def __call__(self):
+            raise AssertionError("async mode must not run inline")
+
+    monkeypatch.setattr("ingestion.views.ingest_all_feeds", FakeTask())
+
+    response = admin_client("admin-async").post("/api/v1/admin/news/ingest?async=true")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["data"] == {"mode": "celery", "taskId": "task-1"}
+    assert calls == [True]
+
+
+def test_trigger_ingest_async_reports_a_missing_broker(monkeypatch):
+    class BrokenTask:
+        def delay(self):
+            raise ConnectionError("broker unavailable")
+
+    monkeypatch.setattr("ingestion.views.ingest_all_feeds", BrokenTask())
+
+    response = admin_client("admin-broken").post("/api/v1/admin/news/ingest?async=true")
+    payload = response.json()
+
+    assert response.status_code == 503
+    assert payload["success"] is False
+    assert "enqueue" in payload["message"]
 
 
 def test_trigger_ingest_sync_runs_inline(monkeypatch):
@@ -82,11 +121,53 @@ def test_trigger_ingest_sync_runs_inline(monkeypatch):
         lambda: {"saved": 2, "candidates": 3},
     )
 
-    response = admin_client().post("/api/v1/admin/news/ingest?sync=true")
+    response = admin_client("admin-sync").post("/api/v1/admin/news/ingest?sync=true")
     payload = response.json()
 
     assert response.status_code == 200
     assert payload["data"] == {"saved": 2, "candidates": 3}
+
+
+def test_admin_health_reports_a_real_redis_round_trip():
+    response = admin_client("admin-health").get("/api/v1/admin/news/health")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["components"]["redis"] == "UP"
+
+
+def test_admin_health_reports_redis_down_when_writes_are_swallowed(monkeypatch):
+    """django-redis ignores connection errors, so a write-only probe lies."""
+    monkeypatch.setattr(views.cache, "get", lambda *args, **kwargs: None)
+
+    response = admin_client("admin-health-down").get("/api/v1/admin/news/health")
+
+    assert "DOWN" in response.json()["components"]["redis"]
+
+
+def test_admin_health_reports_the_last_ingestion_run():
+    cache.set(
+        tasks.LAST_RUN_CACHE_KEY,
+        {"at": "2026-11-15T18:00:00", "saved": 3, "candidates": 4},
+        timeout=60,
+    )
+
+    response = admin_client("admin-health-run").get("/api/v1/admin/news/health")
+
+    assert "saved 3/4" in response.json()["components"]["pipeline"]
+
+
+def test_ingest_all_feeds_records_the_last_run(monkeypatch):
+    monkeypatch.setattr(tasks.cache, "add", lambda *args, **kwargs: True)
+    monkeypatch.setattr(tasks, "discover_and_deduplicate", list)
+    monkeypatch.setattr(tasks.RawIngestion.objects, "exclude", lambda *a, **k: _NoRows())
+
+    assert tasks.ingest_all_feeds() == {"saved": 0, "candidates": 0}
+
+    last_run = cache.get(tasks.LAST_RUN_CACHE_KEY)
+    assert last_run["saved"] == 0
+    assert last_run["candidates"] == 0
+    assert last_run["at"]
 
 
 def test_actuator_health_head_has_no_body():

@@ -29,7 +29,7 @@ import KnowledgeGraphScreen from '../features/intelligence/screens/KnowledgeGrap
 import WorkspaceScreen from '../features/intelligence/screens/WorkspaceScreen';
 
 const linking = {
-  prefixes: ['techpulse://', 'https://techpulse.onrender.com'],
+  prefixes: ['techpulse://', 'https://techbite.onrender.com'],
 
   config: {
     screens: {

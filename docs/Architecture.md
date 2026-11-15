@@ -90,7 +90,7 @@ Three scheduled jobs run every day:
 
 The schedule is declared once in `backend/config/celery.py`, and `core.scheduler` runs the same three jobs from a daemon thread inside the web process, started on the first HTTP request (the Django equivalent of the Java backend's `@EnableScheduling`). The in-process scheduler is what runs on Render's free plan, where no worker or beat process exists. Set `INGESTION_SCHEDULER_ENABLED=false` when Celery Beat owns the schedule.
 
-Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`. Without `?sync=true` it enqueues `ingest_all_feeds` for a Celery worker; with `?sync=true` it runs inline. See [Pipeline.md](Pipeline.md) for the full data flow.
+Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`. By default it runs `ingest_all_feeds` in a background thread so the request returns below Gunicorn's timeout; `?async=true` enqueues it for a Celery worker, and `?sync=true` runs it inline. See [Pipeline.md](Pipeline.md) for the full data flow.
 
 ---
 

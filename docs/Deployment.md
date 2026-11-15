@@ -15,14 +15,14 @@ Configuration is read from environment variables and, for local development, `ba
 | `DJANGO_SECRET_KEY` | dev secret | Django secret key. Use a long random value in production. `JWT_SECRET` is still accepted as a fallback name. |
 | `ALLOWED_HOSTS` | `*` | Comma-separated host names accepted by Django. |
 | `TZ` | `UTC` | Django time zone. The API still renders legacy local-datetime strings. |
-| `WEB_APP_ORIGIN` | `https://techpulse.onrender.com` | Additional allowed CORS origin. Localhost and `192.168.1.*` origins are always allowed. |
+| `WEB_APP_ORIGIN` | `https://techbite.onrender.com` | Additional allowed CORS origin. Localhost and `192.168.1.*` origins are always allowed. |
 | `DATABASE_WRITER_URL` | - | TiDB writer URL. `mysql://` and legacy `jdbc:mysql://` URLs are accepted. |
 | `DATABASE_WRITER_USER` | - | TiDB writer username. |
 | `DATABASE_WRITER_PASSWORD` | - | TiDB writer password. |
 | `DATABASE_REPLICA_URL` | writer URL | Optional TiDB replica URL. When set, the Django router sends reads to it. |
 | `DATABASE_REPLICA_USER` | writer user | TiDB replica username. |
 | `DATABASE_REPLICA_PASSWORD` | writer password | TiDB replica password. |
-| `REDIS_URL` | derived from `REDIS_HOST`/`REDIS_PORT` | Redis connection URL used for cache, Celery broker, and result backend. |
+| `REDIS_URL` | `render.yaml`: `redis://red-d7tl3a1kh4rs73aruutg:6379` | Redis connection URL used for cache, Celery broker, and result backend. That value is Render's same-region internal URL (no password); use the external `rediss://` URL only when connecting from outside Render. |
 | `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | Used to build `REDIS_URL` when it is not set. The Java-era `SPRING_DATA_REDIS_HOST` / `SPRING_DATA_REDIS_PORT` names are still honoured as fallbacks. |
 | `CELERY_BROKER_URL` | `REDIS_URL` | Optional Celery broker override. |
 | `CELERY_RESULT_BACKEND` | `REDIS_URL` | Optional Celery result backend override. |
@@ -77,18 +77,19 @@ graph TD
 - **Worker**: `celery -A config worker`. Optional; handles RSS ingestion, synthesis, pruning, and the daily digest when the in-process scheduler is disabled.
 - **Beat**: `celery -A config beat`. Optional alternative schedule: ingestion every 4 hours, pruning at midnight, and the daily push digest at 09:00.
 - **In-process scheduler**: `core.scheduler` starts on the first HTTP request and runs the same three jobs from a daemon thread. This is what runs on Render's free plan, where no worker or beat process exists. Every Gunicorn worker starts the thread, but a `flock` on a temp file elects a single owner, so two workers cannot ingest the same article at once; if the owner exits, another takes over within a minute.
-- **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. Render probes it with `HEAD`; the view answers `HEAD` without a body so Gunicorn does not log a no-body warning on every probe. The admin report at `/api/v1/admin/news/health` checks the database and returns `503` when it is down.
+- **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. Render probes it with `HEAD`; the view answers `HEAD` without a body so Gunicorn does not log a no-body warning on every probe. The admin report at `/api/v1/admin/news/health` checks the database, round-trips a key through Redis (a write alone proves nothing because `django-redis` swallows connection errors), reports the last ingestion run from the `ingestion:lastRun` cache key, and returns `503` when the database is down.
 - **Render free plan**: background workers require a paid instance type. The optional worker block in `render.yaml` is commented out; uncomment it (or run Celery elsewhere) to enable scheduled jobs.
 
 ### Running ingestion without Celery
 
-Rendering runs the jobs in-process by default, so a free-plan deployment still ingests every 4 hours while the web service is awake (Render spins a free service down after 15 minutes without traffic; the scheduler catches up on the next request). The manual paths remain available:
+Rendering runs the jobs in-process by default, so a deployment still ingests every 4 hours while the web service is awake (Render spins a free service down after 15 minutes without traffic; the scheduler catches up on the next request). Redis is now configured, so the cache is shared across Gunicorn workers and the ingestion lock is real. The manual paths remain available:
 
 ```bash
 # Synchronous run; use it as a Render cron job command or a one-off task.
 python manage.py ingest_news [--max-articles 10] [--skip-if-disabled]
 
-# Admin-only endpoint; without a broker it now runs the pipeline inline.
+# Admin-only endpoint. Default: a daemon thread, so the request returns before
+# Gunicorn's 120s timeout. ?sync=true blocks; ?async=true enqueues for Celery.
 curl -X POST -H "Authorization: Bearer <firebase-id-token>" \
   "https://<service>.onrender.com/api/v1/admin/news/ingest"
 
@@ -97,9 +98,19 @@ python manage.py ingest_news --dry-run
 python manage.py ingest_news --check-ai
 ```
 
+`POST /api/v1/admin/news/ingest` has three modes:
+
+| Request | Behaviour | Response `data` |
+|---|---|---|
+| no query parameter (default) | Runs in a daemon thread inside the web process and returns immediately. | `null` |
+| `?sync=true` | Runs inline and blocks until the pipeline finishes. | `{"saved": N, "candidates": M}` |
+| `?async=true` | Publishes a Celery task. Needs a running worker; without one it only queues. | `{"taskId": "...", "mode": "celery"}` |
+
+The default used to call `.delay()` and fall back to an inline run when the broker was missing. Now that `REDIS_URL` exists, `.delay()` succeeds even when no worker is consuming the queue, so the old default returned success while doing nothing. The background thread is the safe default; `?async=true` is only for deployments that run a worker, and it returns `503` when the broker rejects the task.
+
 `render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 4 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
 
-Ingestion locks are best-effort: when the cache backend is unreachable, `django-redis` returns `None` for `cache.add`, which used to be read as "another run is in progress" and silently skipped every run. `ingestion.tasks._acquire_lock` now fails open, so a missing Redis no longer blocks ingestion.
+Ingestion locks are best-effort: when the cache backend is unreachable, `django-redis` returns `None` for `cache.add`, which used to be read as "another run is in progress" and silently skipped every run. `ingestion.tasks._acquire_lock` now fails open, so a missing Redis no longer blocks ingestion; with Redis configured, the lock prevents overlapping manual, scheduled, and background runs.
 
 ### Diagnosing a stalled feed
 
