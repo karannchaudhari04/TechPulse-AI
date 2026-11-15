@@ -18,7 +18,7 @@ sequenceDiagram
     participant Gemini as Gemini API
     participant Cache as Redis cache
 
-    Beat->>Task: scheduled_ingest (every 4h)
+    Beat->>Task: scheduled_ingest (every 8h)
     Task->>Cache: acquire "lock:NewsIngestion.running"
     Task->>DB: delete non-PROCESSED raw rows
     Task->>Discovery: run discovery
@@ -59,7 +59,7 @@ The pipeline entry point is `ingestion.tasks.ingest_all_feeds`. It can be starte
 | Trigger | Requires | Use |
 |---|---|---|
 | In-process scheduler (`core.scheduler`) | Database + Gemini | Default; runs on Render's free plan |
-| Celery Beat → `scheduled_ingest` every 4h | Worker + broker | Production with background workers |
+| Celery Beat → `scheduled_ingest` every 8h | Worker + broker | Production with background workers |
 | `python manage.py ingest_news` | Database + Gemini only | Render cron job, one-off run, local backfill |
 | `POST /api/v1/admin/news/ingest` | Admin Firebase token | Manual run or external scheduler |
 
@@ -67,7 +67,7 @@ The admin endpoint runs the pipeline in a daemon thread by default and returns i
 
 Every run writes a summary to the `ingestion:lastRun` cache key (`at`, `startedAt`, `durationSeconds`, `saved`, `candidates`, or `error`/`skipped`), which the admin health endpoint reports under `components.pipeline`.
 
-Retry cadence is outcome-aware: the scheduler retries 15 minutes after a run raises, 1 hour after a run that saved nothing, and 4 hours after a productive run. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
+Retry cadence is outcome-aware: the scheduler retries 15 minutes after a run raises, 1 hour after a run that saved nothing, and 8 hours after a productive run. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
 
 Diagnostics:
 
@@ -177,8 +177,8 @@ This keeps the raw staging table compact while preserving the synthesized `techn
 
 | Task | Schedule | Entry point |
 |---|---|---|
-| News ingestion | Every 4 hours (`minute=0, hour="*/4"`) | `ingestion.tasks.scheduled_ingest` |
+| News ingestion | Every 8 hours (`minute=0, hour="*/8"`) | `ingestion.tasks.scheduled_ingest` |
 | Raw-ingestion pruning | Daily at midnight | `ingestion.tasks.prune_raw_ingestions` |
 | CS push digest | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` |
 
-The Celery schedule is defined in `backend/config/celery.py` and matches the Java backend's `@Scheduled(cron = "0 0 */4 * * *")`. The in-process scheduler in `backend/core/scheduler.py` is outcome-aware rather than strictly hourly: it catches up immediately when the newest event is already older than 4 hours, then re-runs after 4 hours on success, 1 hour on an empty run, and 15 minutes after an error.
+The Celery schedule is defined in `backend/config/celery.py` and runs every 8 hours (`0 */8 * * *`), replacing the Java backend's 4-hour `@Scheduled(cron = "0 0 */4 * * *")`. The in-process scheduler in `backend/core/scheduler.py` is outcome-aware rather than strictly hourly: it catches up immediately when the newest event is already older than 8 hours, then re-runs after 8 hours on success, 1 hour on an empty run, and 15 minutes after an error.

@@ -191,15 +191,15 @@ def test_scheduler_waits_until_the_next_run_time():
     assert "ingestion" in scheduler.due_tasks(now, now, today, today)
 
 
-def test_next_run_is_four_hours_after_a_productive_run():
+def test_next_run_is_eight_hours_after_a_productive_run():
     now = datetime(2026, 11, 15, 12, 0)
     assert scheduler.next_run_after(now, {"saved": 3, "candidates": 5}) == now + timedelta(
-        hours=4
+        hours=8
     )
 
 
 def test_next_run_is_one_hour_after_an_empty_run():
-    """No fresh articles is normal; do not wait four hours to look again."""
+    """No fresh articles is normal; do not wait eight hours to look again."""
     now = datetime(2026, 11, 15, 12, 0)
     assert scheduler.next_run_after(now, {"saved": 0, "candidates": 0}) == now + timedelta(
         hours=1
@@ -220,7 +220,7 @@ def test_initial_run_catches_up_when_the_feed_is_stale(monkeypatch):
 def test_initial_run_waits_when_the_last_event_is_recent(monkeypatch):
     now = datetime(2026, 11, 15, 12, 0)
     monkeypatch.setattr(scheduler, "_latest_event_time", lambda: now - timedelta(hours=1))
-    assert scheduler.initial_next_run(now) == now + timedelta(hours=3)
+    assert scheduler.initial_next_run(now) == now + timedelta(hours=7)
 
 
 def test_initial_run_happens_immediately_on_an_empty_database(monkeypatch):

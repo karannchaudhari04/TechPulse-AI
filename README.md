@@ -47,7 +47,7 @@ The platform is powered by a high-throughput autonomous multi-agent pipeline and
 - **Horizontal Scaling & High Availability**: Stateless Gunicorn web containers behind a load balancer, with Firebase ID-token authentication.
 - **TiDB Read/Write Splitting**: Django database router sends read queries to a TiDB replica when `DATABASE_REPLICA_URL` is configured.
 - **Fail-Safe Caching**: Redis caching via `django-redis` with local-memory fallback when Redis is unavailable.
-- **Scheduled Ingestion**: ingestion runs every 4 hours in-process (matching the Java `@Scheduled` job and working without a worker), with pruning at midnight and the daily digest at 09:00. Celery Beat can take over on paid hosts.
+- **Scheduled Ingestion**: ingestion runs every 8 hours in-process (working without a worker), with pruning at midnight and the daily digest at 09:00. Celery Beat can take over on paid hosts.
 - **Mobile Optimization**: Zero-latency scrolling using Shopify's `FlashList` and local async persistence.
 
 ---
@@ -81,7 +81,7 @@ python manage.py seed_reference_data     # 23 news sources + 11 categories
 python manage.py runserver 0.0.0.0:8080
 ```
 
-Ingestion runs every 4 hours inside the web process, so no worker or broker is required; `python manage.py ingest_news` runs it once now, `--dry-run` reports per-feed eligible counts, and `--check-ai` verifies the Gemini key. Run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info` in separate shells only if you prefer the Celery schedule over the in-process one.
+Ingestion runs every 8 hours inside the web process, so no worker or broker is required; `python manage.py ingest_news` runs it once now, `--dry-run` reports per-feed eligible counts, and `--check-ai` verifies the Gemini key. Run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info` in separate shells only if you prefer the Celery schedule over the in-process one.
 
 ### 2. Run Mobile App
 ```bash

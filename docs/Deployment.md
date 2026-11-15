@@ -75,14 +75,14 @@ graph TD
 
 - **Web**: Docker image from `backend/Dockerfile`, served by Gunicorn. The entrypoint runs migrations, seeds reference data, and collects static files before starting.
 - **Worker**: `celery -A config worker`. Optional; handles RSS ingestion, synthesis, pruning, and the daily digest when the in-process scheduler is disabled.
-- **Beat**: `celery -A config beat`. Optional alternative schedule: ingestion every 4 hours, pruning at midnight, and the daily push digest at 09:00.
+- **Beat**: `celery -A config beat`. Optional alternative schedule: ingestion every 8 hours, pruning at midnight, and the daily push digest at 09:00.
 - **In-process scheduler**: `core.scheduler` starts on the first HTTP request and runs the same three jobs from a daemon thread. This is what runs on Render's free plan, where no worker or beat process exists. Every Gunicorn worker starts the thread, but a `flock` on a temp file elects a single owner, so two workers cannot ingest the same article at once; if the owner exits, another takes over within a minute.
 - **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. Render probes it with `HEAD`; the view answers `HEAD` without a body so Gunicorn does not log a no-body warning on every probe. The admin report at `/api/v1/admin/news/health` checks the database, round-trips a key through Redis (a write alone proves nothing because `django-redis` swallows connection errors), reports the last ingestion run from the `ingestion:lastRun` cache key, and returns `503` when the database is down.
 - **Render free plan**: background workers require a paid instance type. The optional worker block in `render.yaml` is commented out; uncomment it (or run Celery elsewhere) to enable scheduled jobs.
 
 ### Running ingestion without Celery
 
-Rendering runs the jobs in-process by default, so a deployment still ingests every 4 hours while the web service is awake (Render spins a free service down after 15 minutes without traffic; the scheduler catches up on the next request). Redis is now configured, so the cache is shared across Gunicorn workers and the ingestion lock is real. The manual paths remain available:
+Rendering runs the jobs in-process by default, so a deployment still ingests every 8 hours while the web service is awake (Render spins a free service down after 15 minutes without traffic; the scheduler catches up on the next request). Redis is now configured, so the cache is shared across Gunicorn workers and the ingestion lock is real. The manual paths remain available:
 
 ```bash
 # Synchronous run; use it as a Render cron job command or a one-off task.
@@ -108,7 +108,7 @@ python manage.py ingest_news --check-ai
 
 The default used to call `.delay()` and fall back to an inline run when the broker was missing. Now that `REDIS_URL` exists, `.delay()` succeeds even when no worker is consuming the queue, so the old default returned success while doing nothing. The background thread is the safe default; `?async=true` is only for deployments that run a worker, and it returns `503` when the broker rejects the task.
 
-`render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 4 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
+`render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 8 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
 
 Ingestion locks are best-effort: when the cache backend is unreachable, `django-redis` returns `None` for `cache.add`, which used to be read as "another run is in progress" and silently skipped every run. `ingestion.tasks._acquire_lock` now fails open, so a missing Redis no longer blocks ingestion; with Redis configured, the lock prevents overlapping manual, scheduled, and background runs.
 
@@ -122,7 +122,7 @@ The pipeline can only stall in three places, and each is logged distinctly:
 | `[RssCollector] ... rejected N entries outside the 24-hour/relevance rules` for every feed | Nothing is fresh enough or the entries are not developer news | Raise `NEWS_FRESHNESS_HOURS` |
 | `[AI_SYNTHESIS] ... status=FAILED reason="400 from Gemini ..."` then `Successfully synthesized: 0/N` | Gemini rejected every article; the raw rows are deleted, so the feed does not change | `python manage.py ingest_news --check-ai` shows the provider's exact error. An invalid key returns `400 INVALID_ARGUMENT: Please pass a valid API key`. |
 
-A run that finds candidates but saves none logs `[NewsIngestion] Discovered N article(s) but saved none`, so this failure is never silent. The in-process scheduler retries after 15 minutes when a run raises, after 1 hour when it saves nothing, and after 4 hours when it saves at least one event.
+A run that finds candidates but saves none logs `[NewsIngestion] Discovered N article(s) but saved none`, so this failure is never silent. The in-process scheduler retries after 15 minutes when a run raises, after 1 hour when it saves nothing, and after 8 hours when it saves at least one event.
 
 ---
 

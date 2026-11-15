@@ -84,7 +84,7 @@ Three scheduled jobs run every day:
 
 | Schedule | Task | Purpose |
 |---|---|---|
-| Every 4 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
+| Every 8 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
 | Daily at 00:00 | `ingestion.tasks.prune_raw_ingestions` | Delete stale processed/duplicate rows and leftover unprocessed rows. |
 | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` | Send a random CS digest to registered Expo push tokens. |
 

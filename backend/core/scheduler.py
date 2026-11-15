@@ -26,10 +26,11 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Mirrors the Java backend: @Scheduled(cron = "0 0 */4 * * *").
-INGESTION_INTERVAL = timedelta(hours=4)
+# Ingestion cadence. The Java backend ran every 4 hours
+# (@Scheduled(cron = "0 0 */4 * * *")); the Django port runs every 8 hours.
+INGESTION_INTERVAL = timedelta(hours=8)
 # A run that reached the feeds but found nothing fresh is not a success worth
-# waiting four hours for: sources publish throughout the day.
+# waiting eight hours for: sources publish throughout the day.
 EMPTY_RUN_INTERVAL = timedelta(hours=1)
 # A crash (database down, Gemini outage) should be retried quickly.
 RETRY_AFTER_ERROR = timedelta(minutes=15)

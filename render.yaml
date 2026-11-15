@@ -60,7 +60,7 @@ services:
       - key: NEWS_FRESHNESS_HOURS
         value: "48"
 
-  # Scheduled ingestion (every 4h), midnight pruning, and the 09:00 digest run
+  # Scheduled ingestion (every 8h), midnight pruning, and the 09:00 digest run
   # in-process by default (INGESTION_SCHEDULER_ENABLED=true), because Render's
   # free plan provides no always-on worker. The optional Celery worker below is
   # only needed on a paid plan or when the in-process scheduler is disabled;
@@ -90,7 +90,7 @@ services:
   #   runtime: docker
   #   dockerfilePath: ./backend/Dockerfile
   #   dockerContext: ./backend
-  #   schedule: "0 */4 * * *"
+  #   schedule: "0 */8 * * *"
   #   dockerCommand: python manage.py ingest_news
   #   plan: 0.5c-512mb
   #   envVars:
