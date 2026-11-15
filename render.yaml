@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: techpulse
+    name: techbite
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -18,9 +18,9 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
-        value: techpulse.onrender.com
+        value: techbite.onrender.com
       - key: WEB_APP_ORIGIN
-        value: https://techpulse.onrender.com
+        value: https://techbite.onrender.com
       - key: DATABASE_WRITER_URL
         sync: false
       - key: DATABASE_WRITER_USER
@@ -43,11 +43,17 @@ services:
         sync: false
       - key: GEMINI_EXPLAIN_API_KEY
         sync: false
+      # The web process runs ingestion, pruning, and the digest in a background
+      # thread (the Django equivalent of the Java @Scheduled jobs). Keep this
+      # true unless a Celery worker/beat takes over the schedule.
+      - key: INGESTION_SCHEDULER_ENABLED
+        value: "true"
 
-  # Scheduled ingestion (every 8h), midnight pruning, and the 09:00 digest are
-  # driven by Celery beat. Render background workers require a paid instance
-  # type, so this service is intentionally left disabled for the free plan.
-  # Uncomment it (and mirror the web service's env vars) to enable schedules.
+  # Scheduled ingestion (every 4h), midnight pruning, and the 09:00 digest run
+  # in-process by default (INGESTION_SCHEDULER_ENABLED=true), because Render's
+  # free plan provides no always-on worker. The optional Celery worker below is
+  # only needed on a paid plan or when the in-process scheduler is disabled;
+  # uncomment it and mirror the web service's env vars.
   #
   # - type: worker
   #   name: techpulse-worker
@@ -63,3 +69,48 @@ services:
   #       value: "false"
   #     # Add DATABASE_*, REDIS_URL, FIREBASE_*, and GEMINI_* entries here,
   #     # using the same values as the techpulse web service.
+  #
+  # Optional extra safety net for a paid plan: a Render cron job runs the same
+  # pipeline synchronously without Celery. Cron jobs bill per second with a
+  # $1/month minimum per job.
+  #
+  # - type: cron
+  #   name: techbite-ingest
+  #   runtime: docker
+  #   dockerfilePath: ./backend/Dockerfile
+  #   dockerContext: ./backend
+  #   schedule: "0 */4 * * *"
+  #   dockerCommand: python manage.py ingest_news
+  #   plan: 0.5c-512mb
+  #   envVars:
+  #     - key: RUN_MIGRATIONS
+  #       value: "false"
+  #     - key: COLLECT_STATIC
+  #       value: "false"
+  #     - key: DJANGO_SECRET_KEY
+  #       fromService:
+  #         type: web
+  #         name: techbite
+  #         envVarKey: DJANGO_SECRET_KEY
+  #     - key: DATABASE_WRITER_URL
+  #       fromService:
+  #         type: web
+  #         name: techbite
+  #         envVarKey: DATABASE_WRITER_URL
+  #     - key: DATABASE_WRITER_USER
+  #       fromService:
+  #         type: web
+  #         name: techbite
+  #         envVarKey: DATABASE_WRITER_USER
+  #     - key: DATABASE_WRITER_PASSWORD
+  #       fromService:
+  #         type: web
+  #         name: techbite
+  #         envVarKey: DATABASE_WRITER_PASSWORD
+  #     - key: GEMINI_API_KEY
+  #       fromService:
+  #         type: web
+  #         name: techbite
+  #         envVarKey: GEMINI_API_KEY
+  #     # REDIS_URL is optional: the command fails open when the cache is
+  #     # unreachable. Copy it from the web service to keep caching identical.

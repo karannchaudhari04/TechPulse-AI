@@ -35,6 +35,7 @@ Configuration is read from environment variables and, for local development, `ba
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | Primary Gemini model. |
 | `GEMINI_FALLBACK_MODELS` | `gemini-3.8-flash,gemini-3.6-flash` | Comma-separated fallback model chain. |
 | `NEWS_INGESTION_ENABLED` | `true` | Enables scheduled ingestion. |
+| `INGESTION_SCHEDULER_ENABLED` | `true` | Runs the ingestion/pruning/digest jobs from a daemon thread inside the web process on the first request (the Django equivalent of the Java `@Scheduled` jobs). Set to `false` when Celery Beat owns the schedule, or in tests. |
 | `NEWS_MAX_ARTICLES_PER_INGESTION` | `20` | Maximum articles synthesized per run. |
 | `DISCOVERY_THREAD_POOL_SIZE` | `10` | Concurrent RSS collector threads. |
 | `AI_RATE_LIMIT_PER_USER_PER_MINUTE` | `12` | Per-user limit for AI endpoints. |
@@ -69,10 +70,28 @@ graph TD
 ```
 
 - **Web**: Docker image from `backend/Dockerfile`, served by Gunicorn. The entrypoint runs migrations and static collection before starting.
-- **Worker**: `celery -A config worker`. Handles RSS ingestion, synthesis, pruning, and the daily digest.
-- **Beat**: `celery -A config beat`. Schedules ingestion every 8 hours, pruning at midnight, and the daily push digest at 09:00.
-- **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. The admin report at `/api/v1/admin/news/health` checks the database and returns `503` when it is down.
+- **Worker**: `celery -A config worker`. Optional; handles RSS ingestion, synthesis, pruning, and the daily digest when the in-process scheduler is disabled.
+- **Beat**: `celery -A config beat`. Optional alternative schedule: ingestion every 4 hours, pruning at midnight, and the daily push digest at 09:00.
+- **In-process scheduler**: `core.scheduler` starts on the first HTTP request and runs the same three jobs from a daemon thread. This is what runs on Render's free plan, where no worker or beat process exists.
+- **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. Render probes it with `HEAD`; the view answers `HEAD` without a body so Gunicorn does not log a no-body warning on every probe. The admin report at `/api/v1/admin/news/health` checks the database and returns `503` when it is down.
 - **Render free plan**: background workers require a paid instance type. The optional worker block in `render.yaml` is commented out; uncomment it (or run Celery elsewhere) to enable scheduled jobs.
+
+### Running ingestion without Celery
+
+Rendering runs the jobs in-process by default, so a free-plan deployment still ingests every 4 hours while the web service is awake (Render spins a free service down after 15 minutes without traffic; the scheduler catches up on the next request). The manual paths remain available:
+
+```bash
+# Synchronous run; use it as a Render cron job command or a one-off task.
+python manage.py ingest_news [--max-articles 10] [--skip-if-disabled]
+
+# Admin-only endpoint, useful from an external scheduler.
+curl -X POST -H "Authorization: Bearer <firebase-id-token>" \
+  "https://<service>.onrender.com/api/v1/admin/news/ingest?sync=true"
+```
+
+The default (non-`sync`) trigger only enqueues a Celery task and now returns `503` with an explanation when no broker is configured, instead of reporting success. `render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 4 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
+
+Ingestion locks are best-effort: when the cache backend is unreachable, `django-redis` returns `None` for `cache.add`, which used to be read as "another run is in progress" and silently skipped every run. `ingestion.tasks._acquire_lock` now fails open, so a missing Redis no longer blocks ingestion.
 
 ---
 

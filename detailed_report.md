@@ -46,8 +46,8 @@ The backend is the centralized API, database manager, ingestion engine, and AI p
 - ✅ **Schema-compatible models:** Django models map to the existing TiDB tables through `Meta.db_table` and legacy column names.
 - ✅ **Feature-complete API:** accounts, feed, trends, search, events, library, notifications, assistant, intelligence, and admin ingestion endpoints.
 - ✅ **Async ingestion pipeline:** RSS collection, 24-hour relevance filtering, HTML cleanup, URL normalization, exact and near-duplicate detection, quality ranking, Gemini synthesis, and pruning.
-- ✅ **Scheduled jobs:** ingestion every 8 hours, pruning at midnight, and a daily Expo push digest at 09:00.
-- ✅ **Contract tests:** 19 pytest tests (18 contract tests plus a TiDB schema-compatibility check) cover the API envelope, camelCase fields, auth/admin rules, paging, assistant, notifications, library, and admin endpoints.
+- ✅ **Scheduled jobs:** in-process ingestion every 4 hours, pruning at midnight, and a daily Expo push digest at 09:00 (Celery Beat can take over on paid hosts).
+- ✅ **Contract tests:** 31 pytest tests (18 contract tests, a TiDB schema-compatibility check, and twelve ingestion-scheduling/health tests) cover the API envelope, camelCase fields, auth/admin rules, paging, assistant, notifications, library, and admin endpoints.
 
 ---
 

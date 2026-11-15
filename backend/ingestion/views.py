@@ -79,8 +79,21 @@ def run_benchmarks(request):
 @api_view(["GET", "POST"])
 @permission_classes(ADMIN)
 def trigger_ingest(request):
+    # A synchronous run lets a deployment without Celery workers (Render free
+    # plan, or a host with no Redis) still ingest on demand. It blocks the
+    # request for the duration of the run, so use it from an external scheduler
+    # or a one-off manual trigger, not from the UI.
+    if request.query_params.get("sync", "").lower() in {"1", "true", "yes"}:
+        logger.info("[NewsIngestion] Running ingestion synchronously on request")
+        return ok(ingest_all_feeds(), "News ingestion completed.")
+
     try:
         ingest_all_feeds.delay()
     except Exception as exc:
         logger.error("[NewsIngestion] Could not enqueue ingestion task: %s", exc)
+        return fail(
+            "Could not enqueue the ingestion task. Configure a broker and run a "
+            "Celery worker, or call this endpoint with ?sync=true.",
+            503,
+        )
     return ok(None, "News Ingestion process triggered in the background.")

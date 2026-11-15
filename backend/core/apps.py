@@ -11,3 +11,9 @@ class CoreConfig(AppConfig):
         from config.db import enable_tidb_schema_compatibility
 
         enable_tidb_schema_compatibility()
+
+        # Start the periodic jobs on the first HTTP request, the way the Java
+        # backend's @EnableScheduling did. Management commands never start it.
+        from core import scheduler
+
+        scheduler.connect()

@@ -80,15 +80,17 @@ The Django models map directly to the existing TiDB tables through `Meta.db_tabl
 
 ## 4. Asynchronous Processing
 
-Celery runs three scheduled jobs:
+Three scheduled jobs run every day:
 
 | Schedule | Task | Purpose |
 |---|---|---|
-| Every 8 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
+| Every 4 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
 | Daily at 00:00 | `ingestion.tasks.prune_raw_ingestions` | Delete stale processed/duplicate rows and leftover unprocessed rows. |
 | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` | Send a random CS digest to registered Expo push tokens. |
 
-Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`, which enqueues `ingest_all_feeds` asynchronously. See [Pipeline.md](Pipeline.md) for the full data flow.
+The schedule is declared once in `backend/config/celery.py`, and `core.scheduler` runs the same three jobs from a daemon thread inside the web process, started on the first HTTP request (the Django equivalent of the Java backend's `@EnableScheduling`). The in-process scheduler is what runs on Render's free plan, where no worker or beat process exists. Set `INGESTION_SCHEDULER_ENABLED=false` when Celery Beat owns the schedule.
+
+Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`. Without `?sync=true` it enqueues `ingest_all_feeds` for a Celery worker; with `?sync=true` it runs inline. See [Pipeline.md](Pipeline.md) for the full data flow.
 
 ---
 

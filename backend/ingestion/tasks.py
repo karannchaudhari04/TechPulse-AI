@@ -15,6 +15,21 @@ from ingestion.models import RawIngestion
 logger = logging.getLogger(__name__)
 
 
+def _acquire_lock(key: str, timeout: int) -> bool:
+    """Best-effort lock that fails open when the cache backend is unusable.
+
+    ``django-redis`` is configured with ``IGNORE_EXCEPTIONS``, so a connection
+    error makes ``cache.add`` return ``None`` instead of raising. Treating that
+    as "lock is held" would silently skip every ingestion run, which is exactly
+    what happens on a host without Redis. Only an explicit ``False`` means
+    another runner owns the lock.
+    """
+    try:
+        return cache.add(key, "locked", timeout=timeout) is not False
+    except Exception:
+        return True
+
+
 def _release_lock(key: str) -> None:
     try:
         cache.delete(key)
@@ -29,7 +44,7 @@ def scheduled_ingest():
         return {"skipped": True}
 
     lock_key = "lock:NewsIngestion.scheduledIngest"
-    if not cache.add(lock_key, "locked", timeout=15 * 60):
+    if not _acquire_lock(lock_key, timeout=15 * 60):
         logger.warning("[NewsIngestion] Scheduled run skipped (lock held by another worker)")
         return {"skipped": True}
 
@@ -43,7 +58,7 @@ def scheduled_ingest():
 @shared_task(name="ingestion.tasks.ingest_all_feeds")
 def ingest_all_feeds():
     running_key = "lock:NewsIngestion.running"
-    if not cache.add(running_key, "running", timeout=60 * 60):
+    if not _acquire_lock(running_key, timeout=60 * 60):
         logger.warning("[NewsIngestion] Ingestion already in progress. Skipping.")
         return {"skipped": True}
 

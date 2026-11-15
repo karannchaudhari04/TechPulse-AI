@@ -14,6 +14,11 @@ def index(request):
 
 
 def actuator_health(request):
+    # Render probes this path with HEAD. Django does not strip bodies for HEAD,
+    # and Gunicorn then logs "sent body bytes on a no-body response" for every
+    # probe, so answer HEAD with headers only.
+    if request.method == "HEAD":
+        return HttpResponse(status=200, content_type="application/json")
     return JsonResponse({"status": "UP"})
 
 

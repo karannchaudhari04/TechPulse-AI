@@ -47,7 +47,7 @@ The platform is powered by a high-throughput autonomous multi-agent pipeline and
 - **Horizontal Scaling & High Availability**: Stateless Gunicorn web containers behind a load balancer, with Firebase ID-token authentication.
 - **TiDB Read/Write Splitting**: Django database router sends read queries to a TiDB replica when `DATABASE_REPLICA_URL` is configured.
 - **Fail-Safe Caching**: Redis caching via `django-redis` with local-memory fallback when Redis is unavailable.
-- **Scheduled Ingestion**: Celery workers and beat run ingestion every 8 hours, prune at midnight, and send the daily digest at 09:00.
+- **Scheduled Ingestion**: ingestion runs every 4 hours in-process (matching the Java `@Scheduled` job and working without a worker), with pruning at midnight and the daily digest at 09:00. Celery Beat can take over on paid hosts.
 - **Mobile Optimization**: Zero-latency scrolling using Shopify's `FlashList` and local async persistence.
 
 ---

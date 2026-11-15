@@ -18,7 +18,7 @@ sequenceDiagram
     participant Gemini as Gemini API
     participant Cache as Redis cache
 
-    Beat->>Task: scheduled_ingest (every 8h)
+    Beat->>Task: scheduled_ingest (every 4h)
     Task->>Cache: acquire "lock:NewsIngestion.running"
     Task->>DB: delete non-PROCESSED raw rows
     Task->>Discovery: run discovery
@@ -47,6 +47,21 @@ sequenceDiagram
 ```
 
 A separate beat task, `prune_raw_ingestions`, runs at midnight.
+
+### Triggering the pipeline
+
+The pipeline entry point is `ingestion.tasks.ingest_all_feeds`. It can be started three ways:
+
+| Trigger | Requires | Use |
+|---|---|---|
+| In-process scheduler (`core.scheduler`) | Database + Gemini | Default; runs on Render's free plan |
+| Celery Beat → `scheduled_ingest` every 4h | Worker + broker | Production with background workers |
+| `python manage.py ingest_news` | Database + Gemini only | Render cron job, one-off run, local backfill |
+| `POST /api/v1/admin/news/ingest?sync=true` | Admin Firebase token | Manual run or external scheduler |
+
+Without `?sync=true`, the admin endpoint only publishes a Celery message. If no broker is reachable it returns `503` rather than pretending the run started.
+
+Locks use the cache when available. Because `django-redis` returns `None` for `cache.add` when it swallows a connection error, an unreachable cache must not be treated as a held lock; `_acquire_lock` only blocks on an explicit `False`.
 
 ---
 
@@ -147,8 +162,8 @@ This keeps the raw staging table compact while preserving the synthesized `techn
 
 | Task | Schedule | Entry point |
 |---|---|---|
-| News ingestion | Every 8 hours (`minute=0, hour="*/8"`) | `ingestion.tasks.scheduled_ingest` |
+| News ingestion | Every 4 hours (`minute=0, hour="*/4"`) | `ingestion.tasks.scheduled_ingest` |
 | Raw-ingestion pruning | Daily at midnight | `ingestion.tasks.prune_raw_ingestions` |
 | CS push digest | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` |
 
-The schedule is defined in `backend/config/celery.py`.
+The schedule is defined in `backend/config/celery.py` for Celery Beat and mirrored in `backend/core/scheduler.py` for the in-process scheduler. Both match the Java backend's `@Scheduled(cron = "0 0 */4 * * *")`.

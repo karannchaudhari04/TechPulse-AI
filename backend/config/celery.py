@@ -10,9 +10,9 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    "news-ingestion-every-8h": {
+    "news-ingestion-every-4h": {
         "task": "ingestion.tasks.scheduled_ingest",
-        "schedule": crontab(minute=0, hour="*/8"),
+        "schedule": crontab(minute=0, hour="*/4"),
     },
     "prune-raw-ingestions-midnight": {
         "task": "ingestion.tasks.prune_raw_ingestions",
