@@ -198,6 +198,9 @@ GEMINI_FALLBACK_MODELS = [
 
 NEWS_INGESTION_ENABLED = os.getenv("NEWS_INGESTION_ENABLED", "true").lower() in {"1", "true"}
 NEWS_MAX_ARTICLES_PER_INGESTION = int(os.getenv("NEWS_MAX_ARTICLES_PER_INGESTION", "20"))
+# How old an article may be and still enter the pipeline. The Java backend used
+# a hard-coded 24 hours, which starves feeds that publish a few times a week.
+NEWS_FRESHNESS_HOURS = int(os.getenv("NEWS_FRESHNESS_HOURS", "24"))
 DISCOVERY_THREAD_POOL_SIZE = int(os.getenv("DISCOVERY_THREAD_POOL_SIZE", "10"))
 AI_RATE_LIMIT_PER_USER_PER_MINUTE = int(os.getenv("AI_RATE_LIMIT_PER_USER_PER_MINUTE", "12"))
 AI_RATE_LIMIT_PER_IP_PER_MINUTE = int(os.getenv("AI_RATE_LIMIT_PER_IP_PER_MINUTE", "30"))

@@ -7,6 +7,7 @@ from datetime import datetime
 
 import feedparser
 import requests
+from django.conf import settings
 
 from ingestion.agents.common import text_content, utc_struct_to_local_datetime
 from ingestion.agents.text import is_eligible
@@ -82,7 +83,13 @@ def collect(source_name: str, source_url: str) -> list[RawUpdate]:
                 rejected_count += 1
                 continue
             content = _entry_text(entry)
-            if not is_eligible(entry.get("title"), content, published_at, now):
+            if not is_eligible(
+                entry.get("title"),
+                content,
+                published_at,
+                now,
+                max_age_hours=settings.NEWS_FRESHNESS_HOURS,
+            ):
                 rejected_count += 1
                 continue
             update = _map_entry(entry, source_name, language, published_at, content)
@@ -97,10 +104,11 @@ def collect(source_name: str, source_url: str) -> list[RawUpdate]:
 
     logger.info(
         "[RssCollector] Completed collection from source '%s'. Accepted %s recent "
-        "software-engineering entries; rejected %s entries outside the 24-hour/relevance rules.",
+        "software-engineering entries; rejected %s entries outside the %s-hour/relevance rules.",
         source_name,
         len(raw_updates),
         rejected_count,
+        settings.NEWS_FRESHNESS_HOURS,
     )
     return raw_updates
 

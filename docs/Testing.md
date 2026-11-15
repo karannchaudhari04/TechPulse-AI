@@ -20,7 +20,7 @@ When the settings module detects pytest, it forces an isolated test environment:
 - WhiteNoise removed because `collectstatic` is not part of the test run;
 - `ALLOW_TEST_AUTH` enabled, so tests can authenticate with `Authorization: Bearer test:<uid>`.
 
-The suite currently contains **18 contract tests** in `backend/tests/test_contracts.py`, one TiDB schema-compatibility regression test in `backend/tests/test_tidb_compat.py`, and twelve ingestion-scheduling tests in `backend/tests/test_ingestion_scheduling.py` (fail-open locks, sync/enqueue triggers, HEAD health, and the in-process schedule). They cover:
+The suite currently contains **18 contract tests** in `backend/tests/test_contracts.py`, one TiDB schema-compatibility regression test in `backend/tests/test_tidb_compat.py`, twenty ingestion-scheduling tests in `backend/tests/test_ingestion_scheduling.py` (fail-open locks, inline/enqueue triggers, HEAD health, the in-process schedule, and the freshness window), and five reference-data tests in `backend/tests/test_reference_seeding.py`. They cover:
 
 | Area | Tests |
 |---|---|

@@ -36,6 +36,8 @@ Configuration is read from environment variables and, for local development, `ba
 | `GEMINI_FALLBACK_MODELS` | `gemini-3.8-flash,gemini-3.6-flash` | Comma-separated fallback model chain. |
 | `NEWS_INGESTION_ENABLED` | `true` | Enables scheduled ingestion. |
 | `INGESTION_SCHEDULER_ENABLED` | `true` | Runs the ingestion/pruning/digest jobs from a daemon thread inside the web process on the first request (the Django equivalent of the Java `@Scheduled` jobs). Set to `false` when Celery Beat owns the schedule, or in tests. |
+| `SEED_REFERENCE_DATA` | `true` | Runs `python manage.py seed_reference_data` in the web entrypoint. It creates the 23 default news sources and 11 categories when they are missing; without sources, discovery has nothing to read. |
+| `NEWS_FRESHNESS_HOURS` | `24` | How old an article may be and still enter the pipeline. The Java port hard-coded 24; `render.yaml` sets 48 so feeds that publish a few times a week still qualify. |
 | `NEWS_MAX_ARTICLES_PER_INGESTION` | `20` | Maximum articles synthesized per run. |
 | `DISCOVERY_THREAD_POOL_SIZE` | `10` | Concurrent RSS collector threads. |
 | `AI_RATE_LIMIT_PER_USER_PER_MINUTE` | `12` | Per-user limit for AI endpoints. |
@@ -48,6 +50,8 @@ Configuration is read from environment variables and, for local development, `ba
 The names above are a superset of the old Java backend's `.env`. `JWT_SECRET`, `SPRING_DATA_REDIS_HOST`, and `SPRING_DATA_REDIS_PORT` are still accepted as aliases, but `jwt.expiration`, `SPRING_PROFILES_ACTIVE`, and the Tomcat/pool tuning keys have no Django equivalent and can be dropped. `backend/.env` is git-ignored; start new environments from `backend/.env.example`.
 
 **Django version pin:** `requirements.txt` keeps `Django>=6.0,<6.1`. Django 6.1 raised the minimum MySQL version to 8.4, while TiDB reports its compatibility version as 8.0.11 (TiDB's normal MySQL-compatible banner), so Django 6.1 refuses the connection with `MySQL 8.4 or later is required (found 8.0.11)`. Do not widen the pin until TiDB reports 8.4 or later.
+
+**Celery/Kombu dependency:** `requirements.txt` lists `packaging` explicitly. Kombu's Redis transport imports it but only declares it under the `kombu[redis]` extra, so `celery` + `redis` alone left every `task.delay()` failing with `No module named 'packaging'`. Keep the dependency until Kombu declares it unconditionally.
 
 Existing TiDB tables are reused through `Meta.db_table` and legacy column names. The first deploy uses `python manage.py migrate --fake-initial` so existing tables are marked as applied without being recreated. Django framework tables (`auth`, `admin`, `sessions`) are created on the same run. Celery Beat uses the file-based `PersistentScheduler`; the schedule itself is declared in `config/celery.py`, so no database-backed schedule tables are required.
 
@@ -69,10 +73,10 @@ graph TD
     Beat -. schedules .-> Worker
 ```
 
-- **Web**: Docker image from `backend/Dockerfile`, served by Gunicorn. The entrypoint runs migrations and static collection before starting.
+- **Web**: Docker image from `backend/Dockerfile`, served by Gunicorn. The entrypoint runs migrations, seeds reference data, and collects static files before starting.
 - **Worker**: `celery -A config worker`. Optional; handles RSS ingestion, synthesis, pruning, and the daily digest when the in-process scheduler is disabled.
 - **Beat**: `celery -A config beat`. Optional alternative schedule: ingestion every 4 hours, pruning at midnight, and the daily push digest at 09:00.
-- **In-process scheduler**: `core.scheduler` starts on the first HTTP request and runs the same three jobs from a daemon thread. This is what runs on Render's free plan, where no worker or beat process exists.
+- **In-process scheduler**: `core.scheduler` starts on the first HTTP request and runs the same three jobs from a daemon thread. This is what runs on Render's free plan, where no worker or beat process exists. Every Gunicorn worker starts the thread, but a `flock` on a temp file elects a single owner, so two workers cannot ingest the same article at once; if the owner exits, another takes over within a minute.
 - **Health**: `/actuator/health` returns a static `{"status": "UP"}` for liveness and is the path used by `render.yaml`. Render probes it with `HEAD`; the view answers `HEAD` without a body so Gunicorn does not log a no-body warning on every probe. The admin report at `/api/v1/admin/news/health` checks the database and returns `503` when it is down.
 - **Render free plan**: background workers require a paid instance type. The optional worker block in `render.yaml` is commented out; uncomment it (or run Celery elsewhere) to enable scheduled jobs.
 
@@ -84,14 +88,30 @@ Rendering runs the jobs in-process by default, so a free-plan deployment still i
 # Synchronous run; use it as a Render cron job command or a one-off task.
 python manage.py ingest_news [--max-articles 10] [--skip-if-disabled]
 
-# Admin-only endpoint, useful from an external scheduler.
+# Admin-only endpoint; without a broker it now runs the pipeline inline.
 curl -X POST -H "Authorization: Bearer <firebase-id-token>" \
-  "https://<service>.onrender.com/api/v1/admin/news/ingest?sync=true"
+  "https://<service>.onrender.com/api/v1/admin/news/ingest"
+
+# Diagnostics: per-feed eligibility counts, and the exact Gemini response.
+python manage.py ingest_news --dry-run
+python manage.py ingest_news --check-ai
 ```
 
-The default (non-`sync`) trigger only enqueues a Celery task and now returns `503` with an explanation when no broker is configured, instead of reporting success. `render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 4 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
+`render.yaml` includes a commented `type: cron` service that runs `python manage.py ingest_news` every 4 hours as an optional paid safety net; Render bills cron jobs per second with a $1/month minimum per job.
 
 Ingestion locks are best-effort: when the cache backend is unreachable, `django-redis` returns `None` for `cache.add`, which used to be read as "another run is in progress" and silently skipped every run. `ingestion.tasks._acquire_lock` now fails open, so a missing Redis no longer blocks ingestion.
+
+### Diagnosing a stalled feed
+
+The pipeline can only stall in three places, and each is logged distinctly:
+
+| Symptom in the logs | Meaning | Fix |
+|---|---|---|
+| `[DiscoveryAgent] Found 0 active sources` | `news_sources` is empty or every row has `active = false` | `python manage.py seed_reference_data` |
+| `[RssCollector] ... rejected N entries outside the 24-hour/relevance rules` for every feed | Nothing is fresh enough or the entries are not developer news | Raise `NEWS_FRESHNESS_HOURS` |
+| `[AI_SYNTHESIS] ... status=FAILED reason="400 from Gemini ..."` then `Successfully synthesized: 0/N` | Gemini rejected every article; the raw rows are deleted, so the feed does not change | `python manage.py ingest_news --check-ai` shows the provider's exact error. An invalid key returns `400 INVALID_ARGUMENT: Please pass a valid API key`. |
+
+A run that finds candidates but saves none logs `[NewsIngestion] Discovered N article(s) but saved none`, so this failure is never silent. The in-process scheduler retries after 15 minutes when a run raises, after 1 hour when it saves nothing, and after 4 hours when it saves at least one event.
 
 ---
 
@@ -99,6 +119,7 @@ Ingestion locks are best-effort: when the cache backend is unreachable, `django-
 
 1. Set all required environment variables in the hosting dashboard. Do not commit Firebase credentials or `.env` files.
 2. Build from `backend/` with `docker build -t techpulse-backend .`.
-3. Deploy the web service and confirm `/actuator/health` returns `UP`.
-4. Start worker and beat processes with the same database, Redis, Firebase, and Gemini configuration. Set `RUN_MIGRATIONS=false` and `COLLECT_STATIC=false` for both.
-5. Run `python manage.py check --deploy` and enable HSTS / SSL redirect at the proxy or in settings once the domain is HTTPS-only.
+3. Deploy the web service and confirm `/actuator/health` returns `UP`. The entrypoint seeds the 23 default news sources and 11 categories (`SEED_REFERENCE_DATA=true`), so check that the log line `News sources: created 0, total 23, active 23` appears on later deploys.
+4. Verify the pipeline end to end: `python manage.py ingest_news --check-ai` (Gemini credentials), then `python manage.py ingest_news --max-articles 1` (one real event).
+5. Start worker and beat processes with the same database, Redis, Firebase, and Gemini configuration. Set `RUN_MIGRATIONS=false` and `COLLECT_STATIC=false` for both.
+6. Run `python manage.py check --deploy` and enable HSTS / SSL redirect at the proxy or in settings once the domain is HTTPS-only.

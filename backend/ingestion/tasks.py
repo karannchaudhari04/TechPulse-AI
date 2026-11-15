@@ -113,6 +113,14 @@ def ingest_all_feeds():
         if saved_count > 0:
             logger.info("[NewsIngestion] Evicting feed and personalization caches...")
             invalidate_caches()
+        elif unique_candidates:
+            logger.error(
+                "[NewsIngestion] Discovered %s article(s) but saved none. Synthesis is the "
+                "only stage that can drop an eligible article, so check the [AI_SYNTHESIS] "
+                "lines above and verify GEMINI_API_KEY / GEMINI_MODEL "
+                "(run: python manage.py ingest_news --check-ai).",
+                len(unique_candidates),
+            )
 
         logger.info(
             "[NewsIngestion] Ingestion Completed. Successfully synthesized: %s/%s",

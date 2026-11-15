@@ -7,6 +7,10 @@ django-cors-headers>=4.6
 django-redis>=5.4
 redis>=5.2
 celery>=5.4
+# kombu's Redis transport imports `packaging` but only declares it under the
+# `kombu[redis]` extra, so plain `celery` + `redis` installs leave it missing.
+# Without it every `task.delay()` fails with "No module named 'packaging'".
+packaging>=24
 PyMySQL>=1.1
 cryptography>=43.0
 firebase-admin>=6.6

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+from django.conf import settings
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 
@@ -32,6 +33,13 @@ def health(request):
     components["redis"] = "UP"
     components["collectors"] = "UP"
     components["pipeline"] = "UP"
+    # Surfaced here because a missing or invalid Gemini key is the most common
+    # reason a run discovers articles and still saves nothing. It does not change
+    # the overall status: that still tracks whether the pipeline can reach data.
+    if settings.GEMINI_API_KEY:
+        components["ai"] = f"UP (model: {settings.GEMINI_MODEL})"
+    else:
+        components["ai"] = "DOWN (GEMINI_API_KEY is not configured)"
 
     payload = {
         "status": status,
@@ -90,10 +98,17 @@ def trigger_ingest(request):
     try:
         ingest_all_feeds.delay()
     except Exception as exc:
-        logger.error("[NewsIngestion] Could not enqueue ingestion task: %s", exc)
-        return fail(
-            "Could not enqueue the ingestion task. Configure a broker and run a "
-            "Celery worker, or call this endpoint with ?sync=true.",
-            503,
+        # No broker and no worker on this host is the normal case for the free
+        # plan, so fall back to doing the work in this request instead of
+        # answering 503 and leaving the feed stale.
+        logger.warning(
+            "[NewsIngestion] Could not enqueue ingestion task (%s); running it inline instead",
+            exc,
         )
+        try:
+            result = ingest_all_feeds()
+        except Exception as run_exc:
+            logger.error("[NewsIngestion] Inline ingestion failed: %s", run_exc)
+            return fail(f"News ingestion failed: {run_exc}", 503)
+        return ok(result, "News ingestion ran synchronously (no queue available).")
     return ok(None, "News Ingestion process triggered in the background.")

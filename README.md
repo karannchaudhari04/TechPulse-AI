@@ -68,7 +68,7 @@ docker compose up -d
 curl http://localhost:8080/actuator/health
 ```
 
-The web container runs `migrate --fake-initial` and `collectstatic` on boot. Separate `worker` and `beat` containers run Celery.
+The web container runs `migrate --fake-initial`, `seed_reference_data`, and `collectstatic` on boot. Separate `worker` and `beat` containers run Celery.
 
 ### 1a. Run Backend Without Docker
 ```bash
@@ -77,10 +77,11 @@ python -m venv .venv
 .venv\Scripts\activate        # Windows; use source .venv/bin/activate elsewhere
 pip install -r requirements.txt
 python manage.py migrate --fake-initial
+python manage.py seed_reference_data     # 23 news sources + 11 categories
 python manage.py runserver 0.0.0.0:8080
 ```
 
-Run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info` in separate shells for scheduled ingestion.
+Ingestion runs every 4 hours inside the web process, so no worker or broker is required; `python manage.py ingest_news` runs it once now, `--dry-run` reports per-feed eligible counts, and `--check-ai` verifies the Gemini key. Run `celery -A config worker --loglevel=info` and `celery -A config beat --loglevel=info` in separate shells only if you prefer the Celery schedule over the in-process one.
 
 ### 2. Run Mobile App
 ```bash

@@ -48,18 +48,31 @@ sequenceDiagram
 
 A separate beat task, `prune_raw_ingestions`, runs at midnight.
 
+### Seed data
+
+The Java backend seeded `categories`, `news_sources`, and five sample events on startup. The Django port reproduces the first two through `python manage.py seed_reference_data`, which the web entrypoint runs when `SEED_REFERENCE_DATA=true`. It inserts the 23 default feeds and 11 categories only when they are missing, repairs two dead feed URLs from the Java list (`spring.io/blog.xml` → `spring.io/blog.atom`, `gadgets.ndtv.com/rss/feeds` → the FeedBurner mirror), and never touches rows an operator has edited. With no active sources, discovery logs `Found 0 active sources` and the pipeline is a no-op.
+
 ### Triggering the pipeline
 
-The pipeline entry point is `ingestion.tasks.ingest_all_feeds`. It can be started three ways:
+The pipeline entry point is `ingestion.tasks.ingest_all_feeds`. It can be started four ways:
 
 | Trigger | Requires | Use |
 |---|---|---|
 | In-process scheduler (`core.scheduler`) | Database + Gemini | Default; runs on Render's free plan |
 | Celery Beat → `scheduled_ingest` every 4h | Worker + broker | Production with background workers |
 | `python manage.py ingest_news` | Database + Gemini only | Render cron job, one-off run, local backfill |
-| `POST /api/v1/admin/news/ingest?sync=true` | Admin Firebase token | Manual run or external scheduler |
+| `POST /api/v1/admin/news/ingest` | Admin Firebase token | Manual run or external scheduler |
 
-Without `?sync=true`, the admin endpoint only publishes a Celery message. If no broker is reachable it returns `503` rather than pretending the run started.
+The admin endpoint publishes a Celery message when a broker exists; when it does not (the free-plan case) it runs the pipeline inline and returns `{"saved": N, "candidates": M}`. `?sync=true` forces the inline path.
+
+Retry cadence is outcome-aware: the scheduler retries 15 minutes after a run raises, 1 hour after a run that saved nothing, and 4 hours after a productive run. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
+
+Diagnostics:
+
+```bash
+python manage.py ingest_news --dry-run   # per-feed eligible counts, no writes, no Gemini
+python manage.py ingest_news --check-ai  # one tiny Gemini call, includes the provider's error text
+```
 
 Locks use the cache when available. Because `django-redis` returns `None` for `cache.add` when it swallows a connection error, an unreachable cache must not be treated as a held lock; `_acquire_lock` only blocks on an explicit `False`.
 
@@ -103,7 +116,7 @@ There is no separate DTO layer. Internal code uses dataclasses and Django models
 
 1. Load active `NewsSource` rows.
 2. Collect each feed concurrently with `ThreadPoolExecutor(max_workers=DISCOVERY_THREAD_POOL_SIZE)`.
-3. For each entry, require a publication date within the last 24 hours and a software-engineering or .NET signal.
+3. For each entry, require a publication date within the last `NEWS_FRESHNESS_HOURS` hours (default 24, 48 in `render.yaml`) and a software-engineering or `.NET` signal. Entries stamped up to 2 minutes ahead of the server clock are accepted, because feeds regularly publish slightly in the future.
 4. Clean HTML with BeautifulSoup, normalize URLs, and compute URL/title SHA-256 hashes.
 5. Discard exact duplicates within the current batch or in the database.
 6. Compare remaining candidates against the last 7 days of raw rows: require publication times within 48 hours and token overlap, then apply Jaro-Winkler similarity ≥ `0.85`.
@@ -166,4 +179,4 @@ This keeps the raw staging table compact while preserving the synthesized `techn
 | Raw-ingestion pruning | Daily at midnight | `ingestion.tasks.prune_raw_ingestions` |
 | CS push digest | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` |
 
-The schedule is defined in `backend/config/celery.py` for Celery Beat and mirrored in `backend/core/scheduler.py` for the in-process scheduler. Both match the Java backend's `@Scheduled(cron = "0 0 */4 * * *")`.
+The Celery schedule is defined in `backend/config/celery.py` and matches the Java backend's `@Scheduled(cron = "0 0 */4 * * *")`. The in-process scheduler in `backend/core/scheduler.py` is outcome-aware rather than strictly hourly: it catches up immediately when the newest event is already older than 4 hours, then re-runs after 4 hours on success, 1 hour on an empty run, and 15 minutes after an error.

@@ -48,6 +48,14 @@ services:
       # true unless a Celery worker/beat takes over the schedule.
       - key: INGESTION_SCHEDULER_ENABLED
         value: "true"
+      # The Java backend seeded news sources and categories on startup. Without
+      # sources discovery finds nothing, so the entrypoint keeps this enabled.
+      - key: SEED_REFERENCE_DATA
+        value: "true"
+      # 48h instead of the Java port's hard-coded 24h, so feeds that publish a
+      # few times a week still reach the pipeline. Duplicates are filtered later.
+      - key: NEWS_FRESHNESS_HOURS
+        value: "48"
 
   # Scheduled ingestion (every 4h), midnight pruning, and the 09:00 digest run
   # in-process by default (INGESTION_SCHEDULER_ENABLED=true), because Render's

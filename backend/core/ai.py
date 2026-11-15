@@ -52,6 +52,13 @@ def _quota_cooldown_until(response: requests.Response) -> float:
     return datetime.now(timezone.utc).timestamp() + max(1, retry_seconds)
 
 
+def _error_body(response: requests.Response | None, limit: int = 400) -> str:
+    if response is None:
+        return ""
+    text = " ".join((response.text or "").split())
+    return text[:limit]
+
+
 def _generate_with_model(
     *,
     api_key: str,
@@ -89,7 +96,13 @@ def _generate_with_model(
         timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS),
     )
     if not response.ok:
-        response.raise_for_status()
+        # Include the provider's message: Google answers an invalid key with a
+        # 400 "Please pass a valid API key", which raise_for_status alone hides
+        # behind a bare "400 Client Error".
+        raise requests.HTTPError(
+            f"{response.status_code} from Gemini for model {model}: {_error_body(response)}",
+            response=response,
+        )
 
     if not response.text:
         raise RuntimeError("Empty response body from Gemini API.")
@@ -161,7 +174,10 @@ def generate(
             )
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else 0
-            if status not in {404, 429} and not (500 <= status < 600):
+            # A bad model name, an unsupported parameter for one model, or an
+            # invalid key all arrive as 400/403 here; try the remaining models
+            # before giving up so a single bad name cannot stop ingestion.
+            if status not in {400, 403, 404, 429} and not (500 <= status < 600):
                 raise
             last_error = exc
             if status == 429 and exc.response is not None:
@@ -172,9 +188,10 @@ def generate(
                     candidate,
                 )
             logger.warning(
-                "[GeminiClient] Model %s returned %s; trying next configured model.",
+                "[GeminiClient] Model %s returned %s (%s); trying next configured model.",
                 candidate,
                 status,
+                _error_body(exc.response),
             )
         except requests.RequestException as exc:
             last_error = exc

@@ -24,7 +24,7 @@ A feed that fails all retries raises an error from that collector, which the dis
 `ingestion.agents.text.is_eligible` accepts an entry only when:
 
 1. A publication time exists.
-2. The publication time is within the last 24 hours and not in the future.
+2. The publication time is within the last `NEWS_FRESHNESS_HOURS` hours (default 24; `render.yaml` sets 48) and not more than 2 minutes in the future.
 3. The title/content contains a software-engineering signal or a `.NET` signal.
 
 The software-engineering pattern covers developer tools, programming languages, open source, APIs, frameworks, cloud/DevOps, databases, security, CVEs, and related topics. This rejects general business news and promotional content before it reaches deduplication.
@@ -144,6 +144,7 @@ Response handling:
 - Missing official links fall back to the raw article URL.
 - Missing credibility/importance scores default to `80.0` and `70.0`.
 - A Gemini or JSON failure deletes the raw row and raises an error for the task loop to continue.
+- When every candidate in a run fails, `ingest_all_feeds` logs `Discovered N article(s) but saved none` and returns `{"saved": 0, "candidates": N}`. An invalid Gemini key produces `400 INVALID_ARGUMENT: Please pass a valid API key` and is the most common cause of a stalled feed.
 
 On success, the event is written with `summary_status="READY"` and the raw row becomes `PROCESSED`.
 
@@ -155,7 +156,8 @@ On success, the event is written with `summary_status="READY"` and the raw row b
 
 - The primary model is `GEMINI_MODEL`; additional models come from `GEMINI_FALLBACK_MODELS`.
 - A model is skipped while its per-API-key/per-model cooldown is active.
-- `404`, `429`, and `5xx` responses advance to the next model; other HTTP errors are raised immediately.
+- `400`, `403`, `404`, `429`, and `5xx` responses advance to the next model; other HTTP errors are raised immediately.
+- Every HTTP failure is logged with the provider's response body, so an invalid key reads as `400 ... Please pass a valid API key` instead of a bare `400 Client Error`.
 - Transport errors advance to the next model.
 - On `429`, the cooldown is based on `Retry-After`, or ends at the next Pacific-time day boundary for per-day quota errors.
 - If every model is exhausted, a `RuntimeError` is raised with the last error.

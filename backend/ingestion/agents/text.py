@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlsplit
 
 SOFTWARE_ENGINEERING_SIGNAL = re.compile(
@@ -25,13 +25,14 @@ def is_eligible(
     content: str | None,
     published_at: datetime | None,
     now: datetime | None,
+    max_age_hours: float = 24,
 ) -> bool:
     if published_at is None or now is None:
         return False
-    from datetime import timedelta
-
-    cutoff = now - timedelta(hours=24)
-    if published_at < cutoff or published_at > now:
+    cutoff = now - timedelta(hours=max_age_hours)
+    # Feeds stamp entries a few seconds ahead of us often enough that a strict
+    # `> now` check throws away the freshest articles.
+    if published_at < cutoff or published_at > now + timedelta(minutes=2):
         return False
     searchable = f"{title or ''} {content or ''}".strip()
     return bool(

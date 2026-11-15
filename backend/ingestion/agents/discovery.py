@@ -9,7 +9,12 @@ from django.conf import settings
 from django.db import transaction
 
 from ingestion.agents import rss
-from ingestion.agents.common import clean_html, has_token_overlap, normalize_title, sha256
+from ingestion.agents.common import (
+    clean_html,
+    has_token_overlap,
+    normalize_title,
+    sha256,
+)
 from ingestion.agents.text import is_eligible, jaro_winkler, select_top_articles
 from ingestion.agents.urls import normalize
 from ingestion.models import NewsSource, RawIngestion
@@ -64,7 +69,11 @@ def discover_and_deduplicate() -> list[RawIngestion]:
 
     for update in raw_updates:
         if not is_eligible(
-            update.title, update.raw_content, update.published_at, eligibility_now
+            update.title,
+            update.raw_content,
+            update.published_at,
+            eligibility_now,
+            max_age_hours=settings.NEWS_FRESHNESS_HOURS,
         ):
             rejected_count += 1
             continue
