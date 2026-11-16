@@ -21,12 +21,13 @@ LAST_RUN_CACHE_KEY = "ingestion:lastRun"
 LAST_RUN_CACHE_TTL = 7 * 24 * 3600
 
 
-def record_last_run(started_at: datetime, result: dict) -> None:
+def record_last_run(started_at: datetime, result: dict, trigger: str = "manual") -> None:
     finished_at = datetime.now()
     payload = {
         "at": finished_at.isoformat(timespec="seconds"),
         "startedAt": started_at.isoformat(timespec="seconds"),
         "durationSeconds": round((finished_at - started_at).total_seconds(), 1),
+        "trigger": trigger,
         **result,
     }
     try:
@@ -71,19 +72,19 @@ def scheduled_ingest():
 
     try:
         logger.info("[NewsIngestion] Scheduled run started at %s", datetime.now())
-        return ingest_all_feeds()
+        return ingest_all_feeds(trigger="celery")
     finally:
         _release_lock(lock_key)
 
 
 @shared_task(name="ingestion.tasks.ingest_all_feeds")
-def ingest_all_feeds():
+def ingest_all_feeds(trigger: str = "manual"):
     started_at = datetime.now()
     running_key = "lock:NewsIngestion.running"
     if not _acquire_lock(running_key, timeout=60 * 60):
         logger.warning("[NewsIngestion] Ingestion already in progress. Skipping.")
         result = {"skipped": True}
-        record_last_run(started_at, result)
+        record_last_run(started_at, result, trigger)
         return result
 
     try:
@@ -152,10 +153,10 @@ def ingest_all_feeds():
             len(unique_candidates),
         )
         result = {"saved": saved_count, "candidates": len(unique_candidates)}
-        record_last_run(started_at, result)
+        record_last_run(started_at, result, trigger)
         return result
     except Exception as exc:
-        record_last_run(started_at, {"error": str(exc)})
+        record_last_run(started_at, {"error": str(exc)}, trigger)
         raise
     finally:
         _release_lock(running_key)

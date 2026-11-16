@@ -62,7 +62,7 @@ def test_trigger_ingest_runs_in_the_background_by_default(monkeypatch):
     """Redis makes .delay() succeed even with no worker, so run it in-process."""
     done = threading.Event()
 
-    def fake_run():
+    def fake_run(**kwargs):
         done.set()
         return {"saved": 1, "candidates": 2}
 
@@ -273,3 +273,110 @@ def test_freshness_window_is_configurable():
 def test_entries_slightly_ahead_of_the_clock_are_accepted():
     now = datetime(2026, 11, 15, 12, 0)
     assert is_eligible("Rust compiler", "new release", now + timedelta(minutes=1), now)
+
+
+def test_admin_health_reports_the_scheduler_component():
+    response = admin_client("admin-health-scheduler").get("/api/v1/admin/news/health")
+
+    assert response.status_code == 200
+    assert "scheduler" in response.json()["components"]
+
+
+def test_scheduler_state_exposes_the_heartbeat_and_next_run():
+    cache.delete(scheduler.STATE_CACHE_KEY)
+    scheduler._publish_state(
+        startedAt="2026-11-16T09:00:00",
+        elected=True,
+        nextIngestAt="2026-11-16T16:50:00",
+        lastTickAt="2026-11-16T09:00:00",
+    )
+
+    state = scheduler.state()
+
+    assert state["enabled"] is False  # tests never start the scheduler
+    assert state["elected"] is True
+    assert state["nextIngestAt"] == "2026-11-16T16:50:00"
+    assert isinstance(state["heartbeatAgeSeconds"], float)
+    assert state["tickSeconds"] == scheduler.TICK_SECONDS
+
+
+def test_scheduler_health_reports_a_stale_heartbeat_as_down(monkeypatch):
+    monkeypatch.setattr(scheduler, "enabled", lambda: True)
+    monkeypatch.setattr(
+        scheduler,
+        "state",
+        lambda: {
+            "startedAt": "2026-11-16T09:00:00",
+            "updatedAt": "2026-11-16T09:00:00",
+            "heartbeatAgeSeconds": 3600.0,
+            "tickSeconds": 60,
+        },
+    )
+
+    assert views._scheduler_status().startswith("DOWN")
+
+
+def test_scheduler_health_reports_an_up_heartbeat(monkeypatch):
+    monkeypatch.setattr(scheduler, "enabled", lambda: True)
+    monkeypatch.setattr(
+        scheduler,
+        "state",
+        lambda: {
+            "startedAt": "2026-11-16T09:00:00",
+            "updatedAt": "2026-11-16T09:00:30",
+            "heartbeatAgeSeconds": 12.0,
+            "tickSeconds": 60,
+            "elected": True,
+            "nextIngestAt": "2026-11-16T16:50:00",
+        },
+    )
+
+    component = views._scheduler_status()
+
+    assert component.startswith("UP")
+    assert "2026-11-16T16:50:00" in component
+
+
+def test_internal_ingest_is_hidden_when_no_token_is_configured(monkeypatch):
+    monkeypatch.delenv("INGEST_TRIGGER_TOKEN", raising=False)
+
+    response = Client().get("/internal/ingest")
+
+    assert response.status_code == 404
+
+
+def test_internal_ingest_rejects_a_wrong_token(monkeypatch):
+    monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
+
+    response = Client().get("/internal/ingest", HTTP_X_INGEST_TOKEN="not-the-secret")
+
+    assert response.status_code == 403
+    assert response.json()["success"] is False
+
+
+def test_internal_ingest_starts_a_background_run(monkeypatch):
+    monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
+    started = []
+    monkeypatch.setattr(
+        "ingestion.views._start_background_run", lambda **kwargs: started.append(kwargs)
+    )
+
+    response = Client().post("/internal/ingest", HTTP_X_INGEST_TOKEN="cron-secret")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"mode": "background"}
+    assert started == [{"trigger": "cron"}]
+
+
+def test_internal_ingest_sync_returns_the_run_result(monkeypatch):
+    monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
+    monkeypatch.setattr(
+        "ingestion.views.ingest_all_feeds", lambda **kwargs: {"saved": 4, "candidates": 6}
+    )
+
+    response = Client().get(
+        "/internal/ingest?sync=true", HTTP_X_INGEST_TOKEN="cron-secret"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"saved": 4, "candidates": 6}

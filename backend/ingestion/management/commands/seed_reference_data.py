@@ -69,12 +69,17 @@ class Command(BaseCommand):
         with transaction.atomic():
             created_sources = self._seed_sources(dry_run)
             created_categories = self._seed_categories(dry_run)
+            deactivated_sources = self._deactivate_unusable_sources(dry_run)
 
         active_sources = NewsSource.objects.filter(active=True).count()
         self.stdout.write(
             f"News sources: created {created_sources}, total {NewsSource.objects.count()}, "
             f"active {active_sources}."
         )
+        if deactivated_sources:
+            self.stdout.write(
+                f"Deactivated {deactivated_sources} source(s) with a non-HTTP feed URL."
+            )
         self.stdout.write(
             f"Categories: created {created_categories}, total {Category.objects.count()}."
         )
@@ -104,6 +109,28 @@ class Command(BaseCommand):
                     url=url, defaults={"name": name, "active": True}
                 )
         return created
+
+    def _deactivate_unusable_sources(self, dry_run: bool) -> int:
+        """Turn off sources whose feed URL no collector can fetch.
+
+        A `file://` source is a test fixture that was written into the shared
+        database: production retries it three times on every run and logs a
+        failure, and it can never succeed. Deactivating instead of deleting
+        keeps the row (and its id) for anyone inspecting the table.
+        """
+        deactivated = 0
+        for source in NewsSource.objects.filter(active=True):
+            url = (source.url or "").strip().lower()
+            if url.startswith(("http://", "https://")):
+                continue
+            deactivated += 1
+            self.stdout.write(
+                f"  - deactivate source {source.name} <{source.url}> (not an HTTP feed)"
+            )
+            if not dry_run:
+                source.active = False
+                source.save(update_fields=["active"])
+        return deactivated
 
     def _seed_categories(self, dry_run: bool) -> int:
         created = 0

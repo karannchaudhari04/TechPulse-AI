@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import hmac
 import logging
+import os
 import threading
 import uuid
 from datetime import datetime
 
 from django.conf import settings
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view, permission_classes
 
 from core.permissions import IsAdminRole
-from core.response import fail, java_datetime, ok
+from core.response import api_payload, fail, java_datetime, ok
 from ingestion import services
 from ingestion.models import NewsSource
 from ingestion.tasks import LAST_RUN_CACHE_KEY, ingest_all_feeds
@@ -38,6 +42,7 @@ def health(request):
     components["redis"] = _redis_status()
     components["collectors"] = "UP"
     components["pipeline"] = _pipeline_status()
+    components["scheduler"] = _scheduler_status()
     # Surfaced here because a missing or invalid Gemini key is the most common
     # reason a run discovers articles and still saves nothing. It does not change
     # the overall status: that still tracks whether the pipeline can reach data.
@@ -83,11 +88,48 @@ def _pipeline_status() -> str:
         return "UNKNOWN (no ingestion run recorded yet)"
     if last_run.get("error"):
         return f"ERROR (last run at {last_run.get('at')}: {last_run['error']})"
+    trigger = last_run.get("trigger")
+    source = f", trigger {trigger}" if trigger else ""
     if last_run.get("skipped"):
-        return f"UP (last run at {last_run.get('at')} skipped: another run was in progress)"
+        return (
+            f"UP (last run at {last_run.get('at')} skipped: another run was in progress{source})"
+        )
     return (
         f"UP (last run at {last_run.get('at')}: saved {last_run.get('saved', 0)}"
-        f"/{last_run.get('candidates', 0)} candidates)"
+        f"/{last_run.get('candidates', 0)} candidates{source})"
+    )
+
+
+def _scheduler_status() -> str:
+    """Report the in-process scheduler's heartbeat.
+
+    On Render's free plan the daemon thread exists only while the instance is
+    awake. Without this component "no automatic runs" is indistinguishable from
+    "the scheduler never started", "it is asleep", and "it is running fine", so
+    the report includes the next run and the age of the last heartbeat.
+    """
+    from core import scheduler
+
+    if not scheduler.enabled():
+        return "DISABLED (INGESTION_SCHEDULER_ENABLED is false)"
+
+    state = scheduler.state()
+    if not state.get("startedAt"):
+        return "DOWN (never started: no HTTP request has reached this instance yet)"
+
+    age = state.get("heartbeatAgeSeconds")
+    limit = 3 * int(state.get("tickSeconds") or 60)
+    if age is None:
+        return f"DOWN (started {state['startedAt']} but never recorded a tick)"
+    if age > limit:
+        return (
+            f"DOWN (last heartbeat {age:.0f}s ago at {state.get('updatedAt')}; "
+            "the instance is asleep or the scheduler thread died)"
+        )
+    return (
+        f"UP (started {state['startedAt']}, elected={state.get('elected')}, "
+        f"next run {state.get('nextIngestAt') or 'unknown'}, "
+        f"heartbeat {age:.0f}s ago)"
     )
 
 
@@ -168,10 +210,13 @@ def trigger_ingest(request):
 
 
 def _flag(request, name: str) -> bool:
-    return request.query_params.get(name, "").strip().lower() in TRUE_VALUES
+    params = getattr(request, "query_params", None)
+    if params is None:
+        params = request.GET
+    return str(params.get(name, "")).strip().lower() in TRUE_VALUES
 
 
-def _start_background_run() -> None:
+def _start_background_run(trigger: str = "manual") -> None:
     """Run ingestion off the request thread.
 
     A Celery enqueue needs a worker to consume it and a blocking inline run can
@@ -182,10 +227,71 @@ def _start_background_run() -> None:
 
     def run() -> None:
         try:
-            result = ingest_all_feeds()
+            result = ingest_all_feeds(trigger=trigger)
             logger.info("[NewsIngestion] Background ingestion finished: %s", result)
         except Exception as exc:
             logger.exception("[NewsIngestion] Background ingestion failed: %s", exc)
 
     threading.Thread(target=run, name="techpulse-ingest", daemon=True).start()
 
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def internal_ingest(request):
+    """Wake the service and start ingestion from an external scheduler.
+
+    Render's free plan spins the web service down after 15 minutes without
+    inbound traffic, which also stops the in-process scheduler. A cron service
+    (cron-job.org, GitHub Actions, UptimeRobot with a paid plan, ...) can call
+    this endpoint every few hours: the request boots or keeps the instance awake
+    and the run continues in a daemon thread after the response is returned.
+
+    It purposely lives outside ``/api/v1`` so it does not need a Firebase token
+    (no worker or service account is available to a cron job); the shared secret
+    in ``INGEST_TRIGGER_TOKEN`` is the authentication. When the variable is not
+    set the route 404s, so an unconfigured deployment exposes nothing.
+    """
+    token = os.getenv("INGEST_TRIGGER_TOKEN", "")
+    if not token:
+        raise Http404
+
+    provided = request.headers.get("X-Ingest-Token") or request.GET.get("token", "")
+    if not hmac.compare_digest(provided, token):
+        return JsonResponse(
+            api_payload(
+                False, "Invalid ingestion token.", None, getattr(request, "correlation_id", None)
+            ),
+            status=403,
+        )
+
+    if _flag(request, "sync"):
+        logger.info("[NewsIngestion] Running ingestion synchronously for an external scheduler")
+        try:
+            result = ingest_all_feeds(trigger="cron")
+        except Exception as exc:
+            logger.exception("[NewsIngestion] External synchronous ingestion failed")
+            return JsonResponse(
+                api_payload(
+                    False,
+                    f"News ingestion failed: {exc}",
+                    None,
+                    getattr(request, "correlation_id", None),
+                ),
+                status=503,
+            )
+        return JsonResponse(
+            api_payload(
+                True, "News ingestion completed.", result, getattr(request, "correlation_id", None)
+            )
+        )
+
+    _start_background_run(trigger="cron")
+    logger.info("[NewsIngestion] External scheduler triggered ingestion in the background")
+    return JsonResponse(
+        api_payload(
+            True,
+            "News ingestion triggered in the background.",
+            {"mode": "background"},
+            getattr(request, "correlation_id", None),
+        )
+    )

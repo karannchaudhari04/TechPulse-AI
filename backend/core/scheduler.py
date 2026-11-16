@@ -23,6 +23,7 @@ import time
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +49,63 @@ ELECTION_LOCK_PATH = os.getenv(
 _lock = threading.Lock()
 _started = False
 _election_fd: int | None = None
+_thread: threading.Thread | None = None
+
+# The scheduler can only be inspected from the process that runs it, and the
+# web service has two Gunicorn workers. Publishing a heartbeat through the cache
+# lets `/api/v1/admin/news/health` answer from whichever worker handles the
+# request, and it proves whether the thread is alive without Render logs.
+STATE_CACHE_KEY = "scheduler:state"
+STATE_CACHE_TTL = 3600
 
 
 def enabled() -> bool:
     if settings.RUNNING_TESTS:
         return False
     return os.getenv("INGESTION_SCHEDULER_ENABLED", "true").lower() in {"1", "true", "yes"}
+
+
+def _publish_state(**fields) -> dict:
+    """Merge progress into the shared heartbeat; never raise."""
+    state: dict = {}
+    try:
+        cached = cache.get(STATE_CACHE_KEY)
+    except Exception:
+        cached = None
+    if isinstance(cached, dict):
+        state.update(cached)
+    state.update(fields)
+    state["updatedAt"] = datetime.now().isoformat(timespec="seconds")
+    try:
+        cache.set(STATE_CACHE_KEY, state, timeout=STATE_CACHE_TTL)
+    except Exception:
+        pass
+    return state
+
+
+def _age_seconds(value) -> float | None:
+    try:
+        stamp = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    return round((datetime.now() - stamp).total_seconds(), 1)
+
+
+def state() -> dict:
+    """Snapshot of the scheduler for the admin health report."""
+    snapshot: dict = {}
+    try:
+        cached = cache.get(STATE_CACHE_KEY)
+    except Exception:
+        cached = None
+    if isinstance(cached, dict):
+        snapshot.update(cached)
+    snapshot["enabled"] = enabled()
+    snapshot["electedInThisWorker"] = _election_fd is not None
+    snapshot["threadAliveInThisWorker"] = bool(_thread and _thread.is_alive())
+    snapshot["tickSeconds"] = TICK_SECONDS
+    snapshot["heartbeatAgeSeconds"] = _age_seconds(snapshot.get("updatedAt"))
+    return snapshot
 
 
 def connect() -> None:
@@ -69,15 +121,16 @@ def _on_request_started(sender, **kwargs) -> None:
 
 def start_once() -> bool:
     """Start the background thread once. Returns True when this call started it."""
-    global _started
+    global _started, _thread
     if not enabled():
         return False
     with _lock:
         if _started:
             return False
         _started = True
-    thread = threading.Thread(target=_run_forever, name="techpulse-scheduler", daemon=True)
-    thread.start()
+    _thread = threading.Thread(target=_run_forever, name="techpulse-scheduler", daemon=True)
+    _thread.start()
+    _publish_state(startedAt=datetime.now().isoformat(timespec="seconds"), pid=os.getpid())
     logger.info(
         "[Scheduler] In-process scheduler started (ingestion every %s)", INGESTION_INTERVAL
     )
@@ -158,16 +211,27 @@ def _run_forever() -> None:
     last_prune_date: date | None = None
     last_digest_date: date | None = None
     next_ingest_at: datetime | None = None
+    announced = False
 
     while True:
         now = datetime.now()
+        tick = now.isoformat(timespec="seconds")
+        error: str | None = None
         try:
             if not holds_election():
+                # Another Gunicorn worker owns the schedule. It publishes the
+                # heartbeat; a loser must not overwrite it with elected=false.
                 time.sleep(TICK_SECONDS)
                 continue
 
             if next_ingest_at is None:
                 next_ingest_at = initial_next_run(now)
+                if not announced:
+                    announced = True
+                    logger.info(
+                        "[Scheduler] Elected this worker; next ingestion run at %s",
+                        next_ingest_at,
+                    )
 
             for task in due_tasks(now, next_ingest_at, last_prune_date, last_digest_date):
                 if task == "pruning":
@@ -189,8 +253,17 @@ def _run_forever() -> None:
                 else:
                     next_ingest_at = next_run_after(datetime.now(), result)
                     logger.info("[Scheduler] Next ingestion run at %s", next_ingest_at)
-        except Exception:
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
             logger.exception("[Scheduler] Tick failed; retrying in %ss", TICK_SECONDS)
+        _publish_state(
+            elected=True,
+            lastTickAt=tick,
+            nextIngestAt=(
+                next_ingest_at.isoformat(timespec="seconds") if next_ingest_at else None
+            ),
+            lastError=error,
+        )
         time.sleep(TICK_SECONDS)
 
 
@@ -199,7 +272,7 @@ def _run_task(name: str):
     if name == "ingestion":
         from ingestion.tasks import ingest_all_feeds
 
-        result = ingest_all_feeds()
+        result = ingest_all_feeds(trigger="scheduler")
     elif name == "pruning":
         from ingestion.tasks import prune_raw_ingestions
 

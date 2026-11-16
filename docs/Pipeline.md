@@ -50,7 +50,7 @@ A separate beat task, `prune_raw_ingestions`, runs at midnight.
 
 ### Seed data
 
-The Java backend seeded `categories`, `news_sources`, and five sample events on startup. The Django port reproduces the first two through `python manage.py seed_reference_data`, which the web entrypoint runs when `SEED_REFERENCE_DATA=true`. It inserts the 23 default feeds and 11 categories only when they are missing, repairs two dead feed URLs from the Java list (`spring.io/blog.xml` → `spring.io/blog.atom`, `gadgets.ndtv.com/rss/feeds` → the FeedBurner mirror), and never touches rows an operator has edited. With no active sources, discovery logs `Found 0 active sources` and the pipeline is a no-op.
+The Java backend seeded `categories`, `news_sources`, and five sample events on startup. The Django port reproduces the first two through `python manage.py seed_reference_data`, which the web entrypoint runs when `SEED_REFERENCE_DATA=true`. It inserts the 23 default feeds and 11 categories only when they are missing, repairs two dead feed URLs from the Java list (`spring.io/blog.xml` → `spring.io/blog.atom`, `gadgets.ndtv.com/rss/feeds` → the FeedBurner mirror), and never overwrites a row an operator has edited beyond those repairs. It also deactivates (rather than deletes) an active source whose URL is not `http(s)` — this is how a test-fixture `file://` feed that leaked into a shared database stops failing on every run. With no active sources, discovery logs `Found 0 active sources` and the pipeline is a no-op.
 
 ### Triggering the pipeline
 

@@ -73,3 +73,23 @@ def test_dry_run_ingest_reports_sources_without_saving(monkeypatch):
 
     assert "Example" in out.getvalue()
     assert "No database writes" in out.getvalue()
+
+
+def test_seeder_deactivates_a_fixture_source_with_a_file_url():
+    """A test fixture written into the shared database fails on every run."""
+    source = NewsSource.objects.create(
+        url="file:///tmp/tpproto/feed.xml", name="Fixture", active=True
+    )
+
+    output = run_seeder()
+
+    source.refresh_from_db()
+    assert source.active is False
+    assert "deactivate source Fixture" in output
+    assert NewsSource.objects.filter(active=True).count() == len(DEFAULT_SOURCES)
+
+
+def test_seeder_keeps_http_sources_active():
+    run_seeder()
+
+    assert NewsSource.objects.filter(active=True).count() == len(DEFAULT_SOURCES)

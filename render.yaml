@@ -51,6 +51,14 @@ services:
       # true unless a Celery worker/beat takes over the schedule.
       - key: INGESTION_SCHEDULER_ENABLED
         value: "true"
+      # Shared secret for the external-scheduler hook at /internal/ingest. A
+      # cron service (cron-job.org, GitHub Actions, ...) calls
+      #   GET https://techbite.onrender.com/internal/ingest
+      #       with header  X-Ingest-Token: <value>
+      # which boots a sleeping free instance and starts ingestion. Unset means
+      # the route 404s; copy this generated value into the cron service.
+      - key: INGEST_TRIGGER_TOKEN
+        generateValue: true
       # The Java backend seeded news sources and categories on startup. Without
       # sources discovery finds nothing, so the entrypoint keeps this enabled.
       - key: SEED_REFERENCE_DATA
