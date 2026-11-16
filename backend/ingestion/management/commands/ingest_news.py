@@ -75,7 +75,7 @@ class Command(BaseCommand):
             self._dry_run()
             return
 
-        result = ingest_all_feeds()
+        result = ingest_all_feeds(trigger="cli")
         self.stdout.write(self.style.SUCCESS(f"Ingestion finished: {result}"))
 
     def _check_ai(self) -> None:
