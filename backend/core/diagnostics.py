@@ -80,4 +80,12 @@ def recent_requests() -> list:
         recent = cache.get(CACHE_KEY)
     except Exception:
         return []
-    return recent if isinstance(recent, list) else []
+    if not isinstance(recent, list):
+        return []
+    # Entries written by older builds may still be inside the 24h TTL; hide the
+    # diagnostics page itself either way.
+    return [
+        entry
+        for entry in recent
+        if isinstance(entry, dict) and entry.get("path") != "/status"
+    ]

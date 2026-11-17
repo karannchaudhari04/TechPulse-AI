@@ -540,6 +540,18 @@ def test_diagnostics_does_not_record_the_status_page_itself():
     assert diagnostics.recent_requests() == []
 
 
+def test_diagnostics_hides_status_entries_written_by_older_builds():
+    cache.set(
+        diagnostics.CACHE_KEY,
+        [{"path": "/status"}, {"path": "/actuator/health"}],
+        timeout=60,
+    )
+
+    assert [entry["path"] for entry in diagnostics.recent_requests()] == [
+        "/actuator/health"
+    ]
+
+
 def test_status_is_public_and_reports_the_scheduler(monkeypatch):
     monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
     monkeypatch.setenv("RENDER_GIT_COMMIT", "abc1234")
