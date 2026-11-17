@@ -6,6 +6,7 @@ from ingestion import views as ingestion_views
 urlpatterns = [
     path("", views.index),
     path("actuator/health", views.actuator_health),
+    path("status", views.status),
     path(".well-known/assetlinks.json", views.asset_links),
     path("bite/<str:event_id>", views.deep_link),
     # External-scheduler hook. It lives outside /api/v1 because a cron service

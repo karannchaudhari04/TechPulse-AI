@@ -67,7 +67,7 @@ The admin endpoint runs the pipeline in a daemon thread by default and returns i
 
 Every run writes a summary to the `ingestion:lastRun` cache key (`at`, `startedAt`, `durationSeconds`, `saved`, `candidates`, or `error`/`skipped`), which the admin health endpoint reports under `components.pipeline`.
 
-Retry cadence is outcome-aware: the scheduler retries 15 minutes after a run raises, 1 hour after a run that saved nothing, and 8 hours after a productive run. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
+Retry cadence follows the Java backend's clock: the scheduler runs at minute 0 of hours divisible by `INGESTION_SCHEDULE_HOURS` (default 8 → 00:00, 08:00, 16:00 UTC), and a successful or empty run waits for the next boundary. Only a run that never happened (lock held by another worker) or an exception is retried after 15 minutes. A productive or empty outcome does not shift the clock, and a manual run does not delay the next automatic one. A run that discovers candidates but saves none logs an error naming the `[AI_SYNTHESIS]` failures, because synthesis is the only stage that can drop an eligible article.
 
 Diagnostics:
 
@@ -177,8 +177,8 @@ This keeps the raw staging table compact while preserving the synthesized `techn
 
 | Task | Schedule | Entry point |
 |---|---|---|
-| News ingestion | Every 8 hours (`minute=0, hour="*/8"`) | `ingestion.tasks.scheduled_ingest` |
+| News ingestion | Every 8 hours at 00:00, 08:00, and 16:00 (`INGESTION_SCHEDULE_HOURS`) | `ingestion.tasks.scheduled_ingest` |
 | Raw-ingestion pruning | Daily at midnight | `ingestion.tasks.prune_raw_ingestions` |
 | CS push digest | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` |
 
-The Celery schedule is defined in `backend/config/celery.py` and runs every 8 hours (`0 */8 * * *`), replacing the Java backend's 4-hour `@Scheduled(cron = "0 0 */4 * * *")`. The in-process scheduler in `backend/core/scheduler.py` is outcome-aware rather than strictly hourly: it catches up immediately when the newest event is already older than 8 hours, then re-runs after 8 hours on success, 1 hour on an empty run, and 15 minutes after an error.
+The Celery schedule is defined in `backend/config/celery.py` and runs every 8 hours (`0 */8 * * *`), replacing the Java backend's 4-hour `@Scheduled(cron = "0 0 */4 * * *")`. The in-process scheduler in `backend/core/scheduler.py` implements the same fixed-clock semantics (`0 0 */N * * *`): it runs at the boundary, catches up once on boot after a missed boundary, and retries only a skipped or failed run after 15 minutes. Set `INGESTION_SCHEDULE_HOURS=4` to restore the Java cadence.

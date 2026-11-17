@@ -84,11 +84,13 @@ Three scheduled jobs run every day:
 
 | Schedule | Task | Purpose |
 |---|---|---|
-| Every 8 hours | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
+| Every 8 hours at 00:00, 08:00, and 16:00 (`INGESTION_SCHEDULE_HOURS`) | `ingestion.tasks.scheduled_ingest` | Acquire a distributed cache lock and run the ingestion pipeline. |
 | Daily at 00:00 | `ingestion.tasks.prune_raw_ingestions` | Delete stale processed/duplicate rows and leftover unprocessed rows. |
 | Daily at 09:00 | `notifications.tasks.send_daily_cs_digest` | Send a random CS digest to registered Expo push tokens. |
 
 The schedule is declared once in `backend/config/celery.py`, and `core.scheduler` runs the same three jobs from a daemon thread inside the web process, started on the first HTTP request (the Django equivalent of the Java backend's `@EnableScheduling`). The in-process scheduler is what runs on Render's free plan, where no worker or beat process exists. Set `INGESTION_SCHEDULER_ENABLED=false` when Celery Beat owns the schedule.
+
+Ingestion uses the Java backend's fixed-clock semantics: it runs at minute 0 of hours divisible by `INGESTION_SCHEDULE_HOURS` (default 8), and the next run is always the next boundary regardless of how many articles the previous run saved. When the instance was asleep and a boundary passed, the scheduler catches up once on boot, then resumes the clock. A skipped run (another worker held the lock) and an exception are retried after 15 minutes instead of waiting for the next boundary. `GET /status` exposes the heartbeat, next boundary, last run, and recent request sightings for diagnosing missed runs.
 
 Manual ingestion is available through the admin endpoint `POST /api/v1/admin/news/ingest`. By default it runs `ingest_all_feeds` in a background thread so the request returns below Gunicorn's timeout; `?async=true` enqueues it for a Celery worker, and `?sync=true` runs it inline. See [Pipeline.md](Pipeline.md) for the full data flow.
 

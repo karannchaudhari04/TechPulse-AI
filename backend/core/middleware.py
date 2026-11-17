@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 
 from core.authentication import FirebaseAuthentication, FirebaseUser
+from core.diagnostics import record_request
 from core.response import api_payload
 
 _local_buckets: dict[str, deque] = defaultdict(deque)
@@ -79,6 +80,7 @@ class CorrelationIdMiddleware(MiddlewareMixin):
                 )
                 if cid:
                     response["X-Correlation-ID"] = cid
+        record_request(request, response)
         return response
 
 

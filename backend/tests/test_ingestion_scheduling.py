@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.test import Client, RequestFactory
 
 from accounts.models import UserAccount
-from core import scheduler
+from core import diagnostics, scheduler
 from core.views import actuator_health
 from ingestion import tasks, views
 from ingestion.agents.text import is_eligible
@@ -191,41 +191,114 @@ def test_scheduler_waits_until_the_next_run_time():
     assert "ingestion" in scheduler.due_tasks(now, now, today, today)
 
 
-def test_next_run_is_eight_hours_after_a_productive_run():
+def test_next_run_after_a_productive_run_is_the_next_clock_boundary():
+    """Java's @Scheduled(cron) is fixed-clock: success does not shift the time."""
     now = datetime(2026, 11, 15, 12, 0)
-    assert scheduler.next_run_after(now, {"saved": 3, "candidates": 5}) == now + timedelta(
-        hours=8
+    assert scheduler.next_run_after(now, {"saved": 3, "candidates": 5}) == datetime(
+        2026, 11, 15, 16, 0
     )
 
 
-def test_next_run_is_one_hour_after_an_empty_run():
-    """No fresh articles is normal; do not wait eight hours to look again."""
+def test_next_run_after_an_empty_run_is_still_the_next_clock_boundary():
     now = datetime(2026, 11, 15, 12, 0)
-    assert scheduler.next_run_after(now, {"saved": 0, "candidates": 0}) == now + timedelta(
-        hours=1
+    assert scheduler.next_run_after(now, {"saved": 0, "candidates": 0}) == datetime(
+        2026, 11, 15, 16, 0
     )
 
 
-def test_next_run_is_soon_after_a_skipped_run():
+def test_next_run_after_a_skipped_run_is_soon():
     now = datetime(2026, 11, 15, 12, 0)
     assert scheduler.next_run_after(now, {"skipped": True}) == now + timedelta(minutes=15)
 
 
-def test_initial_run_catches_up_when_the_feed_is_stale(monkeypatch):
-    now = datetime(2026, 11, 15, 12, 0)
-    monkeypatch.setattr(scheduler, "_latest_event_time", lambda: now - timedelta(days=5))
-    assert scheduler.initial_next_run(now) < now
+def test_schedule_defaults_to_cron_every_eight_hours(monkeypatch):
+    monkeypatch.delenv("INGESTION_SCHEDULE_HOURS", raising=False)
+
+    assert scheduler.schedule_hours() == 8
+    assert scheduler.schedule_cron() == "0 0 */8 * * *"
 
 
-def test_initial_run_waits_when_the_last_event_is_recent(monkeypatch):
+def test_schedule_hours_can_restore_the_java_four_hour_cadence(monkeypatch):
+    monkeypatch.setenv("INGESTION_SCHEDULE_HOURS", "4")
+
+    assert scheduler.schedule_cron() == "0 0 */4 * * *"
+    assert scheduler.next_scheduled_boundary(datetime(2026, 11, 15, 12, 0)) == datetime(
+        2026, 11, 15, 16, 0
+    )
+
+
+def test_schedule_hours_fall_back_when_the_env_value_is_invalid(monkeypatch):
+    monkeypatch.setenv("INGESTION_SCHEDULE_HOURS", "not-a-number")
+    assert scheduler.schedule_hours() == 8
+
+    monkeypatch.setenv("INGESTION_SCHEDULE_HOURS", "0")
+    assert scheduler.schedule_hours() == 8
+
+
+def test_scheduled_boundaries_are_minute_zero_of_the_configured_hours(monkeypatch):
+    monkeypatch.setenv("INGESTION_SCHEDULE_HOURS", "8")
+    now = datetime(2026, 11, 15, 9, 37, 12)
+
+    assert scheduler.last_scheduled_boundary(now) == datetime(2026, 11, 15, 8, 0)
+    assert scheduler.next_scheduled_boundary(now) == datetime(2026, 11, 15, 16, 0)
+
+    # Exactly on a boundary: next is the following one, last is this one.
+    on_boundary = datetime(2026, 11, 15, 16, 0)
+    assert scheduler.last_scheduled_boundary(on_boundary) == on_boundary
+    assert scheduler.next_scheduled_boundary(on_boundary) == datetime(2026, 11, 16, 0, 0)
+
+
+def test_a_daily_schedule_fires_at_midnight(monkeypatch):
+    monkeypatch.setenv("INGESTION_SCHEDULE_HOURS", "24")
     now = datetime(2026, 11, 15, 12, 0)
-    monkeypatch.setattr(scheduler, "_latest_event_time", lambda: now - timedelta(hours=1))
-    assert scheduler.initial_next_run(now) == now + timedelta(hours=7)
+
+    assert scheduler.last_scheduled_boundary(now) == datetime(2026, 11, 15, 0, 0)
+    assert scheduler.next_scheduled_boundary(now) == datetime(2026, 11, 16, 0, 0)
+
+
+def test_initial_run_catches_up_when_a_boundary_passed_while_asleep(monkeypatch):
+    """Boot at 09:00 with the last run at 04:00: the 08:00 boundary was missed."""
+    now = datetime(2026, 11, 15, 9, 0)
+    monkeypatch.setattr(
+        scheduler, "_last_activity_time", lambda: datetime(2026, 11, 15, 4, 0)
+    )
+
+    assert scheduler.initial_next_run(now) == now
+
+
+def test_initial_run_waits_for_the_next_boundary_when_the_last_run_is_current(monkeypatch):
+    now = datetime(2026, 11, 15, 9, 0)
+    monkeypatch.setattr(
+        scheduler, "_last_activity_time", lambda: datetime(2026, 11, 15, 8, 1)
+    )
+
+    assert scheduler.initial_next_run(now) == datetime(2026, 11, 15, 16, 0)
+
+
+def test_initial_run_reads_the_last_run_timestamp_from_the_cache():
+    """A manual run an hour ago must not be repeated, but a missed boundary must be."""
+    cache.set(
+        tasks.LAST_RUN_CACHE_KEY,
+        {"at": "2026-11-15T04:00:00", "saved": 2, "candidates": 3},
+        timeout=60,
+    )
+    assert scheduler.initial_next_run(datetime(2026, 11, 15, 9, 0)) == datetime(
+        2026, 11, 15, 9, 0
+    )
+
+    cache.set(
+        tasks.LAST_RUN_CACHE_KEY,
+        {"at": "2026-11-15T08:05:00", "saved": 2, "candidates": 3},
+        timeout=60,
+    )
+    assert scheduler.initial_next_run(datetime(2026, 11, 15, 9, 0)) == datetime(
+        2026, 11, 15, 16, 0
+    )
 
 
 def test_initial_run_happens_immediately_on_an_empty_database(monkeypatch):
     now = datetime(2026, 11, 15, 12, 0)
-    monkeypatch.setattr(scheduler, "_latest_event_time", lambda: None)
+    monkeypatch.setattr(scheduler, "_last_activity_time", lambda: None)
     assert scheduler.initial_next_run(now) == now
 
 
@@ -254,6 +327,39 @@ def test_scheduler_elects_a_single_owner_per_host():
     """Two Gunicorn workers must not ingest the same article concurrently."""
     assert scheduler.holds_election() is True
     assert scheduler.holds_election() is True
+
+
+def test_scheduler_restarts_a_thread_that_died(monkeypatch):
+    started = []
+
+    class DeadThread:
+        def is_alive(self):
+            return False
+
+    class FakeThread:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def start(self):
+            started.append(True)
+
+        def is_alive(self):
+            return False
+
+    monkeypatch.setattr(scheduler, "enabled", lambda: True)
+    monkeypatch.setattr(scheduler, "_publish_state", lambda **kwargs: {})
+    monkeypatch.setattr(scheduler, "_thread", DeadThread())
+    monkeypatch.setattr(scheduler.threading, "Thread", FakeThread)
+
+    assert scheduler.start_once() is True
+    assert started == [True]
+
+
+def test_scheduler_does_not_start_a_second_thread_while_one_is_alive(monkeypatch):
+    monkeypatch.setattr(scheduler, "enabled", lambda: True)
+    monkeypatch.setattr(scheduler, "_thread", SimpleNamespace(is_alive=lambda: True))
+
+    assert scheduler.start_once() is False
 
 
 def test_freshness_window_is_configurable():
@@ -298,6 +404,7 @@ def test_scheduler_state_exposes_the_heartbeat_and_next_run():
     assert state["nextIngestAt"] == "2026-11-16T16:50:00"
     assert isinstance(state["heartbeatAgeSeconds"], float)
     assert state["tickSeconds"] == scheduler.TICK_SECONDS
+    assert state["scheduleCron"] == "0 0 */8 * * *"
 
 
 def test_scheduler_health_reports_a_stale_heartbeat_as_down(monkeypatch):
@@ -380,3 +487,74 @@ def test_internal_ingest_sync_returns_the_run_result(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["data"] == {"saved": 4, "candidates": 6}
+
+
+def _request_for(path="/actuator/health", user_agent="UptimeRobot/2.0"):
+    return RequestFactory().get(path, HTTP_USER_AGENT=user_agent)
+
+
+def test_diagnostics_records_a_monitor_sighting():
+    cache.delete(diagnostics.CACHE_KEY)
+    diagnostics._last_recorded.clear()
+
+    diagnostics.record_request(
+        _request_for(), SimpleNamespace(status_code=200)
+    )
+
+    recent = diagnostics.recent_requests()
+    assert recent[0]["path"] == "/actuator/health"
+    assert recent[0]["userAgent"] == "UptimeRobot/2.0"
+    assert recent[0]["status"] == 200
+    assert recent[0]["probe"] is True
+
+
+def test_diagnostics_throttles_repeated_sightings():
+    cache.delete(diagnostics.CACHE_KEY)
+    diagnostics._last_recorded.clear()
+    request = _request_for()
+
+    diagnostics.record_request(request)
+    diagnostics.record_request(request)
+
+    assert len(diagnostics.recent_requests()) == 1
+
+
+def test_status_is_public_and_reports_the_scheduler(monkeypatch):
+    monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc1234")
+    monkeypatch.delenv("INGESTION_SCHEDULE_HOURS", raising=False)
+    cache.delete(scheduler.STATE_CACHE_KEY)
+    scheduler._publish_state(elected=True, nextIngestAt="2026-11-17T16:00:00")
+
+    response = Client().get("/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["commit"] == "abc1234"
+    assert payload["ingestTriggerTokenConfigured"] is True
+    assert payload["scheduler"]["elected"] is True
+    assert payload["scheduler"]["scheduleCron"] == "0 0 */8 * * *"
+    assert payload["scheduler"]["nextIngestAt"] == "2026-11-17T16:00:00"
+    assert payload["database"]["status"] == "UP"
+    assert isinstance(payload["requests"], list)
+
+
+def test_status_reports_the_last_run_and_an_unconfigured_hook(monkeypatch):
+    monkeypatch.delenv("INGEST_TRIGGER_TOKEN", raising=False)
+    cache.set(
+        tasks.LAST_RUN_CACHE_KEY,
+        {"at": "2026-11-17T08:00:30", "trigger": "scheduler", "saved": 1, "candidates": 2},
+        timeout=60,
+    )
+
+    payload = Client().get("/status").json()
+
+    assert payload["lastRun"]["trigger"] == "scheduler"
+    assert payload["ingestTriggerTokenConfigured"] is False
+
+
+def test_status_head_has_no_body():
+    response = Client().head("/status")
+
+    assert response.status_code == 200
+    assert response.content == b""

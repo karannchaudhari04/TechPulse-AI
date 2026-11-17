@@ -27,13 +27,12 @@ from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
-# Ingestion cadence. The Java backend ran every 4 hours
-# (@Scheduled(cron = "0 0 */4 * * *")); the Django port runs every 8 hours.
-INGESTION_INTERVAL = timedelta(hours=8)
-# A run that reached the feeds but found nothing fresh is not a success worth
-# waiting eight hours for: sources publish throughout the day.
-EMPTY_RUN_INTERVAL = timedelta(hours=1)
-# A crash (database down, Gemini outage) should be retried quickly.
+# Ingestion runs on fixed clock boundaries, like the Java backend's
+# @Scheduled(cron = "0 0 */4 * * *"). Hours divisible by this number are the
+# run times (8 -> 00:00, 08:00, 16:00 in the server timezone, UTC on Render).
+DEFAULT_SCHEDULE_HOURS = 8
+# A crash (database down, Gemini outage) or a lost lock race should be retried
+# quickly instead of waiting for the next clock boundary.
 RETRY_AFTER_ERROR = timedelta(minutes=15)
 TICK_SECONDS = 60
 STARTUP_DELAY_SECONDS = 15
@@ -47,7 +46,6 @@ ELECTION_LOCK_PATH = os.getenv(
 )
 
 _lock = threading.Lock()
-_started = False
 _election_fd: int | None = None
 _thread: threading.Thread | None = None
 
@@ -91,6 +89,44 @@ def _age_seconds(value) -> float | None:
     return round((datetime.now() - stamp).total_seconds(), 1)
 
 
+def schedule_hours() -> int:
+    """Read the cadence, mirroring ``@Scheduled(cron = "0 0 */N * * *")``."""
+    raw = os.getenv("INGESTION_SCHEDULE_HOURS", str(DEFAULT_SCHEDULE_HOURS))
+    try:
+        hours = int(raw)
+    except (TypeError, ValueError):
+        return DEFAULT_SCHEDULE_HOURS
+    if not 1 <= hours <= 24:
+        return DEFAULT_SCHEDULE_HOURS
+    return hours
+
+
+def schedule_cron() -> str:
+    return f"0 0 */{schedule_hours()} * * *"
+
+
+def last_scheduled_boundary(now: datetime) -> datetime:
+    """The most recent clock time at which ``cron`` would have fired."""
+    hours = schedule_hours()
+    candidate = now.replace(minute=0, second=0, microsecond=0)
+    for _ in range(48):
+        if candidate.hour % hours == 0:
+            return candidate
+        candidate -= timedelta(hours=1)
+    return candidate
+
+
+def next_scheduled_boundary(now: datetime) -> datetime:
+    """The next clock time at which ``cron`` will fire, strictly after ``now``."""
+    hours = schedule_hours()
+    candidate = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    for _ in range(48):
+        if candidate.hour % hours == 0:
+            return candidate
+        candidate += timedelta(hours=1)
+    return candidate
+
+
 def state() -> dict:
     """Snapshot of the scheduler for the admin health report."""
     snapshot: dict = {}
@@ -104,6 +140,8 @@ def state() -> dict:
     snapshot["electedInThisWorker"] = _election_fd is not None
     snapshot["threadAliveInThisWorker"] = bool(_thread and _thread.is_alive())
     snapshot["tickSeconds"] = TICK_SECONDS
+    snapshot["scheduleHours"] = schedule_hours()
+    snapshot["scheduleCron"] = schedule_cron()
     snapshot["heartbeatAgeSeconds"] = _age_seconds(snapshot.get("updatedAt"))
     return snapshot
 
@@ -120,19 +158,23 @@ def _on_request_started(sender, **kwargs) -> None:
 
 
 def start_once() -> bool:
-    """Start the background thread once. Returns True when this call started it."""
-    global _started, _thread
+    """Start the background thread once. Returns True when this call started it.
+
+    A daemon thread normally lives as long as the process, but a killed thread
+    must not silently disable scheduling until the next deploy: the next request
+    restarts it because liveness, not a one-shot flag, is the guard.
+    """
+    global _thread
     if not enabled():
         return False
     with _lock:
-        if _started:
+        if _thread is not None and _thread.is_alive():
             return False
-        _started = True
-    _thread = threading.Thread(target=_run_forever, name="techpulse-scheduler", daemon=True)
-    _thread.start()
+        _thread = threading.Thread(target=_run_forever, name="techpulse-scheduler", daemon=True)
+        _thread.start()
     _publish_state(startedAt=datetime.now().isoformat(timespec="seconds"), pid=os.getpid())
     logger.info(
-        "[Scheduler] In-process scheduler started (ingestion every %s)", INGESTION_INTERVAL
+        "[Scheduler] In-process scheduler started (cron %s)", schedule_cron()
     )
     return True
 
@@ -155,24 +197,53 @@ def due_tasks(
 
 
 def next_run_after(now: datetime, result) -> datetime:
-    """Decide when to try ingestion again, based on what the last run achieved."""
-    if not isinstance(result, dict):
-        return now + INGESTION_INTERVAL
-    if result.get("skipped"):
-        # Someone else held the lock, or ingestion is disabled.
+    """Decide when to try ingestion again.
+
+    Java's ``@Scheduled(cron=...)`` is fixed-clock: the next run is the next
+    boundary no matter how many articles this one saved. Only a run that never
+    happened (another worker held the lock, or ingestion is disabled) is retried
+    ahead of the boundary.
+    """
+    if isinstance(result, dict) and result.get("skipped"):
         return now + RETRY_AFTER_ERROR
-    if result.get("saved", 0) > 0:
-        return now + INGESTION_INTERVAL
-    return now + EMPTY_RUN_INTERVAL
+    return next_scheduled_boundary(now)
+
+
+def _last_run_time() -> datetime | None:
+    try:
+        from ingestion.tasks import LAST_RUN_CACHE_KEY
+
+        last_run = cache.get(LAST_RUN_CACHE_KEY)
+    except Exception:
+        return None
+    if not isinstance(last_run, dict):
+        return None
+    try:
+        return datetime.fromisoformat(str(last_run.get("at")))
+    except (TypeError, ValueError):
+        return None
+
+
+def _last_activity_time() -> datetime | None:
+    """When ingestion last ran, falling back to the newest stored article."""
+    return _last_run_time() or _latest_event_time()
 
 
 def initial_next_run(now: datetime | None = None) -> datetime:
-    """Catch up immediately when the newest event is already older than the interval."""
+    """Catch up once when a clock boundary passed while the instance was asleep.
+
+    Java skipped a boundary missed during downtime because the JVM was not
+    running. Render's free plan sleeps after 15 idle minutes, so a missed
+    boundary is normal: run once on boot, then fall back to the cron clock. The
+    last-run timestamp prevents a second run inside the same boundary window,
+    including a manual run or a catch-up that just finished.
+    """
     now = now or datetime.now()
-    latest = _latest_event_time()
-    if latest is None:
-        return now
-    return latest + INGESTION_INTERVAL
+    boundary = last_scheduled_boundary(now)
+    last_activity = _last_activity_time()
+    if last_activity is not None and last_activity >= boundary:
+        return next_scheduled_boundary(now)
+    return now
 
 
 def holds_election() -> bool:
@@ -229,8 +300,13 @@ def _run_forever() -> None:
                 if not announced:
                     announced = True
                     logger.info(
-                        "[Scheduler] Elected this worker; next ingestion run at %s",
+                        "[Scheduler] Elected this worker (cron %s); next ingestion run at %s",
+                        schedule_cron(),
                         next_ingest_at,
+                    )
+                if next_ingest_at <= now:
+                    logger.info(
+                        "[Scheduler] Catching up: a clock boundary passed while the instance was down"
                     )
 
             for task in due_tasks(now, next_ingest_at, last_prune_date, last_digest_date):
@@ -259,6 +335,8 @@ def _run_forever() -> None:
         _publish_state(
             elected=True,
             lastTickAt=tick,
+            scheduleHours=schedule_hours(),
+            scheduleCron=schedule_cron(),
             nextIngestAt=(
                 next_ingest_at.isoformat(timespec="seconds") if next_ingest_at else None
             ),
