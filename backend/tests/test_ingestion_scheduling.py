@@ -296,6 +296,18 @@ def test_initial_run_reads_the_last_run_timestamp_from_the_cache():
     )
 
 
+def test_initial_run_retries_after_a_failed_or_skipped_run():
+    """A 0.0s failure is not fresh data, so boot must catch up immediately."""
+    now = datetime(2026, 11, 15, 9, 30)
+    for outcome in ({"error": "(0, '')"}, {"skipped": True}):
+        cache.set(
+            tasks.LAST_RUN_CACHE_KEY,
+            {"at": "2026-11-15T09:06:00", "trigger": "scheduler", **outcome},
+            timeout=60,
+        )
+        assert scheduler.initial_next_run(now) == now
+
+
 def test_initial_run_happens_immediately_on_an_empty_database(monkeypatch):
     now = datetime(2026, 11, 15, 12, 0)
     monkeypatch.setattr(scheduler, "_last_activity_time", lambda: None)

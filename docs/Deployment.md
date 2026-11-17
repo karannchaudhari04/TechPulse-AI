@@ -86,7 +86,7 @@ graph TD
 
 ### Keeping the free instance awake
 
-The in-process scheduler lives inside the web container, so it only runs while Render keeps the instance up. A free web service is spun down after **15 minutes without inbound traffic**; when that happens the daemon thread dies with the container and nothing runs until the next request boots it again. On boot the scheduler compares the last run with the current clock boundary and catches up immediately if one passed while it was asleep, so the feed stays within one cadence of fresh after a wake.
+The in-process scheduler lives inside the web container, so it only runs while Render keeps the instance up. A free web service is spun down after **15 minutes without inbound traffic**; when that happens the daemon thread dies with the container and nothing runs until the next request boots it again. On boot the scheduler compares the last completed run with the current clock boundary and catches up immediately if one passed while it was asleep (or if the last run failed or was skipped), so the feed stays within one cadence of fresh after a wake. Each tick also closes stale database connections; a thread that idled past TiDB's connection timeout otherwise fails its first run instantly with an empty driver error.
 
 Manual runs do not move the clock: the next automatic run is still the next boundary, so triggering by hand cannot delay the schedule. Two cheap ways to keep automatic ingestion reliable:
 

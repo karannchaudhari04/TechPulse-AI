@@ -24,6 +24,7 @@ from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +211,12 @@ def next_run_after(now: datetime, result) -> datetime:
 
 
 def _last_run_time() -> datetime | None:
+    """When ingestion last completed, ignoring runs that never ingested.
+
+    A failure at 09:06 must not count as "the feed is fresh": booting afterwards
+    would then wait for the next boundary even though nothing was saved. The
+    newest stored event is the fallback for those cases.
+    """
     try:
         from ingestion.tasks import LAST_RUN_CACHE_KEY
 
@@ -217,6 +224,8 @@ def _last_run_time() -> datetime | None:
     except Exception:
         return None
     if not isinstance(last_run, dict):
+        return None
+    if last_run.get("error") or last_run.get("skipped"):
         return None
     try:
         return datetime.fromisoformat(str(last_run.get("at")))
@@ -289,6 +298,10 @@ def _run_forever() -> None:
         tick = now.isoformat(timespec="seconds")
         error: str | None = None
         try:
+            # The thread is long-lived, so its database connection can outlive
+            # TiDB's idle timeout. Without this, the first run after a quiet
+            # period can fail in 0.0s with a bare "(0, '')" from the driver.
+            close_old_connections()
             if not holds_election():
                 # Another Gunicorn worker owns the schedule. It publishes the
                 # heartbeat; a loser must not overwrite it with elected=false.
