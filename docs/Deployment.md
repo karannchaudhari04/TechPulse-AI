@@ -123,6 +123,8 @@ curl -fsS -H "X-Ingest-Token: $INGEST_TRIGGER_TOKEN" \
 curl -fsS https://techbite.onrender.com/status
 ```
 
+All timestamps in that report, and the scheduler clock itself, are **UTC** (`"timezone": "UTC"`); add 5:30 for IST. With the default 8-hour cadence the runs are 00:00, 08:00, and 16:00 UTC (05:30, 13:30, and 21:30 IST).
+
 - `scheduler.heartbeatAgeSeconds` older than ~180 means the instance is asleep or the thread died; `scheduler.nextIngestAt` is the next clock boundary.
 - `scheduler.scheduleCron` shows the active cadence (`0 0 */8 * * *` by default).
 - `recentRuns` is an append-only ring of the last 20 scheduler decisions and run outcomes. A `kind=decision` entry records why the scheduler invoked the pipeline (`reason=boundary`, `catch-up`, or `retry`) before it starts; `kind=run` entries record every attempt's `trigger` and outcome, so a manual attempt that was skipped while the scheduler held the lock is still visible.

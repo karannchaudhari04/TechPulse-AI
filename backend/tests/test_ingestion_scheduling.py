@@ -591,6 +591,7 @@ def test_status_is_public_and_reports_the_scheduler(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
+    assert payload["timezone"] == "UTC"
     assert payload["commit"] == "abc1234"
     assert payload["ingestTriggerTokenConfigured"] is True
     assert payload["scheduler"]["elected"] is True

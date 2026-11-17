@@ -65,6 +65,9 @@ def status(request):
     payload = {
         "status": "UP",
         "timestamp": datetime.now().isoformat(timespec="seconds"),
+        # Every timestamp in this report (and the scheduler clock) is UTC. The
+        # field is explicit because the naive ISO strings look like local time.
+        "timezone": "UTC",
         "commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or None,
         "ingestTriggerTokenConfigured": bool(os.getenv("INGEST_TRIGGER_TOKEN")),
         "scheduler": scheduler.state(),
