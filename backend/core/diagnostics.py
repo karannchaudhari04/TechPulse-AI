@@ -21,11 +21,11 @@ from django.core.cache import cache
 
 CACHE_KEY = "diagnostics:requests"
 CACHE_TTL = 24 * 3600
-MAX_ENTRIES = 25
+MAX_ENTRIES = 40
 
 # Health checks and monitors are the interesting sightings, so they are kept at
 # a finer resolution than ordinary API traffic.
-PROBE_PATHS = {"/", "/actuator/health", "/status", "/internal/ingest"}
+PROBE_PATHS = {"/", "/actuator/health", "/internal/ingest"}
 PROBE_THROTTLE_SECONDS = 5.0
 GENERAL_THROTTLE_SECONDS = 60.0
 
@@ -41,6 +41,11 @@ def _is_probe(request) -> bool:
 def record_request(request, response=None) -> None:
     """Append a throttled sighting; safe to call from middleware."""
     try:
+        # The diagnostics page is often polled by whoever is investigating a
+        # missed run. Recording those reads would flush the very probes they
+        # are looking for out of the ring buffer.
+        if request.path == "/status":
+            return
         probe = _is_probe(request)
         bucket = "probe" if probe else "general"
         throttle = PROBE_THROTTLE_SECONDS if probe else GENERAL_THROTTLE_SECONDS

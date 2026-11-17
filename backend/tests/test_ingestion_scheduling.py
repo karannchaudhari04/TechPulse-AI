@@ -531,6 +531,15 @@ def test_diagnostics_throttles_repeated_sightings():
     assert len(diagnostics.recent_requests()) == 1
 
 
+def test_diagnostics_does_not_record_the_status_page_itself():
+    cache.delete(diagnostics.CACHE_KEY)
+    diagnostics._last_recorded.clear()
+
+    diagnostics.record_request(_request_for("/status"))
+
+    assert diagnostics.recent_requests() == []
+
+
 def test_status_is_public_and_reports_the_scheduler(monkeypatch):
     monkeypatch.setenv("INGEST_TRIGGER_TOKEN", "cron-secret")
     monkeypatch.setenv("RENDER_GIT_COMMIT", "abc1234")
