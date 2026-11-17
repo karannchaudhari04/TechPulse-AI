@@ -284,6 +284,29 @@ def holds_election() -> bool:
     return True
 
 
+def _record_scheduler_decision(reason: str, due_at: datetime | None) -> None:
+    """Audit who decided to run the pipeline and why.
+
+    ``ingestion:lastRun`` is a single slot, so a manual attempt that is skipped
+    while the scheduler holds the lock disappears once the scheduler's run
+    finishes. This decision entry keeps the distinction visible.
+    """
+    try:
+        from ingestion.tasks import record_run_event
+
+        record_run_event(
+            {
+                "at": datetime.now().isoformat(timespec="seconds"),
+                "kind": "decision",
+                "trigger": "scheduler",
+                "reason": reason,
+                "dueAt": due_at.isoformat(timespec="seconds") if due_at else None,
+            }
+        )
+    except Exception:
+        pass
+
+
 def _run_forever() -> None:
     # Let migrations, static collection, and the first requests settle.
     time.sleep(STARTUP_DELAY_SECONDS)
@@ -291,6 +314,7 @@ def _run_forever() -> None:
     last_prune_date: date | None = None
     last_digest_date: date | None = None
     next_ingest_at: datetime | None = None
+    next_reason = "boundary"
     announced = False
 
     while True:
@@ -310,6 +334,7 @@ def _run_forever() -> None:
 
             if next_ingest_at is None:
                 next_ingest_at = initial_next_run(now)
+                next_reason = "catch-up" if next_ingest_at <= now else "boundary"
                 if not announced:
                     announced = True
                     logger.info(
@@ -332,15 +357,22 @@ def _run_forever() -> None:
                     _run_task(task)
                     continue
 
+                _record_scheduler_decision(next_reason, next_ingest_at)
                 try:
                     result = _run_task("ingestion")
                 except Exception:
                     next_ingest_at = datetime.now() + RETRY_AFTER_ERROR
+                    next_reason = "retry"
                     logger.exception(
                         "[Scheduler] Ingestion failed; retrying in %s", RETRY_AFTER_ERROR
                     )
                 else:
                     next_ingest_at = next_run_after(datetime.now(), result)
+                    next_reason = (
+                        "retry"
+                        if isinstance(result, dict) and result.get("skipped")
+                        else "boundary"
+                    )
                     logger.info("[Scheduler] Next ingestion run at %s", next_ingest_at)
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"

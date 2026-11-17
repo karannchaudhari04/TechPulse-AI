@@ -19,6 +19,34 @@ logger = logging.getLogger(__name__)
 # Gunicorn workers and the database has no run-log table.
 LAST_RUN_CACHE_KEY = "ingestion:lastRun"
 LAST_RUN_CACHE_TTL = 7 * 24 * 3600
+# `ingestion:lastRun` is a single slot: the last writer wins, so a manual attempt
+# skipped while the scheduler held the lock disappears when the scheduler's run
+# finishes. The ring below keeps the last few decisions and outcomes so
+# "automatic or manual?" can be answered after the fact.
+RUNS_CACHE_KEY = "ingestion:runs"
+RUNS_MAX = 20
+
+
+def record_run_event(event: dict) -> None:
+    """Prepend to the short run history; diagnostics never break ingestion."""
+    try:
+        recent = cache.get(RUNS_CACHE_KEY)
+    except Exception:
+        recent = None
+    if not isinstance(recent, list):
+        recent = []
+    try:
+        cache.set(RUNS_CACHE_KEY, [event, *recent][:RUNS_MAX], timeout=LAST_RUN_CACHE_TTL)
+    except Exception:
+        pass
+
+
+def recent_runs() -> list:
+    try:
+        recent = cache.get(RUNS_CACHE_KEY)
+    except Exception:
+        return []
+    return recent if isinstance(recent, list) else []
 
 
 def record_last_run(started_at: datetime, result: dict, trigger: str = "manual") -> None:
@@ -35,6 +63,7 @@ def record_last_run(started_at: datetime, result: dict, trigger: str = "manual")
     except Exception:
         # Diagnostics must never break ingestion.
         pass
+    record_run_event({"kind": "run", **payload})
 
 
 def _acquire_lock(key: str, timeout: int) -> bool:

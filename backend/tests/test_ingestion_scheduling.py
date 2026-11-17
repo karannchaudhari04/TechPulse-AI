@@ -158,6 +158,7 @@ def test_admin_health_reports_the_last_ingestion_run():
 
 
 def test_ingest_all_feeds_records_the_last_run(monkeypatch):
+    cache.delete(tasks.RUNS_CACHE_KEY)
     monkeypatch.setattr(tasks.cache, "add", lambda *args, **kwargs: True)
     monkeypatch.setattr(tasks, "discover_and_deduplicate", list)
     monkeypatch.setattr(tasks.RawIngestion.objects, "exclude", lambda *a, **k: _NoRows())
@@ -168,6 +169,33 @@ def test_ingest_all_feeds_records_the_last_run(monkeypatch):
     assert last_run["saved"] == 0
     assert last_run["candidates"] == 0
     assert last_run["at"]
+
+    history = tasks.recent_runs()
+    assert history[0]["kind"] == "run"
+    assert history[0]["trigger"] == "manual"
+    assert history[0]["saved"] == 0
+
+
+def test_run_history_keeps_the_newest_entries():
+    cache.delete(tasks.RUNS_CACHE_KEY)
+    for index in range(tasks.RUNS_MAX + 5):
+        tasks.record_run_event({"kind": "test", "index": index})
+
+    history = tasks.recent_runs()
+    assert len(history) == tasks.RUNS_MAX
+    assert history[0]["index"] == tasks.RUNS_MAX + 4
+
+
+def test_scheduler_records_why_it_ran():
+    cache.delete(tasks.RUNS_CACHE_KEY)
+
+    scheduler._record_scheduler_decision("boundary", datetime(2026, 11, 17, 16, 0))
+
+    entry = tasks.recent_runs()[0]
+    assert entry["kind"] == "decision"
+    assert entry["trigger"] == "scheduler"
+    assert entry["reason"] == "boundary"
+    assert entry["dueAt"] == "2026-11-17T16:00:00"
 
 
 def test_actuator_health_head_has_no_body():
@@ -570,6 +598,7 @@ def test_status_is_public_and_reports_the_scheduler(monkeypatch):
     assert payload["scheduler"]["nextIngestAt"] == "2026-11-17T16:00:00"
     assert payload["database"]["status"] == "UP"
     assert isinstance(payload["requests"], list)
+    assert isinstance(payload["recentRuns"], list)
 
 
 def test_status_reports_the_last_run_and_an_unconfigured_hook(monkeypatch):

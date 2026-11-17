@@ -40,7 +40,7 @@ def status(request):
 
     from catalog.models import TechnologyEvent
     from core import diagnostics, scheduler
-    from ingestion.tasks import LAST_RUN_CACHE_KEY
+    from ingestion.tasks import LAST_RUN_CACHE_KEY, recent_runs
 
     try:
         last_run = cache.get(LAST_RUN_CACHE_KEY)
@@ -69,6 +69,7 @@ def status(request):
         "ingestTriggerTokenConfigured": bool(os.getenv("INGEST_TRIGGER_TOKEN")),
         "scheduler": scheduler.state(),
         "lastRun": last_run if isinstance(last_run, dict) else None,
+        "recentRuns": recent_runs(),
         "database": database,
         "requests": diagnostics.recent_requests(),
     }

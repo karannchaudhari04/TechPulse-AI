@@ -125,7 +125,8 @@ curl -fsS https://techbite.onrender.com/status
 
 - `scheduler.heartbeatAgeSeconds` older than ~180 means the instance is asleep or the thread died; `scheduler.nextIngestAt` is the next clock boundary.
 - `scheduler.scheduleCron` shows the active cadence (`0 0 */8 * * *` by default).
-- `lastRun.trigger` should read `scheduler` after an automatic run.
+- `recentRuns` is an append-only ring of the last 20 scheduler decisions and run outcomes. A `kind=decision` entry records why the scheduler invoked the pipeline (`reason=boundary`, `catch-up`, or `retry`) before it starts; `kind=run` entries record every attempt's `trigger` and outcome, so a manual attempt that was skipped while the scheduler held the lock is still visible.
+- `lastRun.trigger` should read `scheduler` after a boundary run.
 - `requests` lists the last probes with their `User-Agent`; if UptimeRobot is configured, its pings appear there. A gap in that list around a missed boundary is proof the instance was asleep.
 - `ingestTriggerTokenConfigured` tells you whether `/internal/ingest` is enabled.
 - `commit` is the deployed `RENDER_GIT_COMMIT`.
